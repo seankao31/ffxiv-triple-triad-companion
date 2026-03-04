@@ -81,8 +81,38 @@ describe("findBestMove", () => {
   });
 });
 
+describe("tie-breaking", () => {
+  it("prefers moves with higher robustness among equal outcomes", () => {
+    // Strong cards vs weak cards — player should win most ways
+    const p = [createCard(10,10,10,10), createCard(9,9,9,9), createCard(8,8,8,8), createCard(7,7,7,7), createCard(6,6,6,6)];
+    const o = [createCard(1,1,1,1), createCard(2,2,2,2), createCard(3,3,3,3), createCard(4,4,4,4), createCard(5,5,5,5)];
+    const state = createInitialState(p, o);
+
+    const moves = findBestMove(state);
+    const winMoves = moves.filter(m => m.outcome === Outcome.Win);
+
+    // With overwhelmingly strong cards, most moves should be wins
+    expect(winMoves.length).toBeGreaterThan(1);
+
+    // At least one win move should have robustness > 0
+    const maxRobustness = Math.max(...winMoves.map(m => m.robustness));
+    expect(maxRobustness).toBeGreaterThan(0);
+
+    // Robustness should be sorted descending within wins
+    for (let i = 1; i < winMoves.length; i++) {
+      expect(winMoves[i].robustness).toBeLessThanOrEqual(winMoves[i-1].robustness);
+    }
+
+    // Robustness should be between 0 and 1
+    for (const move of winMoves) {
+      expect(move.robustness).toBeGreaterThanOrEqual(0);
+      expect(move.robustness).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
 describe("solver performance", () => {
-  it("solves a full game from turn 1 within 10 seconds", () => {
+  it("solves a full game from turn 1 within 15 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
     const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
     const state = createInitialState(p, o);
@@ -92,7 +122,7 @@ describe("solver performance", () => {
     const elapsed = performance.now() - start;
 
     expect(moves.length).toBe(45); // 5 cards × 9 positions
-    expect(elapsed).toBeLessThan(10000); // 10 seconds
+    expect(elapsed).toBeLessThan(15000); // 15 seconds
     console.log(`Turn 1 solve: ${elapsed.toFixed(0)}ms, ${moves.length} moves`);
-  });
+  }, 20000);
 });

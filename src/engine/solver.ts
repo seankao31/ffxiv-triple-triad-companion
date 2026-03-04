@@ -43,6 +43,14 @@ function hashState(board: GameState["board"], currentTurn: Owner, cardIndex: Map
   return h;
 }
 
+// Returns true if all 9 board cells are occupied.
+function boardFull(board: GameState["board"]): boolean {
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) return false;
+  }
+  return true;
+}
+
 // Evaluates terminal state score. Returns 1 for evaluatingFor wins, -1 for loss, 0 for draw.
 function terminalValue(state: GameState, evaluatingFor: Owner): number {
   let player = state.playerHand.length;
@@ -71,7 +79,7 @@ function minimax(
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
   // Terminal state: no cards to play or board is full
-  if (hand.length === 0) return terminalValue(state, evaluatingFor);
+  if (hand.length === 0 || boardFull(state.board)) return terminalValue(state, evaluatingFor);
 
   const key = hashState(state.board, state.currentTurn, cardIndex);
   const cached = tt.get(key);
@@ -122,9 +130,11 @@ export function findBestMove(state: GameState): RankedMove[] {
   }
   if (!hasEmpty) return [];
 
-  const moves: RankedMove[] = [];
   const tt = new Map<number, number>();
   const cardIndex = buildCardIndex(state);
+
+  // First pass: evaluate all moves with minimax
+  const evaluated: { card: Card; position: number; value: number; nextState: GameState }[] = [];
 
   for (const card of hand) {
     for (let i = 0; i < 9; i++) {
@@ -132,15 +142,42 @@ export function findBestMove(state: GameState): RankedMove[] {
 
       const nextState = placeCard(state, card, i);
       const value = minimax(nextState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
-
-      const outcome = value === 1 ? Outcome.Win : value === -1 ? Outcome.Loss : Outcome.Draw;
-      moves.push({ card, position: i, outcome, robustness: 0 });
+      evaluated.push({ card, position: i, value, nextState });
     }
   }
 
-  // Sort: wins first, then draws, then losses
+  // Second pass: calculate robustness for tie-breaking.
+  // For each move, count what fraction of opponent responses maintain the same outcome.
+  const moves: RankedMove[] = evaluated.map(({ card, position, value, nextState }) => {
+    const oppHand = nextState.currentTurn === Owner.Player ? nextState.playerHand : nextState.opponentHand;
+
+    let totalResponses = 0;
+    let sameOutcomeCount = 0;
+
+    for (const oppCard of oppHand) {
+      for (let i = 0; i < 9; i++) {
+        if (nextState.board[i] !== null) continue;
+
+        totalResponses++;
+        const responseState = placeCard(nextState, oppCard, i);
+        const responseValue = minimax(responseState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
+
+        if (responseValue === value) sameOutcomeCount++;
+      }
+    }
+
+    const outcome = value === 1 ? Outcome.Win : value === -1 ? Outcome.Loss : Outcome.Draw;
+    const robustness = totalResponses > 0 ? sameOutcomeCount / totalResponses : 1;
+    return { card, position, outcome, robustness };
+  });
+
+  // Sort: wins first, then draws, then losses; within same outcome, higher robustness first
   const outcomeOrder = { win: 0, draw: 1, loss: 2 };
-  moves.sort((a, b) => outcomeOrder[a.outcome] - outcomeOrder[b.outcome]);
+  moves.sort((a, b) => {
+    const orderDiff = outcomeOrder[a.outcome] - outcomeOrder[b.outcome];
+    if (orderDiff !== 0) return orderDiff;
+    return b.robustness - a.robustness;
+  });
 
   return moves;
 }
