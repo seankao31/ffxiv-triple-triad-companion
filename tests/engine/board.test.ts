@@ -2,7 +2,7 @@
 // ABOUTME: Covers standard, Plus, Same, and Combo cascade rules.
 
 import { describe, expect, test } from "bun:test";
-import { createCard, createInitialState, Owner } from "../../src/engine/types";
+import { createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 
 describe("placeCard", () => {
@@ -407,5 +407,182 @@ describe("combo cascade", () => {
     // Combo from 1: left=5 vs 0's right=5 → 5 > 5 is false → no capture
     // Card at 0 should remain Opponent
     expect(s.board[0]!.owner).toBe(Owner.Opponent);
+  });
+});
+
+describe("edge cases", () => {
+  const filler = createCard(1, 1, 1, 1);
+
+  test("corner card has only 2 neighbors", () => {
+    // Position 0 (top-left corner) has 2 neighbors: 1 (right/left) and 3 (bottom/top)
+    // Place opponent cards at 1 and 3 with low defending values, then capture both from 0
+    const opCard1 = createCard(1, 1, 1, 2); // at pos 1, left=2 (defends against pos 0's right)
+    const opCard2 = createCard(2, 1, 1, 1); // at pos 3, top=2 (defends against pos 0's bottom)
+    const pCard = createCard(1, 5, 5, 1);   // at pos 0, right=5 attacks 1's left=2, bottom=5 attacks 3's top=2
+
+    const state = createInitialState(
+      [filler, filler, pCard, filler, filler],
+      [opCard1, opCard2, filler, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8 (away from action)
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent places opCard1 at pos 1
+    s = placeCard(s, opCard1, 1);
+    // Turn 3: Player at pos 6 (away from action)
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent places opCard2 at pos 3
+    s = placeCard(s, opCard2, 3);
+    // Turn 5: Player places pCard at pos 0 (corner)
+    s = placeCard(s, pCard, 0);
+
+    // Both neighbors captured via standard capture
+    expect(s.board[0]!.owner).toBe(Owner.Player);
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+
+  test("edge card has only 3 neighbors", () => {
+    // Position 1 (top edge) has 3 neighbors: 0 (left/right), 2 (right/left), 4 (bottom/top)
+    // Place opponent cards at all 3, then capture from pos 1
+    const opCard0 = createCard(1, 2, 1, 1); // at pos 0, right=2 (defends against pos 1's left)
+    const opCard2 = createCard(1, 1, 1, 2); // at pos 2, left=2 (defends against pos 1's right)
+    const opCard4 = createCard(2, 1, 1, 1); // at pos 4, top=2 (defends against pos 1's bottom)
+    const pCard = createCard(1, 5, 5, 5);   // at pos 1, left=5 > 2, right=5 > 2, bottom=5 > 2
+
+    const state = createInitialState(
+      [filler, filler, filler, pCard, filler],
+      [opCard0, opCard2, opCard4, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 0
+    s = placeCard(s, opCard0, 0);
+    // Turn 3: Player at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent at pos 2
+    s = placeCard(s, opCard2, 2);
+    // Turn 5: Player at pos 7
+    s = placeCard(s, filler, 7);
+    // Turn 6: Opponent at pos 4
+    s = placeCard(s, opCard4, 4);
+    // Turn 7: Player places pCard at pos 1 (top edge)
+    s = placeCard(s, pCard, 1);
+
+    // All 3 neighbors captured via standard capture
+    expect(s.board[0]!.owner).toBe(Owner.Player);
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[2]!.owner).toBe(Owner.Player);
+    expect(s.board[4]!.owner).toBe(Owner.Player);
+  });
+});
+
+describe("full game", () => {
+  test("plays a complete 9-turn game with correct scoring", () => {
+    // All player cards: (5,5,5,5), all opponent cards: (3,3,3,3)
+    // Placement order: positions 0-8 in sequence, alternating P/O
+    const p = createCard(5, 5, 5, 5);
+    const o = createCard(3, 3, 3, 3);
+
+    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o]);
+
+    // Turn 1 (P): pos 0. No occupied neighbors.
+    let s = placeCard(state, p, 0);
+
+    // Turn 2 (O): pos 1. Neighbor: 0(P). 1 neighbor, no Plus/Same.
+    // Standard: o.left=3 vs p.right=5 → no capture.
+    s = placeCard(s, o, 1);
+
+    // Turn 3 (P): pos 2. Neighbor: 1(O). 1 neighbor.
+    // Standard: p.left=5 vs o.right=3 → captures pos 1.
+    s = placeCard(s, p, 2);
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+
+    // Turn 4 (O): pos 3. Neighbor: 0(P). 1 neighbor.
+    // Standard: o.top=3 vs p.bottom=5 → no capture.
+    s = placeCard(s, o, 3);
+
+    // Turn 5 (P): pos 4. Neighbors: 1(P), 3(O).
+    // Plus: 5+3=8 (top+pos1.bottom), 5+3=8 (left+pos3.right). Same sum → Plus triggers!
+    // pos 1 is Player → skip. pos 3 is Opponent → flip to Player.
+    // Combo from pos 3 (card 3,3,3,3): neighbor 0(P) → 3>5? No. No combo captures.
+    s = placeCard(s, p, 4);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+
+    // Board: [P, P, P, P, P, _, _, _, _] — Player owns all 5
+
+    // Turn 6 (O): pos 5. Neighbors: 2(P, card 5,5,5,5), 4(P, card 5,5,5,5).
+    // Plus: 3+5=8 (top+pos2.bottom), 3+5=8 (left+pos4.right). Plus triggers!
+    // pos 2 → Opponent, pos 4 → Opponent.
+    // Combo from pos 2 (card 5,5,5,5, now O): neighbor 1(P, card 3,3,3,3). 5>3 → flip pos 1 → O.
+    // Combo from pos 4 (card 5,5,5,5, now O): neighbor 1(now O), neighbor 3(P, card 3,3,3,3). 5>3 → flip pos 3 → O.
+    // Combo from pos 1 (card 3,3,3,3, now O): neighbor 0(P, card 5,5,5,5). 3>5? No.
+    // Combo from pos 3 (card 3,3,3,3, now O): neighbor 0(P, card 5,5,5,5). 3>5? No.
+    s = placeCard(s, o, 5);
+    expect(s.board[2]!.owner).toBe(Owner.Opponent);
+    expect(s.board[4]!.owner).toBe(Owner.Opponent);
+    expect(s.board[1]!.owner).toBe(Owner.Opponent);
+    expect(s.board[3]!.owner).toBe(Owner.Opponent);
+
+    // Board: [P, O, O, O, O, O, _, _, _]
+
+    // Turn 7 (P): pos 6. Neighbor: 3(O, card 3,3,3,3). 1 neighbor.
+    // Standard: p.top=5 vs o.bottom=3 → captures pos 3.
+    s = placeCard(s, p, 6);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+
+    // Board: [P, O, O, P, O, O, P, _, _]
+
+    // Turn 8 (O): pos 7. Neighbors: 6(P, card 5,5,5,5), 4(O, card 5,5,5,5).
+    // Plus: 3+5=8 (left+pos6.right), 3+5=8 (top+pos4.bottom). Plus triggers!
+    // pos 6 is Player → flip to O. pos 4 is Opponent → skip.
+    // Combo from pos 6 (card 5,5,5,5, now O): neighbor 3(P, card 3,3,3,3). 5>3 → flip pos 3 → O.
+    // Combo from pos 3 (card 3,3,3,3, now O): neighbor 0(P, card 5,5,5,5). 3>5? No.
+    s = placeCard(s, o, 7);
+    expect(s.board[6]!.owner).toBe(Owner.Opponent);
+    expect(s.board[3]!.owner).toBe(Owner.Opponent);
+
+    // Board: [P, O, O, O, O, O, O, O, _]
+
+    // Turn 9 (P): pos 8. Neighbors: 7(O, card 3,3,3,3), 5(O, card 3,3,3,3).
+    // Plus: 5+3=8 (left+pos7.right), 5+3=8 (top+pos5.bottom). Plus triggers!
+    // pos 7 → Player, pos 5 → Player.
+    // Combo from pos 7 (card 3,3,3,3, now P): neighbors 6(O, card 5,5,5,5). 3>5? No.
+    //   neighbor 4(O, card 5,5,5,5). 3>5? No.
+    // Combo from pos 5 (card 3,3,3,3, now P): neighbors 2(O, card 5,5,5,5). 3>5? No.
+    //   neighbor 4(O, card 5,5,5,5). 3>5? No.
+    s = placeCard(s, p, 8);
+    expect(s.board[7]!.owner).toBe(Owner.Player);
+    expect(s.board[5]!.owner).toBe(Owner.Player);
+
+    // Final board: [P, O, O, O, O, P, O, P, P]
+    // Player owns: 0, 5, 7, 8 = 4 on board + 0 in hand = 4
+
+    // Wait, let me recount. Hmm, I had pos 5 flipped to Player at turn 9.
+    // pos 0: P (never lost)
+    // pos 1: O (flipped at turn 6)
+    // pos 2: O (flipped at turn 6)
+    // pos 3: O (flipped at turn 8)
+    // pos 4: O (flipped at turn 6)
+    // pos 5: P (flipped at turn 9)
+    // pos 6: O (flipped at turn 8)
+    // pos 7: P (flipped at turn 9)
+    // pos 8: P (placed by player)
+
+    // All 9 positions filled
+    for (let i = 0; i < 9; i++) {
+      expect(s.board[i]).not.toBeNull();
+    }
+
+    // Player used all 5 cards, opponent used 4 (second player gets fewer turns)
+    expect(s.playerHand).toHaveLength(0);
+    expect(s.opponentHand).toHaveLength(1);
+
+    // Score includes hand cards: player=0+4=4, opponent=1+5=6, total=10
+    const score = getScore(s);
+    expect(score.player + score.opponent).toBe(10);
+    expect(score.player).toBe(4);
+    expect(score.opponent).toBe(6);
   });
 });
