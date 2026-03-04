@@ -80,3 +80,19 @@ describe("findBestMove", () => {
     expect(moves).toHaveLength(12);
   });
 });
+
+describe("solver performance", () => {
+  it("solves a full game from turn 1 within 10 seconds", () => {
+    const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
+    const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
+    const state = createInitialState(p, o);
+
+    const start = performance.now();
+    const moves = findBestMove(state);
+    const elapsed = performance.now() - start;
+
+    expect(moves.length).toBe(45); // 5 cards × 9 positions
+    expect(elapsed).toBeLessThan(10000); // 10 seconds
+    console.log(`Turn 1 solve: ${elapsed.toFixed(0)}ms, ${moves.length} moves`);
+  });
+});

@@ -1,71 +1,140 @@
-// ABOUTME: Minimax solver that evaluates all possible moves in a game tree.
+// ABOUTME: Minimax solver with alpha-beta pruning and transposition table.
 // ABOUTME: Returns moves ranked by outcome (Win > Draw > Loss) from the current player's perspective.
 
-import { type GameState, type RankedMove, type Card, Owner, Outcome, getScore } from "./types";
+import { type GameState, type RankedMove, type Card, Owner, Outcome } from "./types";
 import { placeCard } from "./board";
 
-// Returns 1 for win, 0 for draw, -1 for loss from evaluatingFor's perspective.
-function minimax(state: GameState, evaluatingFor: Owner): number {
-  const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
-  const emptyPositions: number[] = [];
-  for (let i = 0; i < 9; i++) {
-    if (state.board[i] === null) emptyPositions.push(i);
-  }
+// Assigns a unique integer to each card based on its values and type.
+const TYPE_IDX: Record<string, number> = { none: 0, primal: 1, scion: 2, society: 3, garlean: 4 };
 
-  // Terminal state: no cards to play or no empty positions
-  if (hand.length === 0 || emptyPositions.length === 0) {
-    const score = getScore(state);
-    if (score.player > score.opponent) return evaluatingFor === Owner.Player ? 1 : -1;
-    if (score.player < score.opponent) return evaluatingFor === Owner.Player ? -1 : 1;
-    return 0;
+function cardId(c: Card): number {
+  return c.top * 5000 + c.right * 500 + c.bottom * 50 + c.left * 5 + TYPE_IDX[c.type];
+}
+
+// Builds a mapping from cardId to a small index (1-10) for compact board hashing.
+function buildCardIndex(state: GameState): Map<number, number> {
+  const index = new Map<number, number>();
+  let nextIdx = 1;
+  for (const card of state.playerHand) {
+    const id = cardId(card);
+    if (!index.has(id)) index.set(id, nextIdx++);
   }
+  for (const card of state.opponentHand) {
+    const id = cardId(card);
+    if (!index.has(id)) index.set(id, nextIdx++);
+  }
+  return index;
+}
+
+// Encodes board + turn as a single number for use as a Map key.
+// Each cell: 0 = empty, 2*idx-1 = card idx owned by player, 2*idx = card idx owned by opponent.
+// Packed into 5 bits per cell (9 cells) + 1 turn bit = 46 bits (safe integer).
+function hashState(board: GameState["board"], currentTurn: Owner, cardIndex: Map<number, number>): number {
+  let h = currentTurn === Owner.Player ? 0 : 1;
+  let shift = 1;
+  for (let i = 0; i < 9; i++) {
+    const cell = board[i];
+    if (cell) {
+      const idx = cardIndex.get(cardId(cell.card))!;
+      h += (cell.owner === Owner.Player ? idx * 2 - 1 : idx * 2) * shift;
+    }
+    shift *= 32;
+  }
+  return h;
+}
+
+// Evaluates terminal state score. Returns 1 for evaluatingFor wins, -1 for loss, 0 for draw.
+function terminalValue(state: GameState, evaluatingFor: Owner): number {
+  let player = state.playerHand.length;
+  let opponent = state.opponentHand.length;
+  for (let i = 0; i < 9; i++) {
+    const cell = state.board[i];
+    if (cell) {
+      if (cell.owner === Owner.Player) player++;
+      else opponent++;
+    }
+  }
+  if (player > opponent) return evaluatingFor === Owner.Player ? 1 : -1;
+  if (player < opponent) return evaluatingFor === Owner.Player ? -1 : 1;
+  return 0;
+}
+
+// Returns 1 for win, 0 for draw, -1 for loss from evaluatingFor's perspective.
+function minimax(
+  state: GameState,
+  evaluatingFor: Owner,
+  alpha: number,
+  beta: number,
+  tt: Map<number, number>,
+  cardIndex: Map<number, number>,
+): number {
+  const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+
+  // Terminal state: no cards to play or board is full
+  if (hand.length === 0) return terminalValue(state, evaluatingFor);
+
+  const key = hashState(state.board, state.currentTurn, cardIndex);
+  const cached = tt.get(key);
+  if (cached !== undefined) return cached;
 
   const isMaximizing = state.currentTurn === evaluatingFor;
   let bestValue = isMaximizing ? -Infinity : Infinity;
 
   // Deduplicate identical cards to avoid redundant searches
-  const seenCards = new Set<string>();
+  const seenCards = new Set<number>();
 
-  for (const card of hand) {
-    const cardKey = `${card.top},${card.right},${card.bottom},${card.left},${card.type}`;
-    if (seenCards.has(cardKey)) continue;
-    seenCards.add(cardKey);
+  outer:
+  for (let ci = 0; ci < hand.length; ci++) {
+    const card = hand[ci];
+    const ck = cardId(card);
+    if (seenCards.has(ck)) continue;
+    seenCards.add(ck);
 
-    for (const position of emptyPositions) {
-      const nextState = placeCard(state, card, position);
-      const value = minimax(nextState, evaluatingFor);
+    for (let i = 0; i < 9; i++) {
+      if (state.board[i] !== null) continue;
+
+      const nextState = placeCard(state, card, i);
+      const value = minimax(nextState, evaluatingFor, alpha, beta, tt, cardIndex);
 
       if (isMaximizing) {
-        bestValue = Math.max(bestValue, value);
-        if (bestValue === 1) return 1;
+        if (value > bestValue) bestValue = value;
+        if (value > alpha) alpha = value;
       } else {
-        bestValue = Math.min(bestValue, value);
-        if (bestValue === -1) return -1;
+        if (value < bestValue) bestValue = value;
+        if (value < beta) beta = value;
       }
+      if (alpha >= beta) break outer;
     }
   }
 
+  tt.set(key, bestValue);
   return bestValue;
 }
 
 export function findBestMove(state: GameState): RankedMove[] {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
-  const emptyPositions: number[] = [];
-  for (let i = 0; i < 9; i++) {
-    if (state.board[i] === null) emptyPositions.push(i);
-  }
 
-  if (hand.length === 0 || emptyPositions.length === 0) return [];
+  if (hand.length === 0) return [];
+
+  let hasEmpty = false;
+  for (let i = 0; i < 9; i++) {
+    if (state.board[i] === null) { hasEmpty = true; break; }
+  }
+  if (!hasEmpty) return [];
 
   const moves: RankedMove[] = [];
+  const tt = new Map<number, number>();
+  const cardIndex = buildCardIndex(state);
 
   for (const card of hand) {
-    for (const position of emptyPositions) {
-      const nextState = placeCard(state, card, position);
-      const value = minimax(nextState, state.currentTurn);
+    for (let i = 0; i < 9; i++) {
+      if (state.board[i] !== null) continue;
+
+      const nextState = placeCard(state, card, i);
+      const value = minimax(nextState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
 
       const outcome = value === 1 ? Outcome.Win : value === -1 ? Outcome.Loss : Outcome.Draw;
-      moves.push({ card, position, outcome, robustness: 0 });
+      moves.push({ card, position: i, outcome, robustness: 0 });
     }
   }
 
