@@ -2,7 +2,7 @@
 // ABOUTME: Handles standard capture, Plus, Same, and Combo cascades.
 
 import type { Board, Card, GameState } from "./types";
-import { Owner } from "./types";
+import { ADJACENCY, Owner } from "./types";
 
 export function placeCard(
   state: GameState,
@@ -29,6 +29,15 @@ export function placeCard(
     ...Board,
   ];
   newBoard[position] = { card, owner: state.currentTurn };
+
+  for (const neighbor of ADJACENCY[position]) {
+    const neighborCell = newBoard[neighbor.position];
+    if (neighborCell && neighborCell.owner !== state.currentTurn) {
+      if (card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {
+        newBoard[neighbor.position] = { card: neighborCell.card, owner: state.currentTurn };
+      }
+    }
+  }
 
   const newHand = [...hand.slice(0, cardIndex), ...hand.slice(cardIndex + 1)];
 
