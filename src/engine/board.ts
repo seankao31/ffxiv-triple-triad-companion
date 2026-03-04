@@ -76,6 +76,34 @@ function resolveSame(
   return flipped;
 }
 
+// BFS over positions flipped by Plus/Same, doing standard captures from each.
+// Newly flipped cards are added to the queue. Does NOT re-trigger Plus or Same.
+function resolveCombo(
+  board: [...Board],
+  currentTurn: Owner,
+  initialFlips: number[],
+): void {
+  const queue = [...initialFlips];
+  const processed = new Set<number>();
+
+  while (queue.length > 0) {
+    const pos = queue.shift()!;
+    if (processed.has(pos)) continue;
+    processed.add(pos);
+
+    const cell = board[pos]!;
+    for (const neighbor of ADJACENCY[pos]) {
+      const neighborCell = board[neighbor.position];
+      if (neighborCell && neighborCell.owner !== currentTurn) {
+        if (cell.card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {
+          board[neighbor.position] = { card: neighborCell.card, owner: currentTurn };
+          queue.push(neighbor.position);
+        }
+      }
+    }
+  }
+}
+
 export function placeCard(
   state: GameState,
   card: Card,
@@ -103,10 +131,13 @@ export function placeCard(
   newBoard[position] = { card, owner: state.currentTurn };
 
   // Plus rule: flip opponent cards in adjacent pairs that share the same sum
-  resolvePlus(newBoard, card, position, state.currentTurn);
+  const plusFlips = resolvePlus(newBoard, card, position, state.currentTurn);
 
   // Same rule: flip opponent cards that form 2+ equal-value pairs
-  resolveSame(newBoard, card, position, state.currentTurn);
+  const sameFlips = resolveSame(newBoard, card, position, state.currentTurn);
+
+  // Combo cascade: BFS standard captures from all Plus/Same flipped positions
+  resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips]);
 
   // Standard capture: flip adjacent opponent cards with strictly lower values
   for (const neighbor of ADJACENCY[position]) {

@@ -2,7 +2,7 @@
 // ABOUTME: Covers standard, Plus, Same, and Combo cascade rules.
 
 import { describe, expect, test } from "bun:test";
-import { createCard, createInitialState, Owner, CardType, ADJACENCY } from "../../src/engine/types";
+import { createCard, createInitialState, Owner } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 
 describe("placeCard", () => {
@@ -325,5 +325,87 @@ describe("plus rule", () => {
     // Opponent card at 3 flips, player card at 1 stays player-owned
     expect(s.board[1]!.owner).toBe(Owner.Player);
     expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+});
+
+describe("combo cascade", () => {
+  const filler = createCard(1, 1, 1, 1);
+
+  test("flipped cards from Same trigger standard captures on their neighbors", () => {
+    // Board layout:
+    //   0(opp) 1(opp) 2
+    //   3(opp) 4(plr) 5
+    //   6      7      8
+    //
+    // Player places at 4, Same triggers flipping 1 and 3.
+    // Combo: flipped card at 1 has left=9, beats opp card at 0's right=1.
+
+    const opp0 = createCard(1, 1, 1, 1); // right=1 (weak, will be combo-captured)
+    const opp1 = createCard(1, 1, 7, 9); // bottom=7 (same as player4's top), left=9 (combo attacks 0)
+    const opp3 = createCard(1, 3, 1, 1); // right=3 (same as player4's left)
+    const plr4 = createCard(7, 1, 1, 3); // top=7, left=3 → Same triggers (2 pairs)
+
+    const state = createInitialState(
+      [filler, filler, plr4, filler, filler],
+      [opp0, opp1, opp3, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 0
+    s = placeCard(s, opp0, 0);
+    // Turn 3: Player at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent at pos 1
+    s = placeCard(s, opp1, 1);
+    // Turn 5: Player at pos 2
+    s = placeCard(s, filler, 2);
+    // Turn 6: Opponent at pos 3
+    s = placeCard(s, opp3, 3);
+    // Turn 7: Player places plr4 at pos 4
+    s = placeCard(s, plr4, 4);
+
+    // Same flips 1 and 3
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+    // Combo: card at 1 (left=9) > card at 0 (right=1) → flips 0
+    expect(s.board[0]!.owner).toBe(Owner.Player);
+  });
+
+  test("combo does NOT re-trigger Plus or Same", () => {
+    // Same layout as above but card values designed so combo standard capture
+    // cannot flip card at 0 (equal values), and Same re-trigger would be needed.
+
+    const opp0 = createCard(5, 5, 5, 5); // right=5, can't be standard-captured (5 is not < 5)
+    const opp1 = createCard(1, 1, 7, 5); // bottom=7, left=5 (same as opp0's right, but no re-trigger)
+    const opp3 = createCard(1, 3, 1, 1); // right=3
+    const plr4 = createCard(7, 1, 1, 3); // top=7, left=3 → Same triggers
+
+    const state = createInitialState(
+      [filler, filler, plr4, filler, filler],
+      [opp0, opp1, opp3, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 0
+    s = placeCard(s, opp0, 0);
+    // Turn 3: Player at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent at pos 1
+    s = placeCard(s, opp1, 1);
+    // Turn 5: Player at pos 2
+    s = placeCard(s, filler, 2);
+    // Turn 6: Opponent at pos 3
+    s = placeCard(s, opp3, 3);
+    // Turn 7: Player places plr4 at pos 4
+    s = placeCard(s, plr4, 4);
+
+    // Same flips 1 and 3
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+    // Combo from 1: left=5 vs 0's right=5 → 5 > 5 is false → no capture
+    // Card at 0 should remain Opponent
+    expect(s.board[0]!.owner).toBe(Owner.Opponent);
   });
 });
