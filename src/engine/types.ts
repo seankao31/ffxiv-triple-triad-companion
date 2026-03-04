@@ -81,12 +81,13 @@ export function createCard(
 export function createInitialState(
   playerHand: readonly Card[],
   opponentHand: readonly Card[],
+  firstTurn: Owner = Owner.Player,
 ): GameState {
   return {
     board: [null, null, null, null, null, null, null, null, null],
     playerHand,
     opponentHand,
-    currentTurn: Owner.Player,
+    currentTurn: firstTurn,
   };
 }
 
