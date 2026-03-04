@@ -4,6 +4,48 @@
 import type { Board, Card, GameState, Neighbor } from "./types";
 import { ADJACENCY, Owner } from "./types";
 
+// Returns positions of opponent cards flipped by the Plus rule.
+// Plus triggers when 2+ adjacent pairs share the same sum of touching values.
+function resolvePlus(
+  board: [...Board],
+  card: Card,
+  position: number,
+  currentTurn: Owner,
+): number[] {
+  const sums: { neighbor: Neighbor; sum: number }[] = [];
+
+  for (const neighbor of ADJACENCY[position]) {
+    const neighborCell = board[neighbor.position];
+    if (!neighborCell) continue;
+    const sum = card[neighbor.attackingEdge] + neighborCell.card[neighbor.defendingEdge];
+    sums.push({ neighbor, sum });
+  }
+
+  // Group by sum value, collect neighbors in groups of 2+
+  const groups = new Map<number, Neighbor[]>();
+  for (const { neighbor, sum } of sums) {
+    let group = groups.get(sum);
+    if (!group) {
+      group = [];
+      groups.set(sum, group);
+    }
+    group.push(neighbor);
+  }
+
+  const flipped: number[] = [];
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    for (const neighbor of group) {
+      const neighborCell = board[neighbor.position]!;
+      if (neighborCell.owner !== currentTurn) {
+        board[neighbor.position] = { card: neighborCell.card, owner: currentTurn };
+        flipped.push(neighbor.position);
+      }
+    }
+  }
+  return flipped;
+}
+
 // Returns positions of opponent cards flipped by the Same rule.
 function resolveSame(
   board: [...Board],
@@ -59,6 +101,9 @@ export function placeCard(
     ...Board,
   ];
   newBoard[position] = { card, owner: state.currentTurn };
+
+  // Plus rule: flip opponent cards in adjacent pairs that share the same sum
+  resolvePlus(newBoard, card, position, state.currentTurn);
 
   // Same rule: flip opponent cards that form 2+ equal-value pairs
   resolveSame(newBoard, card, position, state.currentTurn);

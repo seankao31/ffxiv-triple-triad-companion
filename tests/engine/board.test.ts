@@ -237,3 +237,93 @@ describe("same rule", () => {
     expect(s.board[3]!.owner).toBe(Owner.Player);
   });
 });
+
+describe("plus rule", () => {
+  const filler = createCard(1, 1, 1, 1);
+
+  test("captures when two or more adjacent pairs have equal sums", () => {
+    // Opponent card at pos 1: bottom=5 (defends against pos 4's top)
+    const opCard1 = createCard(1, 1, 5, 1);
+    // Opponent card at pos 3: right=7 (defends against pos 4's left)
+    const opCard2 = createCard(1, 7, 1, 1);
+    // Player card at pos 4: top=3 (sum with opp1: 3+5=8), left=1 (sum with opp2: 1+7=8)
+    // Standard capture: top=3 vs bottom=5 (not >), left=1 vs right=7 (not >)
+    const pCard = createCard(3, 1, 1, 1);
+
+    const state = createInitialState(
+      [filler, filler, pCard, filler, filler],
+      [opCard1, opCard2, filler, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 1
+    s = placeCard(s, opCard1, 1);
+    // Turn 3: Player at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent at pos 3
+    s = placeCard(s, opCard2, 3);
+    // Turn 5: Player places pCard at pos 4
+    s = placeCard(s, pCard, 4);
+
+    // Plus triggers: both opponent cards flipped
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+
+  test("does not trigger plus with only one pair", () => {
+    // Only one adjacent opponent card — Plus needs 2+ pairs with equal sums
+    // Opponent card at pos 1: bottom=5
+    const opCard = createCard(1, 1, 5, 1);
+    // Player card at pos 4: top=3 (sum=8), no other adjacent cards
+    // left=1 so standard capture won't trigger on pos 1 (3 < 5)
+    const pCard = createCard(3, 1, 1, 1);
+
+    const state = createInitialState(
+      [filler, filler, pCard, filler, filler],
+      [opCard, filler, filler, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 1
+    s = placeCard(s, opCard, 1);
+    // Turn 3: Player places pCard at pos 4
+    s = placeCard(s, pCard, 4);
+
+    // Only 1 adjacent pair — Plus does not trigger
+    // Standard capture: top=3 vs bottom=5 (not >), no capture
+    expect(s.board[1]!.owner).toBe(Owner.Opponent);
+  });
+
+  test("counts friendly cards toward plus pairs but does not capture them", () => {
+    // Player card at pos 1: bottom=5 (defends against pos 4's top)
+    const pCard1 = createCard(1, 1, 5, 1);
+    // Opponent card at pos 3: right=7 (defends against pos 4's left)
+    const opCard = createCard(1, 7, 1, 1);
+    // Player card at pos 4: top=3 (sum with pCard1: 3+5=8), left=1 (sum with opCard: 1+7=8)
+    // Standard capture: left=1 vs right=7 (not >), so Plus is the only way to flip
+    const pCard2 = createCard(3, 1, 1, 1);
+
+    const state = createInitialState(
+      [pCard1, filler, pCard2, filler, filler],
+      [opCard, filler, filler, filler, filler],
+    );
+
+    // Turn 1: Player places pCard1 at pos 1
+    let s = placeCard(state, pCard1, 1);
+    // Turn 2: Opponent places opCard at pos 3
+    s = placeCard(s, opCard, 3);
+    // Turn 3: Player places filler at pos 8
+    s = placeCard(s, filler, 8);
+    // Turn 4: Opponent places filler at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 5: Player places pCard2 at pos 4
+    s = placeCard(s, pCard2, 4);
+
+    // 2 plus pairs (1 friendly + 1 opponent, both sum=8) — Plus triggers
+    // Opponent card at 3 flips, player card at 1 stays player-owned
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+});
