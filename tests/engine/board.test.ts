@@ -146,3 +146,94 @@ describe("standard capture", () => {
     expect(s.board[3]!.card).toEqual(opCard2);
   });
 });
+
+describe("same rule", () => {
+  const filler = createCard(1, 1, 1, 1);
+
+  test("captures when two or more adjacent pairs have equal touching values", () => {
+    // Opponent card at pos 1: bottom=5 (defends against pos 4's top)
+    const opCard1 = createCard(1, 1, 5, 1);
+    // Opponent card at pos 3: right=7 (defends against pos 4's left)
+    const opCard2 = createCard(1, 7, 1, 1);
+    // Player card at pos 4: top=5 (matches opCard1 bottom), left=7 (matches opCard2 right)
+    // right and bottom are low so standard capture doesn't apply elsewhere
+    const pCard = createCard(5, 1, 1, 7);
+
+    const state = createInitialState(
+      [filler, filler, pCard, filler, filler],
+      [opCard1, opCard2, filler, filler, filler],
+    );
+
+    // Turn 1: Player at pos 8
+    let s = placeCard(state, filler, 8);
+    // Turn 2: Opponent at pos 1
+    s = placeCard(s, opCard1, 1);
+    // Turn 3: Player at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 4: Opponent at pos 3
+    s = placeCard(s, opCard2, 3);
+    // Turn 5: Player places pCard at pos 4
+    s = placeCard(s, pCard, 4);
+
+    // Same triggers: both opponent cards flipped
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+
+  test("does not trigger same with only one matching pair", () => {
+    // Opponent card at pos 1: bottom=5 (defends against pos 4's top)
+    const opCard1 = createCard(1, 1, 5, 1);
+    // Opponent card at pos 3: right=9 (defends against pos 4's left)
+    const opCard2 = createCard(1, 9, 1, 1);
+    // Player card at pos 4: top=5 (matches opCard1), left=7 (does NOT match opCard2's 9)
+    // left=7 < right=9, so standard capture also fails
+    const pCard = createCard(5, 1, 1, 7);
+
+    const state = createInitialState(
+      [filler, filler, pCard, filler, filler],
+      [opCard1, opCard2, filler, filler, filler],
+    );
+
+    let s = placeCard(state, filler, 8);
+    s = placeCard(s, opCard1, 1);
+    s = placeCard(s, filler, 6);
+    s = placeCard(s, opCard2, 3);
+    s = placeCard(s, pCard, 4);
+
+    // Only 1 same pair — not enough to trigger Same
+    // Standard capture: top=5 vs bottom=5 (not >), left=7 vs right=9 (not >)
+    // Neither card should be captured
+    expect(s.board[1]!.owner).toBe(Owner.Opponent);
+    expect(s.board[3]!.owner).toBe(Owner.Opponent);
+  });
+
+  test("counts friendly cards toward same pairs but does not capture them", () => {
+    // Player card at pos 1: bottom=5 (defends against pos 4's top)
+    const pCard1 = createCard(1, 1, 5, 1);
+    // Opponent card at pos 3: right=7 (defends against pos 4's left)
+    const opCard = createCard(1, 7, 1, 1);
+    // Player card at pos 4: top=5 (matches pCard1), left=7 (matches opCard)
+    const pCard2 = createCard(5, 1, 1, 7);
+
+    const state = createInitialState(
+      [pCard1, filler, pCard2, filler, filler],
+      [opCard, filler, filler, filler, filler],
+    );
+
+    // Turn 1: Player places pCard1 at pos 1
+    let s = placeCard(state, pCard1, 1);
+    // Turn 2: Opponent places opCard at pos 3
+    s = placeCard(s, opCard, 3);
+    // Turn 3: Player places filler at pos 8
+    s = placeCard(s, filler, 8);
+    // Turn 4: Opponent places filler at pos 6
+    s = placeCard(s, filler, 6);
+    // Turn 5: Player places pCard2 at pos 4
+    s = placeCard(s, pCard2, 4);
+
+    // 2 same pairs (1 friendly + 1 opponent) — Same triggers
+    // Opponent card at 3 flips, player card at 1 stays player-owned
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+});
