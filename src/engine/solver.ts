@@ -127,8 +127,13 @@ export function findBestMove(state: GameState): RankedMove[] {
 
   // First pass: evaluate all moves with minimax
   const evaluated: { card: Card; position: number; value: number; nextState: GameState }[] = [];
+  const seenCards = new Set<number>();
 
   for (const card of hand) {
+    const ck = cardId(card);
+    if (seenCards.has(ck)) continue;
+    seenCards.add(ck);
+
     for (let i = 0; i < 9; i++) {
       if (state.board[i] !== null) continue;
 
