@@ -18,12 +18,14 @@ Engine-first approach: the game engine is a standalone TypeScript library with n
 
 - **Card**: Four directional values (top, right, bottom, left) as numbers 1-10 (10 = A), plus a type enum (Primal, Scion, Society, Garlean, None).
 - **BoardCell**: Either empty, or holds a Card + owner (Player | Opponent).
+- **RuleSet**: Which optional rules are active for this game (`plus: boolean`, `same: boolean`). Stored on GameState so capture logic is consistent throughout a game without external configuration.
 - **GameState**: Immutable value object containing:
   - 3x3 board (9 cells)
   - Player hand (up to 5 cards)
   - Opponent hand (up to 5 cards)
   - Whose turn it is
-  - Score (player cards on board + in hand)
+  - Active rule set
+- **Score**: Computed from a GameState — player cards on board + in hand, opponent cards on board + in hand. Sums to 10 (all cards are always accounted for).
 
 ### Game Logic
 
@@ -31,24 +33,28 @@ Engine-first approach: the game engine is a standalone TypeScript library with n
 
 Capture resolution order:
 
-1. Plus check — two or more adjacent cards (including friendly cards) where the sums of touching values are equal. Only opponent cards among matched pairs are flipped.
-2. Same check — two or more adjacent cards (including friendly cards) where touching values are equal. Only opponent cards among matched pairs are flipped.
-3. Combo cascade — any card flipped by Plus/Same triggers standard capture checks (value comparison) against its neighbors, recursively. Combos do NOT re-trigger Plus/Same.
-4. Standard capture — the placed card captures adjacent opponent cards where its value exceeds the opponent's touching value.
+1. **Plus** (if `state.rules.plus`) — two or more adjacent cards (including friendly cards) where the sums of touching values are equal. Only opponent cards among matched pairs are flipped.
+2. **Same** (if `state.rules.same`) — two or more adjacent cards (including friendly cards) where touching values are equal. Only opponent cards among matched pairs are flipped.
+3. **Combo cascade** — any card flipped by Plus/Same triggers standard capture checks (value comparison) against its neighbors via BFS. Combos do NOT re-trigger Plus/Same.
+4. **Standard capture** — the placed card captures adjacent opponent cards where its value strictly exceeds the opponent's touching value.
 
 ### Solver
 
 **`findBestMove(state) → RankedMove[]`**: Minimax with alpha-beta pruning over the full game tree (9 turns max depth).
 
-- **Evaluation**: At terminal states, count captures. Full-depth search means no heuristic needed for non-terminal states.
-- **Transposition table**: Keyed on board state hash for deduplication.
-- **Tie-breaking**: When multiple moves share the same minimax value, prefer the move where more opponent responses lead to a loss for the opponent (higher "robustness" — the winning path is wider).
+- **Evaluation**: Terminal state = board full OR current player's hand is empty. At terminal states, count card ownership. Full-depth search means no heuristic needed for non-terminal states.
+- **Transposition table**: Keyed on board state + turn hash. Stores `(value, flag)` where flag is `Exact | LowerBound | UpperBound` — required for correct alpha-beta integration (naive exact caching with alpha-beta produces incorrect bounds).
+- **Two-pass structure**: First pass evaluates all moves with minimax (populating the TT). Second pass calculates robustness using the same TT — equivalent to one pass because the TT already has the answers.
+- **Tie-breaking (robustness)**: When moves share the same minimax outcome, prefer the move where the highest fraction of opponent responses maintain that outcome. Robustness = `sameOutcomeCount / totalResponses`.
+- **Card deduplication**: Identical cards in a hand produce identical subtrees. `findBestMove` deduplicates by card signature in the outer loop to avoid redundant top-level evaluations.
 
 ### Key Design Decisions
 
 - **Immutable state**: Every operation returns a new GameState. Free undo/redo via history stack. Clean solver tree search.
 - **Pure functions**: No side effects. Input → output. Trivially testable and portable.
 - **Engine isolation**: The engine never imports from the UI layer. When porting to Rust/WASM, only the engine module is swapped.
+- **First turn is configurable**: `createInitialState` accepts an optional `firstTurn` parameter (defaults to `Player`). In FFXIV, the player who goes first varies by game setup.
+- **RuleSet on GameState**: Plus/Same rules are optional and stored on GameState rather than passed per-call. This ensures a game's ruleset is consistent throughout all `placeCard` calls without callers needing to track it separately.
 
 ## Tech Stack
 
