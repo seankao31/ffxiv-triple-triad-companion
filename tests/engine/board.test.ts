@@ -2,7 +2,7 @@
 // ABOUTME: Covers standard, Plus, Same, and Combo cascade rules.
 
 import { describe, expect, test } from "bun:test";
-import { createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
+import { type Board, type GameState, createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 
 describe("placeCard", () => {
@@ -600,5 +600,117 @@ describe("full game", () => {
     expect(score.player + score.opponent).toBe(10);
     expect(score.player).toBe(4);
     expect(score.opponent).toBe(6);
+  });
+});
+
+describe("getScore", () => {
+  test("counts cards on board and in hand for each player", () => {
+    const card = createCard(1, 1, 1, 1);
+    // 2 player on board (pos 0, 2), 1 opponent on board (pos 1), rest empty
+    const board = [
+      { card, owner: Owner.Player   },  // 0
+      { card, owner: Owner.Opponent },  // 1
+      { card, owner: Owner.Player   },  // 2
+      null, null, null, null, null, null,
+    ] as Board;
+    const state: GameState = {
+      board,
+      playerHand:   [card, card],        // 2 in hand
+      opponentHand: [card, card, card],  // 3 in hand
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false },
+    };
+
+    const score = getScore(state);
+    expect(score.player).toBe(4);    // 2 on board + 2 in hand
+    expect(score.opponent).toBe(4);  // 1 on board + 3 in hand
+    expect(score.player + score.opponent).toBe(8); // total cards in game (3 on board + 5 in hand)
+  });
+});
+
+describe("combined rules", () => {
+  test("Plus and Same both trigger on a single placement, flipping disjoint sets of cards", () => {
+    // pCard at pos 4 (center):
+    //   Same: pCard.top(3)=oCard1.bottom(3), pCard.right(7)=oCard5.left(7) → 2 same pairs → flip pos1, pos5
+    //   Plus: pCard.left(2)+oCard3.right(8)=10, pCard.bottom(4)+oCard7.top(6)=10 → 2 plus pairs → flip pos3, pos7
+    //   Same sums (6, 14) never equal the Plus sum (10), so the two rules flip separate cards.
+    const pCard  = createCard(3, 7, 4, 2);
+    const oCard1 = createCard(1, 1, 3, 1);  // pos 1: bottom=3 (Same pair with pCard.top)
+    const oCard3 = createCard(1, 8, 1, 1);  // pos 3: right=8  (Plus pair: 2+8=10)
+    const oCard5 = createCard(1, 1, 1, 7);  // pos 5: left=7   (Same pair with pCard.right)
+    const oCard7 = createCard(6, 1, 1, 1);  // pos 7: top=6    (Plus pair: 4+6=10)
+
+    // Board layout: only the 4 opponent cards and the empty center (pos 4).
+    // All other positions empty so combo cascades have no targets.
+    const board = [
+      null,
+      { card: oCard1, owner: Owner.Opponent },  // 1
+      null,
+      { card: oCard3, owner: Owner.Opponent },  // 3
+      null,                                      // 4 (player places here)
+      { card: oCard5, owner: Owner.Opponent },  // 5
+      null,
+      { card: oCard7, owner: Owner.Opponent },  // 7
+      null,
+    ] as Board;
+
+    const state: GameState = {
+      board,
+      playerHand:   [pCard],
+      opponentHand: [],
+      currentTurn: Owner.Player,
+      rules: { plus: true, same: true },
+    };
+
+    const s = placeCard(state, pCard, 4);
+
+    expect(s.board[1]!.owner).toBe(Owner.Player);  // flipped by Same
+    expect(s.board[5]!.owner).toBe(Owner.Player);  // flipped by Same
+    expect(s.board[3]!.owner).toBe(Owner.Player);  // flipped by Plus
+    expect(s.board[7]!.owner).toBe(Owner.Player);  // flipped by Plus
+  });
+});
+
+describe("combo cascade depth", () => {
+  test("combo chain of depth 2: Same flips A, A captures B, B captures C", () => {
+    // pCard at pos 4 triggers Same on pos1 and pos7 (same values).
+    // Combo from pos7: oCard7.left(9) > oCard6.right(1) → pos6 flips (depth 1).
+    // Combo from pos6: oCard6.top(8) > oCard3.bottom(1) → pos3 flips (depth 2).
+    // pos1 combo: all neighbors are empty, no further captures.
+    const pCard  = createCard(5, 1, 5, 1);  // top=5, bottom=5 (Same pairs)
+    const oCard1 = createCard(1, 1, 5, 1);  // pos 1: bottom=5 (Same), weak elsewhere
+    const oCard3 = createCard(1, 1, 1, 1);  // pos 3: bottom=1 (depth-2 combo target)
+    const oCard6 = createCard(8, 1, 1, 1);  // pos 6: top=8 (captures pos3), right=1 (captured by pos7)
+    const oCard7 = createCard(5, 1, 1, 9);  // pos 7: top=5 (Same), left=9 (captures pos6)
+
+    const board = [
+      null,
+      { card: oCard1, owner: Owner.Opponent },  // 1
+      null,
+      { card: oCard3, owner: Owner.Opponent },  // 3
+      null,                                      // 4 (player places here)
+      null,
+      { card: oCard6, owner: Owner.Opponent },  // 6
+      { card: oCard7, owner: Owner.Opponent },  // 7
+      null,
+    ] as Board;
+
+    const state: GameState = {
+      board,
+      playerHand:   [pCard],
+      opponentHand: [],
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: true },
+    };
+
+    const s = placeCard(state, pCard, 4);
+
+    // Same flips pos1 and pos7
+    expect(s.board[1]!.owner).toBe(Owner.Player);
+    expect(s.board[7]!.owner).toBe(Owner.Player);
+    // Combo depth 1: pos7.left(9) > pos6.right(1)
+    expect(s.board[6]!.owner).toBe(Owner.Player);
+    // Combo depth 2: pos6.top(8) > pos3.bottom(1)
+    expect(s.board[3]!.owner).toBe(Owner.Player);
   });
 });

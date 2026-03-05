@@ -155,6 +155,56 @@ describe("tie-breaking", () => {
   });
 });
 
+describe("findBestMove — additional scenarios", () => {
+  it("evaluates from the current player's perspective when opponent goes first", () => {
+    // Opponent has all-10 cards, player has all-1 cards. Opponent moves first.
+    // All of opponent's moves should be Wins (from opponent's perspective).
+    const p = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const o = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const state = createInitialState(p, o, Owner.Opponent);
+
+    const moves = findBestMove(state);
+
+    expect(moves.length).toBeGreaterThan(0);
+    expect(moves.every(m => m.outcome === Outcome.Win)).toBe(true);
+  });
+
+  it("returns ranked moves and sorts them when all outcomes are losses", () => {
+    // Player has 1 weak card; opponent has 2 strong cards + already dominates the board.
+    // All 3 player moves are losses, but they should still be returned and sorted.
+    const weakCard   = createCard(1, 1, 1, 1);
+    const strongCard = createCard(10, 10, 10, 10);
+
+    const board = [
+      { card: weakCard,   owner: Owner.Player   },  // 0
+      { card: weakCard,   owner: Owner.Player   },  // 1
+      { card: weakCard,   owner: Owner.Opponent },  // 2
+      { card: weakCard,   owner: Owner.Opponent },  // 3
+      { card: weakCard,   owner: Owner.Opponent },  // 4
+      { card: weakCard,   owner: Owner.Opponent },  // 5
+      null, null, null,
+    ] as Board;
+
+    const state: GameState = {
+      board,
+      playerHand:   [weakCard],
+      opponentHand: [strongCard, strongCard],
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false },
+    };
+
+    const moves = findBestMove(state);
+
+    // 3 empty positions × 1 card = 3 moves, all losses
+    expect(moves).toHaveLength(3);
+    expect(moves.every(m => m.outcome === Outcome.Loss)).toBe(true);
+    // Still sorted: robustness descending within the loss bucket
+    for (let i = 1; i < moves.length; i++) {
+      expect(moves[i]!.robustness).toBeLessThanOrEqual(moves[i-1]!.robustness);
+    }
+  });
+});
+
 describe("solver performance", () => {
   it("solves a full game from turn 1 within 15 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
