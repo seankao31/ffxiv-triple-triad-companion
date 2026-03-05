@@ -63,13 +63,24 @@ function terminalValue(state: GameState, evaluatingFor: Owner): number {
   return 0;
 }
 
+const enum TTFlag {
+  Exact = 0,
+  LowerBound = 1,
+  UpperBound = 2,
+}
+
+interface TTEntry {
+  readonly value: number;
+  readonly flag: TTFlag;
+}
+
 // Returns 1 for win, 0 for draw, -1 for loss from evaluatingFor's perspective.
 function minimax(
   state: GameState,
   evaluatingFor: Owner,
   alpha: number,
   beta: number,
-  tt: Map<number, number>,
+  tt: Map<number, TTEntry>,
   cardIndex: Map<number, number>,
 ): number {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
@@ -79,9 +90,22 @@ function minimax(
 
   const key = hashState(state.board, state.currentTurn, cardIndex);
   const cached = tt.get(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) {
+    if (cached.flag === TTFlag.Exact) return cached.value;
+    if (cached.flag === TTFlag.LowerBound) {
+      if (cached.value >= beta) return cached.value;
+      alpha = Math.max(alpha, cached.value);
+    }
+    if (cached.flag === TTFlag.UpperBound) {
+      if (cached.value <= alpha) return cached.value;
+      beta = Math.min(beta, cached.value);
+    }
+    if (alpha >= beta) return cached.value;
+  }
 
   const isMaximizing = state.currentTurn === evaluatingFor;
+  const origAlpha = alpha;
+  const origBeta = beta;
   let bestValue = isMaximizing ? -Infinity : Infinity;
 
   // Deduplicate identical cards to avoid redundant searches
@@ -111,7 +135,19 @@ function minimax(
     }
   }
 
-  tt.set(key, bestValue);
+  // Determine bound type based on whether pruning narrowed the window
+  let flag: TTFlag;
+  if (isMaximizing) {
+    flag = bestValue <= origAlpha ? TTFlag.UpperBound
+         : bestValue >= beta ? TTFlag.LowerBound
+         : TTFlag.Exact;
+  } else {
+    flag = bestValue >= origBeta ? TTFlag.LowerBound
+         : bestValue <= alpha ? TTFlag.UpperBound
+         : TTFlag.Exact;
+  }
+  tt.set(key, { value: bestValue, flag });
+
   return bestValue;
 }
 
@@ -122,7 +158,7 @@ export function findBestMove(state: GameState): RankedMove[] {
 
   if (boardFull(state.board)) return [];
 
-  const tt = new Map<number, number>();
+  const tt = new Map<number, TTEntry>();
   const cardIndex = buildCardIndex(state);
 
   // First pass: evaluate all moves with minimax

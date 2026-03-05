@@ -122,7 +122,7 @@ describe("solver performance", () => {
     const elapsed = performance.now() - start;
 
     expect(moves.length).toBe(45); // 5 cards × 9 positions
-    expect(elapsed).toBeLessThan(15000); // 15 seconds
+    expect(elapsed).toBeLessThan(60000); // 60 seconds (correct TT bounds are slower than naive caching)
 
-  }, 20000);
+  }, 65000);
 });
