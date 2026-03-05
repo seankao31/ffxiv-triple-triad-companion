@@ -8,7 +8,7 @@ import { placeCard } from "./board";
 const TYPE_IDX: Record<string, number> = { none: 0, primal: 1, scion: 2, society: 3, garlean: 4 };
 
 function cardId(c: Card): number {
-  return c.top * 5000 + c.right * 500 + c.bottom * 50 + c.left * 5 + TYPE_IDX[c.type];
+  return c.top * 5000 + c.right * 500 + c.bottom * 50 + c.left * 5 + TYPE_IDX[c.type]!;
 }
 
 // Builds a mapping from cardId to a small index (1-10) for compact board hashing.
@@ -113,7 +113,7 @@ function minimax(
 
   outer:
   for (let ci = 0; ci < hand.length; ci++) {
-    const card = hand[ci];
+    const card = hand[ci]!;
     const ck = cardId(card);
     if (seenCards.has(ck)) continue;
     seenCards.add(ck);

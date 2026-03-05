@@ -14,7 +14,7 @@ function resolvePlus(
 ): number[] {
   const sums: { neighbor: Neighbor; sum: number }[] = [];
 
-  for (const neighbor of ADJACENCY[position]) {
+  for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = board[neighbor.position];
     if (!neighborCell) continue;
     const sum = card[neighbor.attackingEdge] + neighborCell.card[neighbor.defendingEdge];
@@ -55,7 +55,7 @@ function resolveSame(
 ): number[] {
   const samePairs: Neighbor[] = [];
 
-  for (const neighbor of ADJACENCY[position]) {
+  for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = board[neighbor.position];
     if (!neighborCell) continue;
     if (card[neighbor.attackingEdge] === neighborCell.card[neighbor.defendingEdge]) {
@@ -92,7 +92,7 @@ function resolveCombo(
     processed.add(pos);
 
     const cell = board[pos]!;
-    for (const neighbor of ADJACENCY[pos]) {
+    for (const neighbor of ADJACENCY[pos]!) {
       const neighborCell = board[neighbor.position];
       if (neighborCell && neighborCell.owner !== currentTurn) {
         if (cell.card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {
@@ -140,7 +140,7 @@ export function placeCard(
   resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips]);
 
   // Standard capture: flip adjacent opponent cards with strictly lower values
-  for (const neighbor of ADJACENCY[position]) {
+  for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = newBoard[neighbor.position];
     if (neighborCell && neighborCell.owner !== state.currentTurn) {
       if (card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {

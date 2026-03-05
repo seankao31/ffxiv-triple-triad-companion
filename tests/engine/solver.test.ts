@@ -14,15 +14,15 @@ describe("findBestMove", () => {
     let state = createInitialState(p, o);
 
     // Place cards to fill board (player 5 cards, opponent 4 cards)
-    state = placeCard(state, p[0], 0);
-    state = placeCard(state, o[0], 2);
-    state = placeCard(state, p[1], 6);
-    state = placeCard(state, o[1], 8);
-    state = placeCard(state, p[2], 4);
-    state = placeCard(state, o[2], 1);
-    state = placeCard(state, p[3], 3);
-    state = placeCard(state, o[3], 7);
-    state = placeCard(state, p[4], 5);
+    state = placeCard(state, p[0]!, 0);
+    state = placeCard(state, o[0]!, 2);
+    state = placeCard(state, p[1]!, 6);
+    state = placeCard(state, o[1]!, 8);
+    state = placeCard(state, p[2]!, 4);
+    state = placeCard(state, o[2]!, 1);
+    state = placeCard(state, p[3]!, 3);
+    state = placeCard(state, o[3]!, 7);
+    state = placeCard(state, p[4]!, 5);
 
     const moves = findBestMove(state);
     expect(moves).toHaveLength(0);
@@ -36,19 +36,19 @@ describe("findBestMove", () => {
     let state = createInitialState(p, o);
 
     // Fill 8 positions, leave position 4 empty
-    state = placeCard(state, p[1], 0);
-    state = placeCard(state, o[0], 1);
-    state = placeCard(state, p[2], 2);
-    state = placeCard(state, o[1], 3);
-    state = placeCard(state, p[3], 5);
-    state = placeCard(state, o[2], 6);
-    state = placeCard(state, p[4], 7);
-    state = placeCard(state, o[3], 8);
+    state = placeCard(state, p[1]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[2]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[3]!, 5);
+    state = placeCard(state, o[2]!, 6);
+    state = placeCard(state, p[4]!, 7);
+    state = placeCard(state, o[3]!, 8);
 
     const moves = findBestMove(state);
     expect(moves).toHaveLength(1);
-    expect(moves[0].position).toBe(4);
-    expect(moves[0].card).toBe(p[0]);
+    expect(moves[0]!.position).toBe(4);
+    expect(moves[0]!.card).toBe(p[0]!);
   });
 
   it("ranks winning moves above drawing moves above losing moves", () => {
@@ -59,11 +59,11 @@ describe("findBestMove", () => {
     let state = createInitialState(p, o);
 
     // Place 5 cards to reach a mid-game state
-    state = placeCard(state, p[2], 0);
-    state = placeCard(state, o[0], 1);
-    state = placeCard(state, p[3], 2);
-    state = placeCard(state, o[1], 3);
-    state = placeCard(state, p[4], 4);
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[4]!, 4);
 
     // Player has [10,10,10,10] and [9,9,9,9]; opponent has [7,7,7,7], [8,8,8,8], [4,4,4,4]
     // 4 empty positions × 2 player cards = 8 moves (it's opponent's turn though)
@@ -73,7 +73,7 @@ describe("findBestMove", () => {
     // Verify sorting: all wins before all draws before all losses
     const outcomeOrder = { win: 0, draw: 1, loss: 2 };
     for (let i = 1; i < moves.length; i++) {
-      expect(outcomeOrder[moves[i].outcome]).toBeGreaterThanOrEqual(outcomeOrder[moves[i-1].outcome]);
+      expect(outcomeOrder[moves[i]!.outcome]).toBeGreaterThanOrEqual(outcomeOrder[moves[i-1]!.outcome]);
     }
 
     // Should have 12 moves (3 cards × 4 positions, it's opponent's turn)
@@ -100,7 +100,7 @@ describe("tie-breaking", () => {
 
     // Robustness should be sorted descending within wins
     for (let i = 1; i < winMoves.length; i++) {
-      expect(winMoves[i].robustness).toBeLessThanOrEqual(winMoves[i-1].robustness);
+      expect(winMoves[i]!.robustness).toBeLessThanOrEqual(winMoves[i-1]!.robustness);
     }
 
     // Robustness should be between 0 and 1

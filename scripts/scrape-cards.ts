@@ -54,7 +54,7 @@ async function main() {
   if (!response.ok) {
     throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
   }
-  const data = await response.json();
+  const data = (await response.json()) as { results: FFXIVCollectCard[] };
   const cards: CardData[] = data.results.map((card: FFXIVCollectCard) =>
     transformCard(card)
   );
