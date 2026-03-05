@@ -43,12 +43,8 @@ function hashState(board: GameState["board"], currentTurn: Owner, cardIndex: Map
   return h;
 }
 
-// Returns true if all 9 board cells are occupied.
 function boardFull(board: GameState["board"]): boolean {
-  for (let i = 0; i < 9; i++) {
-    if (board[i] === null) return false;
-  }
-  return true;
+  return board.every(cell => cell !== null);
 }
 
 // Evaluates terminal state score. Returns 1 for evaluatingFor wins, -1 for loss, 0 for draw.
@@ -124,11 +120,7 @@ export function findBestMove(state: GameState): RankedMove[] {
 
   if (hand.length === 0) return [];
 
-  let hasEmpty = false;
-  for (let i = 0; i < 9; i++) {
-    if (state.board[i] === null) { hasEmpty = true; break; }
-  }
-  if (!hasEmpty) return [];
+  if (boardFull(state.board)) return [];
 
   const tt = new Map<number, number>();
   const cardIndex = buildCardIndex(state);

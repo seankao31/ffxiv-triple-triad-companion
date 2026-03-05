@@ -123,6 +123,6 @@ describe("solver performance", () => {
 
     expect(moves.length).toBe(45); // 5 cards × 9 positions
     expect(elapsed).toBeLessThan(15000); // 15 seconds
-    console.log(`Turn 1 solve: ${elapsed.toFixed(0)}ms, ${moves.length} moves`);
+
   }, 20000);
 });
