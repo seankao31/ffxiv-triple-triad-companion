@@ -4,9 +4,10 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 
 export default defineConfig({
-  plugins: [tailwindcss(), svelte()],
+  plugins: [tailwindcss(), svelte(), svelteTesting()],
   test: {
     include: ['tests/app/**/*.test.ts'],
     environment: 'happy-dom',
