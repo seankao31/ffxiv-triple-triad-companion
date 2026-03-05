@@ -1,5 +1,5 @@
 // ABOUTME: Smoke test confirming Vitest is configured correctly.
-// ABOUTME: Safe to delete once real app tests exist.
+// ABOUTME: Verifies the Vitest + happy-dom environment initializes without errors.
 import { describe, it, expect } from 'vitest';
 
 describe('vitest smoke test', () => {

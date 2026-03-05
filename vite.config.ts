@@ -8,7 +8,6 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   test: {
-    globals: true,
     include: ['tests/app/**/*.test.ts'],
     environment: 'happy-dom',
     setupFiles: ['tests/app/setup.ts'],
