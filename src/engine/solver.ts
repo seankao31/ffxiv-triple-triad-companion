@@ -185,7 +185,7 @@ export function findBestMove(state: GameState): RankedMove[] {
     const oppHand = nextState.currentTurn === Owner.Player ? nextState.playerHand : nextState.opponentHand;
 
     let totalResponses = 0;
-    let sameOutcomeCount = 0;
+    let betterOutcomeCount = 0;
 
     for (const oppCard of oppHand) {
       for (let i = 0; i < 9; i++) {
@@ -195,12 +195,12 @@ export function findBestMove(state: GameState): RankedMove[] {
         const responseState = placeCard(nextState, oppCard, i);
         const responseValue = minimax(responseState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
 
-        if (responseValue === value) sameOutcomeCount++;
+        if (responseValue > value) betterOutcomeCount++;
       }
     }
 
     const outcome = value === 1 ? Outcome.Win : value === -1 ? Outcome.Loss : Outcome.Draw;
-    const robustness = totalResponses > 0 ? sameOutcomeCount / totalResponses : 1;
+    const robustness = totalResponses > 0 ? betterOutcomeCount / totalResponses : 0;
     return { card, position, outcome, robustness };
   });
 

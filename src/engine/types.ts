@@ -65,7 +65,7 @@ export interface RankedMove {
   readonly card: Card;
   readonly position: number; // 0-8 board index
   readonly outcome: Outcome;
-  readonly robustness: number; // fraction of opponent responses that maintain this outcome (0-1)
+  readonly robustness: number; // fraction of opponent responses that lead to a strictly better outcome for us (opponent mistakes); 0 for wins since nothing beats a win
 }
 
 export interface Neighbor {

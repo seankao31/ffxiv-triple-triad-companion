@@ -2,7 +2,7 @@
 // ABOUTME: Covers forced wins, loss avoidance, and robustness scoring.
 
 import { describe, it, expect } from "bun:test";
-import { createCard, createInitialState, Owner, Outcome } from "../../src/engine/types";
+import { type Board, type GameState, createCard, createInitialState, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 import { findBestMove } from "../../src/engine/solver";
 
@@ -82,6 +82,59 @@ describe("findBestMove", () => {
 });
 
 describe("tie-breaking", () => {
+  it("among draw moves, prefers the one where more opponent responses lead to player winning", () => {
+    // Board: 0-6 filled, 7 and 8 empty. Player has P, opponent has O1 (weak) and O2 (strong).
+    //
+    // P at pos 7 captures pos 6 (opponent). After that:
+    //   - O1 at 8: too weak to recapture → Player WIN
+    //   - O2 at 8: strong enough to recapture pos 5 → DRAW
+    //   minimax(P@7) = min(Win, Draw) = Draw. betterForUs = 1/2 = 0.5
+    //
+    // P at pos 8: no captures. After that:
+    //   - O1 at 7: too weak to capture → DRAW
+    //   - O2 at 7: pos 4 defends (bottom=10) and pos 8 defends (left=10) → DRAW
+    //   minimax(P@8) = min(Draw, Draw) = Draw. betterForUs = 0/2 = 0
+    //
+    // Correct sort: P@7 first (more opponent mistakes). Old code (sameOutcome): P@8 first.
+    const filler = createCard(1, 1, 1, 1);
+    const pos4Card = createCard(1, 1, 10, 1); // bottom=10 blocks O2@7 from capturing pos 4
+    const P = createCard(10, 10, 1, 10);      // top=10, right=10, left=10; placed by player
+    const O1 = createCard(1, 1, 1, 1);        // weak — opponent mistake
+    const O2 = createCard(10, 10, 10, 10);    // strong — optimal opponent play
+
+    // Board layout (row-major):
+    //  0(P)  1(O)  2(P)
+    //  3(O)  4(P)  5(P)
+    //  6(O)  7(-)  8(-)
+    const board = [
+      { card: filler,   owner: Owner.Player   },  // 0
+      { card: filler,   owner: Owner.Opponent },  // 1
+      { card: filler,   owner: Owner.Player   },  // 2
+      { card: filler,   owner: Owner.Opponent },  // 3
+      { card: pos4Card, owner: Owner.Player   },  // 4
+      { card: filler,   owner: Owner.Player   },  // 5
+      { card: filler,   owner: Owner.Opponent },  // 6
+      null,                                        // 7 (empty)
+      null,                                        // 8 (empty)
+    ] as Board;
+
+    const state: GameState = {
+      board,
+      playerHand: [P],
+      opponentHand: [O1, O2],
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false },
+    };
+
+    const moves = findBestMove(state);
+
+    expect(moves).toHaveLength(2);
+    expect(moves.every(m => m.outcome === Outcome.Draw)).toBe(true);
+    // P@7 should rank first — opponent has one "mistake" response (O1) that hands us a win
+    expect(moves[0]!.position).toBe(7);
+    expect(moves[1]!.position).toBe(8);
+  });
+
   it("prefers moves with higher robustness among equal outcomes", () => {
     // Strong cards vs weak cards — player should win most ways
     const p = [createCard(10,10,10,10), createCard(9,9,9,9), createCard(8,8,8,8), createCard(7,7,7,7), createCard(6,6,6,6)];
@@ -94,19 +147,10 @@ describe("tie-breaking", () => {
     // With overwhelmingly strong cards, most moves should be wins
     expect(winMoves.length).toBeGreaterThan(1);
 
-    // At least one win move should have robustness > 0
-    const maxRobustness = Math.max(...winMoves.map(m => m.robustness));
-    expect(maxRobustness).toBeGreaterThan(0);
-
-    // Robustness should be sorted descending within wins
-    for (let i = 1; i < winMoves.length; i++) {
-      expect(winMoves[i]!.robustness).toBeLessThanOrEqual(winMoves[i-1]!.robustness);
-    }
-
-    // Robustness should be between 0 and 1
+    // Winning moves always have robustness = 0: no opponent response can exceed a win,
+    // so there are no opponent "mistakes" that improve our outcome further.
     for (const move of winMoves) {
-      expect(move.robustness).toBeGreaterThanOrEqual(0);
-      expect(move.robustness).toBeLessThanOrEqual(1);
+      expect(move.robustness).toBe(0);
     }
   });
 });

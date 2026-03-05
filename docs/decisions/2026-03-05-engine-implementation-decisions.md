@@ -23,13 +23,24 @@ On lookup, `LowerBound` and `UpperBound` entries narrow the alpha-beta window ra
 
 ---
 
-## Robustness: Fraction of Opponent Responses That Maintain Outcome
+## Robustness: Fraction of Opponent Responses That Are Mistakes
 
-**Decision:** `robustness = sameOutcomeCount / totalResponses` — the fraction of the opponent's possible responses that leave the outcome unchanged.
+**Decision:** `robustness = betterOutcomeCount / totalResponses` — the fraction of the opponent's possible responses that lead to a *strictly better* outcome for us than the minimax value predicts.
 
-**Rejected:** "Fraction of responses the opponent loses." That formulation is only meaningful for winning moves. The chosen formulation is symmetric — it applies equally to win, draw, and loss outcomes.
+**Rejected (first attempt):** `sameOutcomeCount / totalResponses` — fraction of responses that maintain the minimax outcome. This is backwards for non-winning moves:
+- For **win** moves: all responses maintain Win (robustness = 1), useless for tie-breaking.
+- For **draw** moves: lower sameOutcomeCount means more responses give us a Win (better!) — but the metric ranked those moves *lower*.
+- For **loss** moves: same issue, wrong direction.
 
-**Example:** If your move wins no matter what the opponent plays, robustness = 1.0. If the opponent has one escape response, robustness = (N-1)/N.
+**Rejected:** "Fraction of responses the opponent loses." Ambiguous and only meaningful for winning positions.
+
+**Why `betterOutcomeCount` is correct:** The original intent was "prefer moves that expose the opponent to a greater chance of making a mistake." A mistake is any response that leads to a strictly better outcome for us than minimax predicts.
+
+- Win moves: `betterOutcomeCount = 0` always (nothing beats a win). No differentiation among wins — which is correct; all winning moves are game-theoretically equivalent.
+- Draw moves: counts responses where we win despite the position being drawn. Higher = more opponent escape routes that actually benefit us.
+- Loss moves: counts responses where we draw or win despite the position being lost. Higher = more chances for opponent to hand us an escape.
+
+**Example:** After our move, opponent can play R1 or R2. If R1 leads to us winning and R2 leads to a draw, minimax = Draw (min = 0), robustness = 1/2. We prefer this over a move where both responses stay as draws (robustness = 0).
 
 ---
 
