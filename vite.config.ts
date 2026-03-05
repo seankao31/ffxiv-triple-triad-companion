@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 // ABOUTME: Vite build configuration for the Svelte app.
 // ABOUTME: Configures Svelte plugin, Tailwind CSS, and Vitest test environment.
 import { defineConfig } from 'vite';
@@ -7,6 +8,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   test: {
+    globals: true,
     include: ['tests/app/**/*.test.ts'],
     environment: 'happy-dom',
     setupFiles: ['tests/app/setup.ts'],
