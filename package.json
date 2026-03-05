@@ -3,8 +3,23 @@
   "module": "src/engine/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test:engine": "bun test tests/engine",
+    "test:app": "bunx vitest run",
+    "test": "bun run test:engine && bun run test:app"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/bun": "latest",
+    "svelte": "^5.53.7",
+    "svelte-check": "^4.4.4",
+    "tailwindcss": "^4.2.1",
+    "vite": "^7.3.1"
   },
   "peerDependencies": {
     "typescript": "^5"
