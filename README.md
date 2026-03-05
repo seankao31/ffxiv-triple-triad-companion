@@ -6,7 +6,7 @@ The "Stockfish" of FFXIV Triple Triad — a real-time move optimizer and compani
 
 **Phase 1 (Engine) — Complete.** The core TypeScript game engine is implemented, tested, and merged to `main`.
 
-**Phase 2 (UI) — Not started.** Svelte + Tailwind frontend that imports the engine.
+**Phase 2 (UI) — Complete.** Svelte 5 + Tailwind CSS v4 frontend with a Live Solver view. Two-phase app: setup (card entry) → play (board + solver suggestions).
 
 ## Architecture
 
@@ -19,6 +19,14 @@ src/
     board.ts      — placeCard: Plus → Same → Combo cascade → Standard capture
     solver.ts     — findBestMove: minimax + alpha-beta + TT with bounds + robustness
     index.ts      — public API barrel export
+  app/
+    main.ts       — Svelte app entry point
+    App.svelte    — root component, phase-based view switching
+    store.ts      — central Svelte store (phase, hands, history, selected card)
+    app.css       — Tailwind CSS entry
+    components/
+      setup/      — SetupView, HandInput, CardInput, RulesetInput
+      game/       — GameView, Board, BoardCell, HandPanel, SolverPanel
   data/
     cards.json    — 464 cards scraped from ffxivcollect.com API
 scripts/
@@ -27,14 +35,21 @@ tests/
   engine/
     board.test.ts — 22 tests: placement, capture rules, combos, edge cases, full game
     solver.test.ts — 8 tests: move ranking, tie-breaking, robustness, performance
+  app/
+    store.test.ts — 16 tests: phase transitions, placement, undo, derived stores
+    components/   — 21 tests across CardInput, SetupView, Board, HandPanel, SolverPanel
+    setup.ts      — Vitest global setup (jest-dom matchers)
   scripts/
     scrape-cards.test.ts — 5 tests: card transform and type mapping
 docs/
   plans/
-    2026-03-04-triple-triad-engine-design.md  — architecture and design decisions
-    2026-03-04-triple-triad-engine-plan.md    — original 13-task implementation plan
+    2026-03-04-triple-triad-engine-design.md  — engine architecture
+    2026-03-04-triple-triad-engine-plan.md    — engine implementation plan
+    2026-03-05-svelte-ui-design.md            — Phase 2 UI design
+    2026-03-05-svelte-ui-plan.md              — Phase 2 implementation plan
   decisions/
-    2026-03-05-engine-implementation-decisions.md  — decisions made during code review
+    2026-03-05-engine-implementation-decisions.md — engine decisions
+    2026-03-06-ui-implementation-decisions.md     — UI decisions
 ```
 
 ## Engine Public API
@@ -67,23 +82,40 @@ See `docs/decisions/` for full rationale on each.
 |---------|------|
 | Runtime | Bun |
 | Language | TypeScript (strict, noUncheckedIndexedAccess) |
-| Bundler | Vite (needed for Svelte) |
-| Tests | `bun test` |
-| Frontend (Phase 2) | Svelte + Tailwind CSS |
+| Framework | Svelte 5 |
+| Styling | Tailwind CSS v4 |
+| Bundler | Vite |
+| Engine tests | `bun test tests/engine` |
+| UI tests | `bunx vitest run` (happy-dom + @testing-library/svelte) |
 
 ## Running Tests
 
 ```bash
-bun test
+# All tests
+bun run test
+
+# Engine only
+bun run test:engine
+
+# UI only
+bun run test:app
 ```
 
-## What's Next (Phase 2)
+## Development
 
-See `PRD.md` §3.2 for full Live Solver requirements. High-level:
+```bash
+bun run dev     # Vite dev server at localhost:5173
+bun run build   # Production build to dist/
+bun run check   # Svelte type checking
+```
 
-1. Scaffold Svelte + Vite app in `src/app/`
-2. Card input UI (player hand + opponent hand, 4 values + type per card)
-3. 3×3 board component with click-to-place
-4. Solver output panel — ranked moves with Win/Draw/Loss outcome and robustness
-5. Turn management — after each placement, re-run solver and update UI
-6. Undo/redo via immutable state history stack
+## What's Next
+
+See `PRD.md` for the full product vision. Potential next steps:
+
+- **Imperfect information** — Three Open support with PIMC solver and `(Card | null)[]` hand slots
+- **Swap rule** — mid-game card exchange UI in the play phase
+- **Card database** — select from `cards.json` instead of entering values manually
+- **Web Worker** — move `findBestMove` off the main thread for responsiveness
+- **Deck Builder** (PRD §3.3) — collection manager + optimization algorithm
+- **Post-Game Analysis** (PRD §3.4) — game replay with move classification
