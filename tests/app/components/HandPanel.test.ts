@@ -37,13 +37,13 @@ describe('HandPanel', () => {
 
   it('sets selectedCard when a card is clicked on the active turn', async () => {
     render(HandPanel, { props: { owner: Owner.Player } });
-    await fireEvent.click(screen.getAllByRole('button')[0]);
+    await fireEvent.click(screen.getAllByRole('button')[0]!);
     expect(get(game).selectedCard).not.toBeNull();
   });
 
   it('does not set selectedCard when the inactive hand is clicked', async () => {
     render(HandPanel, { props: { owner: Owner.Opponent } });
-    await fireEvent.click(screen.getAllByRole('button')[0]);
+    await fireEvent.click(screen.getAllByRole('button')[0]!);
     expect(get(game).selectedCard).toBeNull();
   });
 

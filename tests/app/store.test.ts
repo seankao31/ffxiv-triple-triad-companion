@@ -104,7 +104,7 @@ describe('playCard', () => {
 
   it('places card and pushes new state to history', () => {
     const { ph } = setup();
-    selectCard(ph[0]);
+    selectCard(ph[0]!);
     playCard(4);
 
     const state = get(game);
@@ -114,7 +114,7 @@ describe('playCard', () => {
 
   it('clears selectedCard after placement', () => {
     const { ph } = setup();
-    selectCard(ph[0]);
+    selectCard(ph[0]!);
     playCard(0);
     expect(get(game).selectedCard).toBeNull();
   });
@@ -138,7 +138,7 @@ describe('undoMove', () => {
 
   it('pops the last state from history', () => {
     const { ph } = setup();
-    selectCard(ph[0]);
+    selectCard(ph[0]!);
     playCard(0);
     expect(get(game).history).toHaveLength(2);
 

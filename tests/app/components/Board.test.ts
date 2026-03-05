@@ -42,10 +42,10 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
-    selectCard(ph[0]);
+    selectCard(ph[0]!);
 
     render(Board);
-    await fireEvent.click(screen.getAllByRole('button')[0]);
+    await fireEvent.click(screen.getAllByRole('button')[0]!);
 
     expect(get(game).history).toHaveLength(2);
   });
@@ -55,7 +55,7 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
-    selectCard(ph[0]);
+    selectCard(ph[0]!);
 
     const { container } = render(Board);
     expect(container.querySelector('.ring-2')).not.toBeNull();
