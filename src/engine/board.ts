@@ -131,10 +131,10 @@ export function placeCard(
   newBoard[position] = { card, owner: state.currentTurn };
 
   // Plus rule: flip opponent cards in adjacent pairs that share the same sum
-  const plusFlips = resolvePlus(newBoard, card, position, state.currentTurn);
+  const plusFlips = state.rules.plus ? resolvePlus(newBoard, card, position, state.currentTurn) : [];
 
   // Same rule: flip opponent cards that form 2+ equal-value pairs
-  const sameFlips = resolveSame(newBoard, card, position, state.currentTurn);
+  const sameFlips = state.rules.same ? resolveSame(newBoard, card, position, state.currentTurn) : [];
 
   // Combo cascade: BFS standard captures from all Plus/Same flipped positions
   resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips]);
@@ -161,5 +161,6 @@ export function placeCard(
     opponentHand:
       state.currentTurn === Owner.Opponent ? newHand : state.opponentHand,
     currentTurn: nextTurn,
+    rules: state.rules,
   };
 }

@@ -7,6 +7,7 @@ export {
   type BoardCell,
   type Board,
   type GameState,
+  type RuleSet,
   type RankedMove,
   type Neighbor,
   CardType,

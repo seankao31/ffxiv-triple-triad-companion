@@ -162,6 +162,8 @@ describe("same rule", () => {
     const state = createInitialState(
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
+      Owner.Player,
+      { plus: false, same: true },
     );
 
     // Turn 1: Player at pos 8
@@ -192,6 +194,8 @@ describe("same rule", () => {
     const state = createInitialState(
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
+      Owner.Player,
+      { plus: false, same: true },
     );
 
     let s = placeCard(state, filler, 8);
@@ -218,6 +222,8 @@ describe("same rule", () => {
     const state = createInitialState(
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
+      Owner.Player,
+      { plus: false, same: true },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -253,6 +259,8 @@ describe("plus rule", () => {
     const state = createInitialState(
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
+      Owner.Player,
+      { plus: true, same: false },
     );
 
     // Turn 1: Player at pos 8
@@ -282,6 +290,8 @@ describe("plus rule", () => {
     const state = createInitialState(
       [filler, filler, pCard, filler, filler],
       [opCard, filler, filler, filler, filler],
+      Owner.Player,
+      { plus: true, same: false },
     );
 
     // Turn 1: Player at pos 8
@@ -308,6 +318,8 @@ describe("plus rule", () => {
     const state = createInitialState(
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
+      Owner.Player,
+      { plus: true, same: false },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -348,6 +360,8 @@ describe("combo cascade", () => {
     const state = createInitialState(
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
+      Owner.Player,
+      { plus: false, same: true },
     );
 
     // Turn 1: Player at pos 8
@@ -384,6 +398,8 @@ describe("combo cascade", () => {
     const state = createInitialState(
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
+      Owner.Player,
+      { plus: false, same: true },
     );
 
     // Turn 1: Player at pos 8
@@ -485,7 +501,7 @@ describe("full game", () => {
     const p = createCard(5, 5, 5, 5);
     const o = createCard(3, 3, 3, 3);
 
-    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o]);
+    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o], Owner.Player, { plus: true, same: false });
 
     // Turn 1 (P): pos 0. No occupied neighbors.
     let s = placeCard(state, p, 0);

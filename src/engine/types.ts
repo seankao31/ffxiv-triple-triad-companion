@@ -42,11 +42,17 @@ export type Board = readonly [
   BoardCell,
 ];
 
+export interface RuleSet {
+  readonly plus: boolean;
+  readonly same: boolean;
+}
+
 export interface GameState {
   readonly board: Board;
   readonly playerHand: readonly Card[];
   readonly opponentHand: readonly Card[];
   readonly currentTurn: Owner;
+  readonly rules: RuleSet;
 }
 
 export enum Outcome {
@@ -82,12 +88,14 @@ export function createInitialState(
   playerHand: readonly Card[],
   opponentHand: readonly Card[],
   firstTurn: Owner = Owner.Player,
+  rules: RuleSet = { plus: false, same: false },
 ): GameState {
   return {
     board: [null, null, null, null, null, null, null, null, null],
     playerHand,
     opponentHand,
     currentTurn: firstTurn,
+    rules,
   };
 }
 
