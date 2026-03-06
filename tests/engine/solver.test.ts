@@ -322,6 +322,31 @@ describe("createSolver — TT persistence", () => {
     solver.solve(state);
     expect(solver.ttSize()).toBe(sizeAfterFirst);
   });
+
+  it("cross-turn predictions are consistent (persistent TT does not corrupt evaluations)", () => {
+    // The persistent TT stores minimax values that must be interpreted consistently
+    // regardless of whose turn it is. If TT values are stored from Player's perspective
+    // but read as Opponent's perspective on turn 2, "+1 = Player wins" becomes
+    // "+1 = Opponent wins" — flipping the predicted outcome.
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const opening = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+
+    const openingMoves = solver.solve(opening);
+    const openingOutcome = openingMoves[0]!.outcome; // Win for Player
+
+    // After Player's first move, Opponent faces the mirror outcome.
+    const stateAfter1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+    const movesAfter1 = solver.solve(stateAfter1);
+    const outcomeAfter1 = movesAfter1[0]!.outcome;
+
+    const mirror = (o: Outcome) =>
+      o === Outcome.Win ? Outcome.Loss : o === Outcome.Loss ? Outcome.Win : Outcome.Draw;
+
+    expect(outcomeAfter1).toBe(mirror(openingOutcome));
+  });
 });
 
 describe("solver self-play consistency", () => {

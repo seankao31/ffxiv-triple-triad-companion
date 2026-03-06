@@ -166,6 +166,12 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
 
   if (boardFull(state.board)) return [];
 
+  // All minimax calls use Owner.Player as evaluatingFor so TT values are always from
+  // Player's perspective. This makes TT entries safe to reuse across turns even when
+  // the persistent solver is in use (currentTurn flips each turn, but the stored values
+  // never change meaning).
+  const currentIsPlayer = state.currentTurn === Owner.Player;
+
   // First pass: evaluate all moves with minimax
   const evaluated: { card: Card; position: number; value: number; nextState: GameState }[] = [];
   const seenCards = new Set<number>();
@@ -179,7 +185,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
       if (state.board[i] !== null) continue;
 
       const nextState = placeCard(state, card, i);
-      const value = minimax(nextState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
+      const value = minimax(nextState, Owner.Player, -Infinity, Infinity, tt, cardIndex);
       evaluated.push({ card, position: i, value, nextState });
     }
   }
@@ -198,13 +204,17 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
 
         totalResponses++;
         const responseState = placeCard(nextState, oppCard, i);
-        const responseValue = minimax(responseState, state.currentTurn, -Infinity, Infinity, tt, cardIndex);
+        const responseValue = minimax(responseState, Owner.Player, -Infinity, Infinity, tt, cardIndex);
 
-        if (responseValue > value) betterOutcomeCount++;
+        // "Better" means: better for the current player (state.currentTurn).
+        // Values are from Player's perspective: higher = better for Player.
+        if (currentIsPlayer ? responseValue > value : responseValue < value) betterOutcomeCount++;
       }
     }
 
-    const outcome = value === 1 ? Outcome.Win : value === -1 ? Outcome.Loss : Outcome.Draw;
+    // value is from Player's perspective; flip sign when it's Opponent's turn.
+    const effectiveValue = currentIsPlayer ? value : -value;
+    const outcome = effectiveValue === 1 ? Outcome.Win : effectiveValue === -1 ? Outcome.Loss : Outcome.Draw;
     const robustness = totalResponses > 0 ? betterOutcomeCount / totalResponses : 0;
     return { card, position, outcome, robustness };
   });
