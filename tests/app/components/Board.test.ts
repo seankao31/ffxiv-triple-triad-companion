@@ -61,4 +61,17 @@ describe('Board', () => {
     const { container } = render(Board);
     expect(container.querySelector('.ring-2')).not.toBeNull();
   });
+
+  it('shows outcome overlays on empty cells when a card is selected', async () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    startGame();
+    selectCard(ph[0]!);
+
+    const { container } = render(Board);
+    // All 9 cells are empty, each should have data-eval attribute
+    const evalCells = container.querySelectorAll('[data-eval]');
+    expect(evalCells.length).toBe(9);
+  });
 });

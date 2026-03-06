@@ -1,7 +1,7 @@
 <!-- ABOUTME: Shows card notation, outcome labels, and adapts header based on whose turn it is. -->
 <!-- ABOUTME: Highlights the top move with a ring; shows Win/Draw/Loss label per move. -->
 <script lang="ts">
-  import { rankedMoves, currentState } from '../../store';
+  import { rankedMoves, currentState, game } from '../../store';
   import { Outcome, CardType, Owner, type Card } from '../../../engine';
 
   const outcomeLabel: Record<Outcome, string> = {
@@ -46,6 +46,7 @@
   }
 
   let isOpponentTurn = $derived($currentState?.currentTurn === Owner.Opponent);
+  let selectedCard = $derived($game.selectedCard);
 </script>
 
 <div class="flex flex-col gap-2">
@@ -60,7 +61,8 @@
       {@const notation = cardNotation(move.card)}
       <li
         class="flex items-center gap-2 text-sm p-2 rounded
-          {i === 0 ? 'bg-surface-700 ring-1 ring-accent-gold' : 'bg-surface-800'}"
+          {i === 0 ? 'bg-surface-700 ring-1 ring-accent-gold' : 'bg-surface-800'}
+          {move.card === selectedCard ? 'border-l-2 border-accent-blue' : ''}"
       >
         <span class="font-mono text-surface-300 text-xs">
           {notation.values}{#if notation.typeAbbr}<span class="{notation.typeClass}">[{notation.typeAbbr}]</span>{/if}

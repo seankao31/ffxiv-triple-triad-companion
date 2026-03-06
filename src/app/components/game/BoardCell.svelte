@@ -2,17 +2,25 @@
 <!-- ABOUTME: Ownership is shown via background colour: blue for player, red for opponent. -->
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
-  import { Owner } from '../../../engine';
+  import { Owner, Outcome } from '../../../engine';
 
   let {
     cell,
     highlighted = false,
+    evaluation = null,
     onclick,
   }: {
     cell: BoardCellData;
     highlighted?: boolean;
+    evaluation?: Outcome | null;
     onclick: () => void;
   } = $props();
+
+  const evalBg: Record<Outcome, string> = {
+    [Outcome.Win]: 'bg-eval-win/20',
+    [Outcome.Draw]: 'bg-eval-draw/20',
+    [Outcome.Loss]: 'bg-eval-loss/20',
+  };
 
   function displayValue(v: number): string {
     return v === 10 ? 'A' : String(v);
@@ -21,9 +29,14 @@
 
 <button
   {onclick}
+  data-eval={!cell && evaluation ? evaluation : undefined}
   class="w-20 h-20 border border-surface-600 rounded flex items-center justify-center
     {highlighted ? 'ring-2 ring-accent-gold' : ''}
-    {cell ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim' : 'bg-accent-red-dim') : 'bg-surface-800 hover:bg-surface-700'}"
+    {cell
+      ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim' : 'bg-accent-red-dim')
+      : evaluation
+        ? evalBg[evaluation]
+        : 'bg-surface-800 hover:bg-surface-700'}"
 >
   {#if cell}
     <div class="grid grid-cols-3 gap-0 text-xs font-bold w-full h-full p-1">
