@@ -82,7 +82,9 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 
 **Why:** These highlights reduce cognitive load — the user can see the solver's recommendation at a glance without reading the full `SolverPanel` list.
 
-**Card equality via values, not identity:** Move cards in `rankedMoves` are deserialized from the Worker via `postMessage` (structured clone), which creates new object references. Identity comparison (`===`) always returns false. All comparisons between a `move.card` and the selected card use `cardEquals(a, b)`, which compares all five fields (`top`, `right`, `bottom`, `left`, `type`). This is defined in `types.ts` and exported from the engine barrel.
+**Card equality via values, not identity:** Move cards in `rankedMoves` are deserialized from the Worker via `postMessage` (structured clone), which creates new object references. Identity comparison (`===`) always returns false. `cardEquals(a, b)` compares all five fields (`top`, `right`, `bottom`, `left`, `type`) and is used in every component that matches a `rankedMoves` card against a hand or selected card: `Board.svelte` (suggestedPosition and evalMap), `HandPanel.svelte` (best-move ring), and `SolverPanel.svelte` (selected-card highlight). Defined in `types.ts`, exported from the engine barrel.
+
+**Test adequacy lesson:** Tests that populate `rankedMoves` with real (non-deserialized) references pass regardless of whether `===` or `cardEquals` is used, giving false confidence. Each component needs a dedicated test that simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` to catch reference equality regressions.
 
 ---
 
