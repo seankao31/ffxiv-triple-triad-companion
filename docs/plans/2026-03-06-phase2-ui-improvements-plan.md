@@ -643,3 +643,75 @@ Expected: No errors.
 7. Play through a few moves, verify undo works
 
 **Step 4: Final commit if any adjustments needed**
+
+---
+
+## Follow-on Work: Performance Fixes and Web Worker Solver
+
+Tasks 9–15 were added after the initial plan to address a performance issue discovered post-launch: the solver takes ~21 seconds from a fresh opening position with 10 distinct cards, blocking the main thread and freezing the UI.
+
+---
+
+### Task 9: CardInput Dropdown Overlap Fix
+
+Increase the card container from `w-28 h-28` to `w-36 h-36` so the type dropdown doesn't overflow the card boundary.
+
+**Files:** `src/app/components/setup/CardInput.svelte`, `tests/app/components/CardInput.test.ts`
+
+Added test: verifies container has `w-36` class.
+
+---
+
+### Task 10: Distinct Cards in Engine Performance Test
+
+Replace all-identical cards in the solver performance test with 10 distinct real cards. Tighten timeout from 60s/65s to 25s/30s.
+
+**Why:** Identical cards collapse via deduplication to 1 unique card, making the search ~14ms and giving a false sense of performance. 10 distinct cards take ~21s and reflect real-world usage.
+
+**Files:** `tests/engine/solver.test.ts`
+
+---
+
+### Task 11: `createSolver` Factory with Persistent TT
+
+Add `createSolver()` to `solver.ts` returning a `Solver` interface with `reset(playerHand, opponentHand)`, `solve(state)`, and `ttSize()`.
+
+**Why:** `findBestMove` creates a fresh TT on every call, discarding all cached positions. `createSolver` holds TT and card index in a closure, reusing them across turns. `reset()` reinitializes both and pre-indexes all hands before any cards are placed (avoiding the `buildCardIndex` NaN bug for placed board cards).
+
+**Files:** `src/engine/solver.ts`, `tests/engine/solver.test.ts`
+
+Also fixed: `buildCardIndex` was not scanning board cells, producing `NaN` hashes for placed cards not in remaining hands.
+
+---
+
+### Task 12: Web Worker Entry Point
+
+Create `src/engine/solver.worker.ts`. Holds a single `createSolver()` instance. Handles two message types: `newGame` (calls `reset`) and `solve` (calls `solve`, posts back `{ type: 'result', moves }`).
+
+**Files:** `src/engine/solver.worker.ts` (new)
+
+---
+
+### Task 13: Async Store
+
+Convert `rankedMoves` from a `derived` store to a `writable`. Add `solverLoading` writable. Instantiate the Worker as a module singleton. Subscribe to `currentState` and post `solve` messages; handle `result` messages to update `rankedMoves` and clear `solverLoading`. Send `newGame` in `startGame` before `game.update()` to ensure correct Worker message ordering.
+
+**Files:** `src/app/store.ts`, `tests/app/store.test.ts`, `tests/app/setup.ts`
+
+Mock: `tests/app/setup.ts` stubs `Worker` globally with a no-op class so Vitest tests don't instantiate a real Worker.
+
+---
+
+### Task 14: SolverPanel Loading Indicator
+
+Show `<div role="status">Calculating…</div>` with `animate-pulse` while `$solverLoading` is true.
+
+**Files:** `src/app/components/game/SolverPanel.svelte`, `tests/app/components/SolverPanel.test.ts`
+
+---
+
+### Task 15: Card Equality Bug Fix
+
+After Worker `postMessage`/structured clone, `move.card` objects in `rankedMoves` are new references. All `===` comparisons between `move.card` and `selectedCard` always return false, breaking board eval overlays and SolverPanel card highlighting.
+
+Fix: `cardEquals(a, b)` in `types.ts` compares all five card fields by value. Exported from engine barrel. Used in `Board.svelte` (both `suggestedPosition` and `evalMap` derivations) and `SolverPanel.svelte`. Test: Board test simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` and verifies overlays still appear.
