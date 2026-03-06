@@ -151,15 +151,12 @@ function minimax(
   return bestValue;
 }
 
-export function findBestMove(state: GameState): RankedMove[] {
+function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex: Map<number, number>): RankedMove[] {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
   if (hand.length === 0) return [];
 
   if (boardFull(state.board)) return [];
-
-  const tt = new Map<number, TTEntry>();
-  const cardIndex = buildCardIndex(state);
 
   // First pass: evaluate all moves with minimax
   const evaluated: { card: Card; position: number; value: number; nextState: GameState }[] = [];
@@ -213,4 +210,35 @@ export function findBestMove(state: GameState): RankedMove[] {
   });
 
   return moves;
+}
+
+export function findBestMove(state: GameState): RankedMove[] {
+  const tt = new Map<number, TTEntry>();
+  const cardIndex = buildCardIndex(state);
+  return findBestMoveWith(state, tt, cardIndex);
+}
+
+export interface Solver {
+  reset(playerHand: Card[], opponentHand: Card[]): void;
+  solve(state: GameState): RankedMove[];
+}
+
+export function createSolver(): Solver {
+  let tt = new Map<number, TTEntry>();
+  let cardIndex = new Map<number, number>();
+
+  return {
+    reset(playerHand: Card[], opponentHand: Card[]) {
+      tt = new Map();
+      cardIndex = new Map();
+      let nextIdx = 1;
+      for (const card of [...playerHand, ...opponentHand]) {
+        const id = cardId(card);
+        if (!cardIndex.has(id)) cardIndex.set(id, nextIdx++);
+      }
+    },
+    solve(state: GameState): RankedMove[] {
+      return findBestMoveWith(state, tt, cardIndex);
+    },
+  };
 }

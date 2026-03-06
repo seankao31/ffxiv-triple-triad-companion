@@ -4,7 +4,7 @@
 import { describe, it, expect } from "bun:test";
 import { type Board, type GameState, createCard, createInitialState, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
-import { findBestMove } from "../../src/engine/solver";
+import { findBestMove, createSolver } from "../../src/engine/solver";
 
 describe("findBestMove", () => {
   it("returns no moves for a full board", () => {
@@ -202,6 +202,68 @@ describe("findBestMove — additional scenarios", () => {
     for (let i = 1; i < moves.length; i++) {
       expect(moves[i]!.robustness).toBeLessThanOrEqual(moves[i-1]!.robustness);
     }
+  });
+});
+
+describe("createSolver", () => {
+  // Mid-game state: 5 cards placed, it's opponent's turn (3 cards × 4 positions)
+  // Fast enough for correctness checks without 21s full-game search.
+  function makeMidGame() {
+    const p = [createCard(10,10,10,10), createCard(9,9,9,9), createCard(1,1,1,1), createCard(2,2,2,2), createCard(3,3,3,3)];
+    const o = [createCard(5,5,5,5), createCard(6,6,6,6), createCard(7,7,7,7), createCard(8,8,8,8), createCard(4,4,4,4)];
+    let state = createInitialState(p, o);
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[4]!, 4);
+    return { state, p, o };
+  }
+
+  it("returns a solver with solve() and reset()", () => {
+    const solver = createSolver();
+    expect(typeof solver.solve).toBe("function");
+    expect(typeof solver.reset).toBe("function");
+  });
+
+  it("solve() returns the same moves as findBestMove() for an initial state", () => {
+    // Use identical hands so deduplication keeps the search fast (~14ms).
+    // Initial state (no placed cards) ensures buildCardIndex has all cards
+    // — no NaN hashing for board cells in either code path.
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    const solverMoves = solver.solve(state);
+    const directMoves = findBestMove(state);
+    expect(solverMoves.map(m => m.outcome)).toEqual(directMoves.map(m => m.outcome));
+    expect(solverMoves.map(m => m.position)).toEqual(directMoves.map(m => m.position));
+  });
+
+  it("reuses TT across solve() calls (second call faster than first)", () => {
+    // Use distinct cards so deduplication doesn't collapse the search tree,
+    // giving the TT meaningful work to cache.
+    const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
+    const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
+    let state = createInitialState(p, o);
+    // Place 3 cards (leaving 3p + 4o remaining, 6 empty cells, player's turn)
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+
+    const solver = createSolver();
+    solver.reset(p, o);
+
+    const t0 = performance.now();
+    solver.solve(state);
+    const firstCallMs = performance.now() - t0;
+
+    const t1 = performance.now();
+    solver.solve(state); // same state — TT is warm
+    const secondCallMs = performance.now() - t1;
+
+    expect(secondCallMs).toBeLessThan(firstCallMs / 10);
   });
 });
 
