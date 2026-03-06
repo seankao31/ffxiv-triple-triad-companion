@@ -1,1 +1,33 @@
+/* ABOUTME: Global stylesheet — imports Tailwind and defines the dark gray-purple theme palette. */
+/* ABOUTME: Sets body defaults so all views inherit the dark background and light text. */
 @import "tailwindcss";
+
+@theme {
+  --color-surface-900: #1a1625;
+  --color-surface-800: #231e30;
+  --color-surface-700: #2e2840;
+  --color-surface-600: #3d3556;
+  --color-surface-500: #504869;
+  --color-surface-400: #8a82a0;
+  --color-surface-300: #b0a9c0;
+  --color-accent-blue: #4a90d9;
+  --color-accent-blue-dim: #2a4a7a;
+  --color-accent-red: #d94a4a;
+  --color-accent-red-dim: #7a2a2a;
+  --color-accent-gold: #d4a843;
+  --color-eval-win: #3ddc84;
+  --color-eval-draw: #d4a843;
+  --color-eval-loss: #d94a8a;
+  --color-type-primal: #e05555;
+  --color-type-scion: #d4a843;
+  --color-type-society: #4caf50;
+  --color-type-garlean: #4a90d9;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--color-surface-900);
+  color: var(--color-surface-300);
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.01em;
+}

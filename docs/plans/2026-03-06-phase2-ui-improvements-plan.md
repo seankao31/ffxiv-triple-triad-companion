@@ -646,443 +646,72 @@ Expected: No errors.
 
 ---
 
-## Post-Implementation Tasks (issues 7–10)
+## Follow-on Work: Performance Fixes and Web Worker Solver
 
-These tasks address bugs discovered after the initial six features shipped.
-
----
-
-### Task 9: Fix CardInput Type Dropdown Overlap
-
-The type dropdown (`w-14`) at `top-1 right-1` overlaps the Top and Right number inputs inside the `w-28 h-28` card container.
-
-**Files:**
-- Modify: `src/app/components/setup/CardInput.svelte`
-- Modify: `tests/app/components/CardInput.test.ts`
-
-**Step 1: Write failing test**
-
-Add to `tests/app/components/CardInput.test.ts`:
-
-```typescript
-it('type dropdown does not visually overlap the number inputs', () => {
-  const { container } = render(CardInput, { props: { onchange: vi.fn() } });
-  const select = container.querySelector('select')!;
-  const topInput = screen.getByLabelText('Top');
-  const rightInput = screen.getByLabelText('Right');
-  const selectRect = select.getBoundingClientRect();
-  const topRect = topInput.getBoundingClientRect();
-  const rightRect = rightInput.getBoundingClientRect();
-  // Dropdown bottom must not extend into the Top input area
-  expect(selectRect.bottom).toBeLessThanOrEqual(topRect.top + 1);
-  // Dropdown left must not extend into the Right input area
-  expect(selectRect.left).toBeGreaterThanOrEqual(rightRect.right - 1);
-});
-```
-
-> Note: happy-dom returns zeroed `getBoundingClientRect` values, so this test may need to verify the structural layout via CSS classes instead. An acceptable alternative: verify the card container has the expected larger size class (e.g., `w-36`).
-
-**Step 2: Run test to confirm it fails**
-
-Run: `bunx vitest run tests/app/components/CardInput.test.ts`
-
-**Step 3: Increase card container size**
-
-In `CardInput.svelte`, change the outer container from `w-28 h-28` to a size that gives the dropdown room (e.g., `w-36 h-36`). Adjust internal padding and input sizing as needed to fill the space cleanly.
-
-**Step 4: Run test to confirm it passes**
-
-Run: `bunx vitest run tests/app/components/CardInput.test.ts`
-
-**Step 5: Commit**
-
-```
-git add src/app/components/setup/CardInput.svelte tests/app/components/CardInput.test.ts
-git commit -m "fix: increase card container size to prevent dropdown overlap"
-```
+Tasks 9–15 were added after the initial plan to address a performance issue discovered post-launch: the solver takes ~21 seconds from a fresh opening position with 10 distinct cards, blocking the main thread and freezing the UI.
 
 ---
 
-### Task 10: Update Engine Tests with Distinct Cards
+### Task 9: CardInput Dropdown Overlap Fix
 
-The existing performance test uses asymmetric hands that deduplicate to 1 unique card each, making it meaningless as a regression test.
+Increase the card container from `w-28 h-28` to `w-36 h-36` so the type dropdown doesn't overflow the card boundary.
 
-**Files:**
-- Modify: `tests/engine/solver.test.ts`
+**Files:** `src/app/components/setup/CardInput.svelte`, `tests/app/components/CardInput.test.ts`
 
-**Step 1: Inspect the current performance test**
-
-Read `tests/engine/solver.test.ts` to find the existing performance test (currently uses all-10s player / all-1s opponent hands or similar).
-
-**Step 2: Replace test hands with 10 distinct cards**
-
-```typescript
-// 5 distinct player cards
-const playerHand = [
-  createCard(10, 5, 3, 8),
-  createCard(7, 6, 4, 9),
-  createCard(2, 8, 6, 3),
-  createCard(5, 4, 7, 1),
-  createCard(9, 3, 2, 6),
-];
-// 5 distinct opponent cards (no duplicates with player)
-const opponentHand = [
-  createCard(4, 7, 5, 2),
-  createCard(8, 3, 9, 6),
-  createCard(1, 5, 8, 4),
-  createCard(6, 9, 1, 7),
-  createCard(3, 2, 4, 10),
-];
-```
-
-Tighten timeout to 25 seconds (observed: ~21s, 25s gives headroom without being dangerously lenient).
-
-**Step 3: Run the performance test**
-
-Run: `bun test tests/engine/solver.test.ts`
-Expected: PASS within 25 seconds.
-
-**Step 4: Commit**
-
-```
-git add tests/engine/solver.test.ts
-git commit -m "test: use distinct cards in solver performance test"
-```
+Added test: verifies container has `w-36` class.
 
 ---
 
-### Task 11: Refactor Solver — Persistent Transposition Table
+### Task 10: Distinct Cards in Engine Performance Test
 
-Export a `createSolver()` factory so callers can hold a persistent TT across game turns.
+Replace all-identical cards in the solver performance test with 10 distinct real cards. Tighten timeout from 60s/65s to 25s/30s.
 
-**Files:**
-- Modify: `src/engine/solver.ts`
-- Modify: `tests/engine/solver.test.ts`
+**Why:** Identical cards collapse via deduplication to 1 unique card, making the search ~14ms and giving a false sense of performance. 10 distinct cards take ~21s and reflect real-world usage.
 
-**Step 1: Write failing test for createSolver factory**
-
-Add to `tests/engine/solver.test.ts`:
-
-```typescript
-import { createSolver } from '../../src/engine/solver';
-
-describe('createSolver', () => {
-  it('returns a solver instance with solve() and reset()', () => {
-    const solver = createSolver();
-    expect(typeof solver.solve).toBe('function');
-    expect(typeof solver.reset).toBe('function');
-  });
-
-  it('solve() returns the same moves as findBestMove() for the same state', () => {
-    const playerHand = [/* same distinct hands as Task 10 */];
-    const opponentHand = [/* same distinct hands as Task 10 */];
-    const state = createInitialState(playerHand, opponentHand, defaultRuleSet(), Owner.Player);
-    const solver = createSolver();
-    solver.reset(playerHand, opponentHand);
-    const solverMoves = solver.solve(state);
-    const directMoves = findBestMove(state);
-    expect(solverMoves.map(m => m.outcome)).toEqual(directMoves.map(m => m.outcome));
-  });
-
-  it('reuses TT across solve() calls (second call is faster than first)', () => {
-    const playerHand = [/* distinct hands */];
-    const opponentHand = [/* distinct hands */];
-    const state = createInitialState(playerHand, opponentHand, defaultRuleSet(), Owner.Player);
-    const solver = createSolver();
-    solver.reset(playerHand, opponentHand);
-
-    const t0 = performance.now();
-    solver.solve(state);
-    const firstCallMs = performance.now() - t0;
-
-    const t1 = performance.now();
-    solver.solve(state); // same state — TT is already warm
-    const secondCallMs = performance.now() - t1;
-
-    expect(secondCallMs).toBeLessThan(firstCallMs / 10);
-  });
-});
-```
-
-**Step 2: Run tests to confirm they fail**
-
-Run: `bun test tests/engine/solver.test.ts`
-Expected: FAIL — `createSolver` not exported.
-
-**Step 3: Implement createSolver factory in solver.ts**
-
-Add to `src/engine/solver.ts`:
-
-```typescript
-export interface Solver {
-  reset(playerHand: Card[], opponentHand: Card[]): void;
-  solve(state: GameState): RankedMove[];
-}
-
-export function createSolver(): Solver {
-  let tt = new Map<number, TTEntry>();
-  let cardIndex = new Map<number, number>();
-
-  return {
-    reset(playerHand: Card[], opponentHand: Card[]) {
-      tt = new Map();
-      cardIndex = new Map();
-      let nextIdx = 1;
-      for (const card of [...playerHand, ...opponentHand]) {
-        const id = cardId(card);
-        if (!cardIndex.has(id)) cardIndex.set(id, nextIdx++);
-      }
-    },
-    solve(state: GameState): RankedMove[] {
-      return findBestMoveWith(state, tt, cardIndex);
-    },
-  };
-}
-```
-
-Refactor `findBestMove` to delegate to an internal `findBestMoveWith(state, tt, cardIndex)` function. `findBestMove` creates a fresh TT and cardIndex then calls `findBestMoveWith` — backward-compatible for engine tests.
-
-`reset()` builds the card index from the **full initial hands** (not the current `state.playerHand` which shrinks as cards are played). This is important: `buildCardIndex` on mid-game state would miss played cards, breaking the hash.
-
-**Step 4: Run tests to confirm they pass**
-
-Run: `bun test tests/engine/solver.test.ts`
-
-**Step 5: Commit**
-
-```
-git add src/engine/solver.ts tests/engine/solver.test.ts
-git commit -m "feat: add createSolver factory with persistent transposition table"
-```
+**Files:** `tests/engine/solver.test.ts`
 
 ---
 
-### Task 12: Web Worker
+### Task 11: `createSolver` Factory with Persistent TT
 
-**Files:**
-- Create: `src/engine/solver.worker.ts`
+Add `createSolver()` to `solver.ts` returning a `Solver` interface with `reset(playerHand, opponentHand)`, `solve(state)`, and `ttSize()`.
 
-**Step 1: Write the worker file**
+**Why:** `findBestMove` creates a fresh TT on every call, discarding all cached positions. `createSolver` holds TT and card index in a closure, reusing them across turns. `reset()` reinitializes both and pre-indexes all hands before any cards are placed (avoiding the `buildCardIndex` NaN bug for placed board cards).
 
-The worker holds a single `Solver` instance. It receives two message types and posts results back:
+**Files:** `src/engine/solver.ts`, `tests/engine/solver.test.ts`
 
-```typescript
-// ABOUTME: Web Worker entry point for the minimax solver.
-// ABOUTME: Maintains a persistent solver instance across turns of a single game.
-import { createSolver } from './solver';
-import type { GameState, Card, RankedMove } from './types';
-
-type InMessage =
-  | { type: 'newGame'; playerHand: Card[]; opponentHand: Card[] }
-  | { type: 'solve'; state: GameState };
-
-type OutMessage =
-  | { type: 'result'; moves: RankedMove[] };
-
-const solver = createSolver();
-
-self.onmessage = (e: MessageEvent<InMessage>) => {
-  const msg = e.data;
-  if (msg.type === 'newGame') {
-    solver.reset(msg.playerHand, msg.opponentHand);
-  } else if (msg.type === 'solve') {
-    const moves = solver.solve(msg.state);
-    self.postMessage({ type: 'result', moves } satisfies OutMessage);
-  }
-};
-```
-
-Workers are not unit-tested directly (they require a real browser or Worker-compatible environment). The correctness of `createSolver` is tested in Task 11. Worker integration is covered by the store tests (Task 13).
-
-**Step 2: Commit**
-
-```
-git add src/engine/solver.worker.ts
-git commit -m "feat: add solver Web Worker"
-```
+Also fixed: `buildCardIndex` was not scanning board cells, producing `NaN` hashes for placed cards not in remaining hands.
 
 ---
 
-### Task 13: Update Store for Async Solver
+### Task 12: Web Worker Entry Point
 
-**Files:**
-- Modify: `src/app/store.ts`
-- Modify: `tests/app/store.test.ts`
-- Modify: `tests/app/setup.ts`
+Create `src/engine/solver.worker.ts`. Holds a single `createSolver()` instance. Handles two message types: `newGame` (calls `reset`) and `solve` (calls `solve`, posts back `{ type: 'result', moves }`).
 
-**Step 1: Add Worker mock to test setup**
+**Files:** `src/engine/solver.worker.ts` (new)
 
-In `tests/app/setup.ts`, add a global `Worker` mock before any tests run:
+---
 
-```typescript
-import { vi } from 'vitest';
+### Task 13: Async Store
 
-// Mock Worker so store tests don't attempt to load solver.worker.ts
-vi.stubGlobal('Worker', class {
-  onmessage: ((e: MessageEvent) => void) | null = null;
-  postMessage(_msg: unknown) {}
-  terminate() {}
-});
-```
+Convert `rankedMoves` from a `derived` store to a `writable`. Add `solverLoading` writable. Instantiate the Worker as a module singleton. Subscribe to `currentState` and post `solve` messages; handle `result` messages to update `rankedMoves` and clear `solverLoading`. Send `newGame` in `startGame` before `game.update()` to ensure correct Worker message ordering.
 
-**Step 2: Write failing tests for async solver in store**
+**Files:** `src/app/store.ts`, `tests/app/store.test.ts`, `tests/app/setup.ts`
 
-Add to `tests/app/store.test.ts`:
-
-```typescript
-it('solverLoading is false initially', () => {
-  expect(get(solverLoading)).toBe(false);
-});
-
-it('startGame sets solverLoading to true while worker computes', () => {
-  // With mocked worker that never responds, loading stays true after startGame
-  const ph = makePlayerHand();
-  const oh = makeOpponentHand();
-  ph.forEach((c, i) => updatePlayerCard(i, c));
-  oh.forEach((c, i) => updateOpponentCard(i, c));
-  startGame();
-  expect(get(solverLoading)).toBe(true);
-});
-```
-
-**Step 3: Run tests to confirm they fail**
-
-Run: `bunx vitest run tests/app/store.test.ts`
-Expected: FAIL — `solverLoading` not exported.
-
-**Step 4: Refactor store to use Worker**
-
-In `src/app/store.ts`:
-
-1. Change `rankedMoves` from `derived` to `writable<RankedMove[]>([])`
-2. Add `export const solverLoading = writable<boolean>(false)`
-3. Create Worker singleton:
-   ```typescript
-   const solverWorker = new Worker(
-     new URL('../engine/solver.worker.ts', import.meta.url),
-     { type: 'module' }
-   );
-   solverWorker.onmessage = (e) => {
-     if (e.data.type === 'result') {
-       rankedMoves.set(e.data.moves);
-       solverLoading.set(false);
-     }
-   };
-   ```
-4. Add `triggerSolve(state: GameState)` helper:
-   ```typescript
-   function triggerSolve(state: GameState) {
-     solverLoading.set(true);
-     solverWorker.postMessage({ type: 'solve', state });
-   }
-   ```
-5. Subscribe `currentState` to trigger solve on change:
-   ```typescript
-   currentState.subscribe((state) => {
-     if (state) triggerSolve(state);
-   });
-   ```
-6. In `startGame()`, after `game.update(...)`:
-   ```typescript
-   const state = get(currentState)!;
-   solverWorker.postMessage({ type: 'newGame', playerHand: s.playerHand, opponentHand: s.opponentHand });
-   triggerSolve(state);
-   ```
-7. In `resetGame()`, clear `rankedMoves` and `solverLoading`.
-
-**Step 5: Run tests to confirm they pass**
-
-Run: `bunx vitest run tests/app/store.test.ts`
-
-**Step 6: Run full test suite**
-
-Run: `bunx vitest run`
-Expected: All tests pass.
-
-**Step 7: Commit**
-
-```
-git add src/app/store.ts tests/app/store.test.ts tests/app/setup.ts
-git commit -m "feat: run solver in Web Worker with persistent transposition table"
-```
+Mock: `tests/app/setup.ts` stubs `Worker` globally with a no-op class so Vitest tests don't instantiate a real Worker.
 
 ---
 
 ### Task 14: SolverPanel Loading Indicator
 
-**Files:**
-- Modify: `src/app/components/game/SolverPanel.svelte`
-- Modify: `tests/app/components/SolverPanel.test.ts`
+Show `<div role="status">Calculating…</div>` with `animate-pulse` while `$solverLoading` is true.
 
-**Step 1: Write failing test**
-
-Add to `tests/app/components/SolverPanel.test.ts`:
-
-```typescript
-it('shows a loading indicator when solverLoading is true', () => {
-  solverLoading.set(true);
-  render(SolverPanel);
-  expect(screen.getByRole('status')).toBeInTheDocument();
-});
-
-it('hides the loading indicator when solverLoading is false', () => {
-  solverLoading.set(false);
-  render(SolverPanel);
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
-});
-```
-
-**Step 2: Run tests to confirm they fail**
-
-Run: `bunx vitest run tests/app/components/SolverPanel.test.ts`
-
-**Step 3: Add loading indicator to SolverPanel**
-
-Import `solverLoading` from store. When `$solverLoading` is true, render a spinner or "Calculating…" text with `role="status"`:
-
-```svelte
-{#if $solverLoading}
-  <div role="status" class="text-surface-400 text-sm animate-pulse">Calculating…</div>
-{/if}
-```
-
-**Step 4: Run full test suite**
-
-Run: `bunx vitest run`
-
-**Step 5: Commit**
-
-```
-git add src/app/components/game/SolverPanel.svelte tests/app/components/SolverPanel.test.ts
-git commit -m "feat: show loading indicator in SolverPanel while solver runs"
-```
+**Files:** `src/app/components/game/SolverPanel.svelte`, `tests/app/components/SolverPanel.test.ts`
 
 ---
 
-### Task 15: Final Integration Test (post-implementation)
+### Task 15: Card Equality Bug Fix
 
-**Step 1: Run all tests**
+After Worker `postMessage`/structured clone, `move.card` objects in `rankedMoves` are new references. All `===` comparisons between `move.card` and `selectedCard` always return false, breaking board eval overlays and SolverPanel card highlighting.
 
-```
-bun run test
-```
-
-Expected: All engine tests and app tests pass.
-
-**Step 2: Type check**
-
-```
-bunx tsc --noEmit
-```
-
-Expected: No errors.
-
-**Step 3: Manual smoke test**
-
-1. Enter 10 distinct cards in setup (5 player, 5 opponent)
-2. Click "Start Game" — UI remains responsive while "Calculating…" appears
-3. Solver panel populates with results when Worker finishes (~21s from opening)
-4. Play a card — "Calculating…" appears briefly, resolves fast (<1ms)
-5. Undo — same: brief loading indicator, fast result
-6. Verify board eval overlays still work when a card is selected
-7. Start a new game — solver resets cleanly
+Fix: `cardEquals(a, b)` in `types.ts` compares all five card fields by value. Exported from engine barrel. Used in `Board.svelte` (both `suggestedPosition` and `evalMap` derivations) and `SolverPanel.svelte`. Test: Board test simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` and verifies overlays still appear.

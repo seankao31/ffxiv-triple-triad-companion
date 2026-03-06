@@ -12,21 +12,21 @@
   );
 </script>
 
-<div class="flex flex-col h-screen bg-gray-900 text-white p-4">
+<div class="flex flex-col h-screen p-4">
   <div class="flex items-center justify-between mb-4">
     <h1 class="text-lg font-bold">Project Triad</h1>
-    <div class="text-sm text-gray-400">
+    <div class="text-base font-semibold text-surface-300">
       You: {score.player} — Opponent: {score.opponent}
     </div>
     <button
       onclick={undoMove}
-      class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+      class="px-3 py-1 border border-surface-500 hover:border-surface-400 hover:bg-surface-700 rounded text-sm"
     >
       Undo
     </button>
   </div>
 
-  <div class="flex gap-8 flex-1 items-start justify-center">
+  <div class="flex gap-10 flex-1 items-start justify-center pt-6">
     <HandPanel owner={Owner.Player} />
     <Board />
     <HandPanel owner={Owner.Opponent} />

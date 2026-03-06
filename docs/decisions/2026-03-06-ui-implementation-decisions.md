@@ -34,33 +34,25 @@ This structure also works for future imperfect-information modes (Three Open, Sw
 
 ---
 
-## Solver in a Web Worker with Persistent Transposition Table
+## Web Worker Solver with Persistent Transposition Table
 
-**Decision:** The solver runs in a dedicated Web Worker (`src/engine/solver.worker.ts`). `rankedMoves` is a `writable` store updated via Worker message results. A `solverLoading` writable tracks in-progress solve requests. `SolverPanel` shows a loading indicator while the Worker is computing.
+**Decision:** The solver runs in a dedicated Web Worker (`src/engine/solver.worker.ts`). `rankedMoves` and `solverLoading` are writable stores updated via Worker messages. The Worker holds a single `Solver` instance (from `createSolver()`) that persists its transposition table across turns of a game.
 
-**Rejected (originally):** Web Worker was initially considered unnecessary. The synchronous `derived` store approach was tried first.
+**Rejected (earlier):** Running `findBestMove` synchronously in a Svelte `derived` store.
 
-**Why reversed:** Benchmarking with realistic distinct cards (5 unique cards per side) showed the opening-position solve takes ~21 seconds on V8. This freezes the browser UI thread entirely. With all-identical test hands the deduplication in minimax collapses each 5-card hand to 1 unique card, masking the real performance. The 21-second freeze was only discovered after testing with actual card values.
+**Why the switch:** From a fresh opening position with 10 distinct cards, the solver takes ~21 seconds — blocking the main thread and freezing the UI. Moving to a Worker keeps the UI responsive during the search. Symmetric/identical hands still run in ~14ms via deduplication, so quick positions remain fast.
 
-**Web Worker design:** A singleton Worker is created at store module load time. It holds one persistent solver instance created via `createSolver()` (a factory exported from `solver.ts`). The Worker accepts two message types:
-- `{ type: 'newGame', playerHand, opponentHand }` — calls `solver.reset()` to clear TT and rebuild card index
-- `{ type: 'solve', state }` — calls `solver.solve(state)`, posts back `{ type: 'result', moves }`
+**Worker protocol:** Two message types:
+- `newGame` (sent before `game.update()` in `startGame`): calls `solver.reset(playerHand, opponentHand)` to clear the TT and pre-populate the card index from both full hands.
+- `solve` (triggered by the `currentState` subscription): calls `solver.solve(state)` and posts back `{ type: 'result', moves }`.
 
-**Persistent transposition table:** The TT persists across all turns of a game. The card set (which cards exist, not their board positions) never changes within a game, so TT entries remain valid across turns. `reset()` is called only on new game start, which clears the TT and rebuilds the card index from the full initial hands. This means turn 1 is slow (~21s) but all subsequent turns reuse the TT and complete in <1ms.
+**Message ordering matters:** `newGame` must be posted before `game.update()` so the Worker's message queue is `[newGame, solve]` — not `[solve (wrong TT), newGame]`. This is because `currentState.subscribe` fires synchronously during `game.update()`.
 
-**Test strategy:** The Worker is mocked globally in `tests/app/setup.ts`. Component and store tests set `rankedMoves` directly rather than triggering Worker computation. Engine tests (`bun test`) test the solver logic directly without Workers.
+**TT persistence:** `createSolver()` returns a closure holding its own `tt` (Map) and `cardIndex` (Map). `reset()` reinitializes both; `solve()` accumulates results across calls. The transposition table grows across turns, so positions explored on turn N are cached for free on turn N+1. `ttSize()` exposes TT entry count for test verification.
 
----
+**Test isolation:** Vitest UI tests mock the Worker globally in `tests/app/setup.ts` (no-op `postMessage`, null `onmessage`). Tests that need solver output populate `rankedMoves` directly via `rankedMoves.set(findBestMove(get(currentState)!))` using asymmetric hands (all-10s vs all-1s) for fast termination.
 
-## Distinct Cards in Performance Tests
-
-**Decision:** Engine solver performance tests use 10 distinct cards (5 unique per side) and a 15-second timeout.
-
-**Rejected:** Using asymmetric hands (player all-10s, opponent all-1s) for performance tests.
-
-**Why:** Identical cards trigger deduplication in minimax, collapsing each 5-card hand to effectively 1 unique card per side. This makes the search nearly instant (~14ms) and useless as a performance regression test. The meaningful question is how long a real game takes, which requires distinct cards. 15 seconds is the observed upper bound for the opening-position solve with fresh TT; subsequent turns are sub-millisecond.
-
-**Store/component tests:** Still use fast asymmetric hands (all-10s vs all-1s) but with the Worker mocked. The asymmetric hands are valid here because these tests exercise store and component behaviour, not solver correctness or performance.
+**Hiccup encountered:** In Vitest's V8 environment, `findBestMove` from a fresh opening position with balanced hands caused the transposition table to exceed the JS `Map` size limit (~16.7M entries). Asymmetric test hands prune almost immediately and avoid this.
 
 ---
 
@@ -88,7 +80,25 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 
 **Decision:** The UI provides two highlight cues: the best-move card in `HandPanel` is highlighted with a ring, and when a card is selected, the best board cell for that card is highlighted in `Board`.
 
-**Why:** These highlights reduce cognitive load — the user can see the solver's recommendation at a glance without reading the full `SolverPanel` list. The card highlight uses identity comparison (`card === rankedMoves[0].card`), which works because hand cards and ranked move cards are the same object references from the same `GameState`.
+**Why:** These highlights reduce cognitive load — the user can see the solver's recommendation at a glance without reading the full `SolverPanel` list.
+
+**Card equality via values, not identity:** Move cards in `rankedMoves` are deserialized from the Worker via `postMessage` (structured clone), which creates new object references. Identity comparison (`===`) always returns false. `cardEquals(a, b)` compares all five fields (`top`, `right`, `bottom`, `left`, `type`) and is used in every component that matches a `rankedMoves` card against a hand or selected card: `Board.svelte` (suggestedPosition and evalMap), `HandPanel.svelte` (best-move ring), and `SolverPanel.svelte` (selected-card highlight). Defined in `types.ts`, exported from the engine barrel.
+
+**Test adequacy lesson:** Tests that populate `rankedMoves` with real (non-deserialized) references pass regardless of whether `===` or `cardEquals` is used, giving false confidence. Each component needs a dedicated test that simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` to catch reference equality regressions.
+
+---
+
+## buildCardIndex Includes Board Cells
+
+**Decision:** `buildCardIndex` in `solver.ts` scans player hand, opponent hand, and all placed board cells when building the card→index mapping for TT hashing.
+
+**Why:** After cards are placed, they are removed from both hands. If only hands are scanned, placed cards get `undefined` from the index, producing `NaN` in the hash. `NaN` keys in a `Map` all collide (Map uses SameValueZero, `NaN === NaN` is true), producing incorrect TT lookups and wrong minimax results for mid-game positions.
+
+**Detection:** The `createSolver` path was not affected (its `reset()` pre-indexes all original hands before any cards are placed). Tests that compared `findBestMove(mid-game)` vs `createSolver.solve(mid-game)` exposed the discrepancy.
+
+---
+
+## `startGame` Validates Outside `game.update()`
 
 ---
 

@@ -12,12 +12,12 @@
 </script>
 
 <div class="flex gap-4">
-  <label class="flex items-center gap-2">
-    <input type="checkbox" bind:checked={plus} onchange={update} />
+  <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
+    <input type="checkbox" bind:checked={plus} onchange={update} class="accent-accent-blue" />
     Plus
   </label>
-  <label class="flex items-center gap-2">
-    <input type="checkbox" bind:checked={same} onchange={update} />
+  <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
+    <input type="checkbox" bind:checked={same} onchange={update} class="accent-accent-blue" />
     Same
   </label>
 </div>

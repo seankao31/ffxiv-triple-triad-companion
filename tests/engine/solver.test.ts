@@ -2,9 +2,9 @@
 // ABOUTME: Covers forced wins, loss avoidance, and robustness scoring.
 
 import { describe, it, expect } from "bun:test";
-import { type Board, type GameState, createCard, createInitialState, Owner, Outcome } from "../../src/engine/types";
+import { type Board, type GameState, createCard, createInitialState, getScore, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
-import { findBestMove } from "../../src/engine/solver";
+import { findBestMove, createSolver, type Solver } from "../../src/engine/solver";
 
 describe("findBestMove", () => {
   it("returns no moves for a full board", () => {
@@ -205,8 +205,411 @@ describe("findBestMove — additional scenarios", () => {
   });
 });
 
+describe("createSolver", () => {
+  // Mid-game state: 5 cards placed, it's opponent's turn (3 cards × 4 positions)
+  // Fast enough for correctness checks without 21s full-game search.
+  function makeMidGame() {
+    const p = [createCard(10,10,10,10), createCard(9,9,9,9), createCard(1,1,1,1), createCard(2,2,2,2), createCard(3,3,3,3)];
+    const o = [createCard(5,5,5,5), createCard(6,6,6,6), createCard(7,7,7,7), createCard(8,8,8,8), createCard(4,4,4,4)];
+    let state = createInitialState(p, o);
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[4]!, 4);
+    return { state, p, o };
+  }
+
+  it("returns a solver with solve() and reset()", () => {
+    const solver = createSolver();
+    expect(typeof solver.solve).toBe("function");
+    expect(typeof solver.reset).toBe("function");
+  });
+
+  it("solve() returns the same moves as findBestMove() for an initial state", () => {
+    // Use identical hands so deduplication keeps the search fast (~14ms).
+    // Initial state (no placed cards) ensures buildCardIndex has all cards
+    // — no NaN hashing for board cells in either code path.
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    const solverMoves = solver.solve(state);
+    const directMoves = findBestMove(state);
+    expect(solverMoves.map(m => m.outcome)).toEqual(directMoves.map(m => m.outcome));
+    expect(solverMoves.map(m => m.position)).toEqual(directMoves.map(m => m.position));
+  });
+
+  it("reuses TT across solve() calls (second call faster than first)", () => {
+    // Use distinct cards so deduplication doesn't collapse the search tree,
+    // giving the TT meaningful work to cache.
+    const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
+    const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
+    let state = createInitialState(p, o);
+    // Place 3 cards (leaving 3p + 4o remaining, 6 empty cells, player's turn)
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+
+    const solver = createSolver();
+    solver.reset(p, o);
+
+    const t0 = performance.now();
+    solver.solve(state);
+    const firstCallMs = performance.now() - t0;
+
+    const t1 = performance.now();
+    solver.solve(state); // same state — TT is warm
+    const secondCallMs = performance.now() - t1;
+
+    expect(secondCallMs).toBeLessThan(firstCallMs / 10);
+  });
+});
+
+describe("findBestMove — mid-game correctness", () => {
+  it("gives correct outcomes when board contains cards no longer in any hand", () => {
+    // After 5 cards are placed, board cells hold cards absent from remaining hands.
+    // buildCardIndex must include those board cards for TT hashing to be correct.
+    const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
+    const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
+    let state = createInitialState(p, o);
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[4]!, 4);
+
+    // createSolver with reset() correctly indexes all original cards — use as reference
+    const solver = createSolver();
+    solver.reset(p, o);
+    const referenceMoves = solver.solve(state);
+
+    const directMoves = findBestMove(state);
+
+    expect(directMoves.map(m => m.outcome)).toEqual(referenceMoves.map(m => m.outcome));
+    expect(directMoves.map(m => m.position)).toEqual(referenceMoves.map(m => m.position));
+  });
+});
+
+describe("createSolver — TT persistence", () => {
+  it("TT is empty after reset()", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const solver = createSolver();
+    solver.reset(p, o);
+    expect(solver.ttSize()).toBe(0);
+  });
+
+  it("TT is populated after solve()", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    solver.solve(state);
+    expect(solver.ttSize()).toBeGreaterThan(0);
+  });
+
+  it("TT size is unchanged when solving the same state twice (all hits)", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    solver.solve(state);
+    const sizeAfterFirst = solver.ttSize();
+    solver.solve(state);
+    expect(solver.ttSize()).toBe(sizeAfterFirst);
+  });
+
+  it("cross-turn predictions are consistent (persistent TT does not corrupt evaluations)", () => {
+    // The persistent TT stores minimax values that must be interpreted consistently
+    // regardless of whose turn it is. If TT values are stored from Player's perspective
+    // but read as Opponent's perspective on turn 2, "+1 = Player wins" becomes
+    // "+1 = Opponent wins" — flipping the predicted outcome.
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const opening = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+
+    const openingMoves = solver.solve(opening);
+    const openingOutcome = openingMoves[0]!.outcome; // Win for Player
+
+    // After Player's first move, Opponent faces the mirror outcome.
+    const stateAfter1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+    const movesAfter1 = solver.solve(stateAfter1);
+    const outcomeAfter1 = movesAfter1[0]!.outcome;
+
+    const mirror = (o: Outcome) =>
+      o === Outcome.Win ? Outcome.Loss : o === Outcome.Loss ? Outcome.Win : Outcome.Draw;
+
+    expect(outcomeAfter1).toBe(mirror(openingOutcome));
+  });
+});
+
+describe("createSolver — Loss prediction accuracy", () => {
+  // Plays out a full game using findBestMove (fresh TT per call) for exact predictions.
+  // Returns outcome from initialState.currentTurn's perspective.
+  function selfPlayExact(initialState: GameState): Outcome {
+    let state = initialState;
+    for (;;) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length === 0 || state.board.every(c => c !== null)) break;
+      const moves = findBestMove(state);
+      if (moves.length === 0) break;
+      state = placeCard(state, moves[0]!.card, moves[0]!.position);
+    }
+    const score = getScore(state);
+    const playerWon = score.player > score.opponent;
+    const opponentWon = score.player < score.opponent;
+    if (initialState.currentTurn === Owner.Player) {
+      return playerWon ? Outcome.Win : opponentWon ? Outcome.Loss : Outcome.Draw;
+    } else {
+      return opponentWon ? Outcome.Win : playerWon ? Outcome.Loss : Outcome.Draw;
+    }
+  }
+
+  // Plays out remaining moves using solver.solve() so the warm TT makes each call fast.
+  // Returns outcome from initialState.currentTurn's perspective.
+  function selfPlayWithSolver(initialState: GameState, solver: Solver): Outcome {
+    let state = initialState;
+    for (;;) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length === 0 || state.board.every(c => c !== null)) break;
+      const moves = solver.solve(state);
+      if (moves.length === 0) break;
+      state = placeCard(state, moves[0]!.card, moves[0]!.position);
+    }
+    const score = getScore(state);
+    const playerWon = score.player > score.opponent;
+    const opponentWon = score.player < score.opponent;
+    if (initialState.currentTurn === Owner.Player) {
+      return playerWon ? Outcome.Win : opponentWon ? Outcome.Loss : Outcome.Draw;
+    } else {
+      return opponentWon ? Outcome.Win : playerWon ? Outcome.Loss : Outcome.Draw;
+    }
+  }
+
+  it("player loses when taking a predicted-Loss move on turn 3 and both play optimally thereafter (Plus rule)", () => {
+    // Both players hold the same 5 cards with Plus rule: combos create real
+    // strategic divergence even from a symmetric starting position.
+    // After Player's optimal first move and Opponent's optimal response, Player
+    // should have at least one move predicted as Loss. Taking that move and
+    // playing optimally from there must actually produce a loss.
+    //
+    // Using findBestMove (fresh TT per call) for both prediction and verification:
+    // the persistent solver TT stores alpha-beta bounds that can give non-exact
+    // values for suboptimal moves, so fresh-TT calls are needed for exact results.
+    const cards = () => [
+      createCard(8,  2, 3, 8),
+      createCard(4,  8, 8, 1),
+      createCard(8,  8, 4, 1),
+      createCard(10, 10, 2, 5),
+      createCard(2,  5, 9, 9),
+    ];
+    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false });
+    const solver = createSolver();
+    solver.reset(cards(), cards());
+
+    // Turn 1: Player's optimal first move (solver.solve is fast for turn 1 after opening)
+    const openingMoves = solver.solve(opening);
+    const state1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+
+    // Turn 2: Opponent's optimal response
+    const oppMoves1 = solver.solve(state1);
+    const state2 = placeCard(state1, oppMoves1[0]!.card, oppMoves1[0]!.position);
+
+    // Turn 3: find a Loss-predicted move using fresh TT for an exact prediction
+    const playerMoves2 = findBestMove(state2);
+    const losingMove = playerMoves2.find(m => m.outcome === Outcome.Loss);
+    expect(losingMove).toBeDefined();
+
+    const state3 = placeCard(state2, losingMove!.card, losingMove!.position);
+
+    // Verify with selfPlay (also uses fresh TT per call for exact outcomes).
+    // state3.currentTurn is Opponent; selfPlay returns from Opponent's view.
+    const outcomeForOpponent = selfPlayExact(state3);
+    // Opponent winning confirms the Loss prediction was correct.
+    expect(outcomeForOpponent).toBe(Outcome.Win);
+  }, 130000);
+});
+
+describe("solver self-play consistency", () => {
+  // Plays out a full game with both sides always picking findBestMove[0].
+  // Calls findBestMove on the CURRENT state each turn, so turns 2+ have pre-placed
+  // cards on the board that are no longer in the hands — the scenario that exposes
+  // the cardIndex / TT-hash bug.
+  // Returns outcome from the perspective of whoever's turn it is in initialState,
+  // matching the perspective that findBestMove uses for the same state.
+  function selfPlay(initialState: GameState): Outcome {
+    let state = initialState;
+    for (;;) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length === 0 || state.board.every(c => c !== null)) break;
+      const moves = findBestMove(state);
+      if (moves.length === 0) break;
+      state = placeCard(state, moves[0]!.card, moves[0]!.position);
+    }
+    const score = getScore(state);
+    const playerWon = score.player > score.opponent;
+    const opponentWon = score.player < score.opponent;
+    if (initialState.currentTurn === Owner.Player) {
+      return playerWon ? Outcome.Win : opponentWon ? Outcome.Loss : Outcome.Draw;
+    } else {
+      return opponentWon ? Outcome.Win : playerWon ? Outcome.Loss : Outcome.Draw;
+    }
+  }
+
+  it("self-play from opening achieves the opening-predicted outcome", () => {
+    // Player has one distinct strong card + 4 weak; opponent mirrors.
+    // Once the strong cards land on the board they leave the remaining hands,
+    // so subsequent findBestMove calls cannot index them → NaN TT hashes.
+    const pStrong = createCard(8, 8, 8, 8);
+    const pWeak   = createCard(3, 3, 3, 3);
+    const oStrong = createCard(7, 7, 7, 7);
+    const oWeak   = createCard(4, 4, 4, 4);
+    const state = createInitialState(
+      [pStrong, pWeak, pWeak, pWeak, pWeak],
+      [oStrong, oWeak, oWeak, oWeak, oWeak],
+    );
+
+    // Opening prediction is correct (empty board → no unindexed cards).
+    const predictedOutcome = findBestMove(state)[0]!.outcome;
+    // Self-play calls findBestMove on successive non-empty states → hits the bug path.
+    const actualOutcome = selfPlay(state);
+    expect(actualOutcome).toBe(predictedOutcome);
+  });
+
+  it("turn N+1 prediction is consistent with turn N opening prediction", () => {
+    // If the opening solver says player's best is outcome X, then after player
+    // makes that best move, the opponent's findBestMove should predict the mirror outcome.
+    const pStrong = createCard(8, 8, 8, 8);
+    const pWeak   = createCard(3, 3, 3, 3);
+    const oStrong = createCard(7, 7, 7, 7);
+    const oWeak   = createCard(4, 4, 4, 4);
+    const opening = createInitialState(
+      [pStrong, pWeak, pWeak, pWeak, pWeak],
+      [oStrong, oWeak, oWeak, oWeak, oWeak],
+    );
+
+    const openingMoves = findBestMove(opening);
+    const openingOutcome = openingMoves[0]!.outcome;
+
+    // pStrong leaves player's hand and lands on the board.
+    const stateAfter1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+    const movesAfter1 = findBestMove(stateAfter1);
+    const outcomeAfter1 = movesAfter1[0]!.outcome;
+
+    const mirror = (o: Outcome) =>
+      o === Outcome.Win ? Outcome.Loss : o === Outcome.Loss ? Outcome.Win : Outcome.Draw;
+
+    expect(outcomeAfter1).toBe(mirror(openingOutcome));
+  });
+
+  it("self-play from opening with Plus rule achieves the opening-predicted outcome", () => {
+    // Plus rule with varied stats: combos can flip many cards, making outcomes highly sensitive
+    // to correct evaluation. TT hash collisions cause wrong results here.
+    const p = [
+      createCard(7, 3, 5, 8),
+      createCard(4, 8, 2, 6),
+      createCard(9, 1, 7, 3),
+      createCard(5, 6, 4, 7),
+      createCard(3, 9, 6, 2),
+    ];
+    const o = [
+      createCard(6, 4, 8, 5),
+      createCard(2, 7, 3, 9),
+      createCard(8, 5, 1, 4),
+      createCard(1, 3, 9, 6),
+      createCard(4, 2, 7, 1),
+    ];
+    const opening = createInitialState(p, o, Owner.Player, { plus: true, same: false });
+
+    const predictedOutcome = findBestMove(opening)[0]!.outcome;
+    const actualOutcome = selfPlay(opening);
+    expect(actualOutcome).toBe(predictedOutcome);
+  }, 130000);
+
+  it("identical hands with Plus rule: opening predicts Draw but turn 2 matches", () => {
+    // Both sides hold the same 5 cards. Plus-rule combos flip card ownership frequently,
+    // which triggers a hash collision in hashState: when a card at position 0 changes owner
+    // the turn also flips, and turn_bit(0/1) + cell0_encoding(1..20) share the same digit
+    // space → (Player, Opp-owned idx k) hashes identically to (Opponent, Player-owned idx k).
+    const cards = () => [
+      createCard(8,  8, 4, 1),
+      createCard(4,  8, 8, 1),
+      createCard(8,  2, 3, 8),
+      createCard(10, 10, 2, 5),
+      createCard(2,  5, 9, 9),
+    ];
+    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false });
+
+    const openingMoves = findBestMove(opening);
+    const openingOutcome = openingMoves[0]!.outcome;
+
+    const stateAfter1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+    const movesAfter1 = findBestMove(stateAfter1);
+    const outcomeAfter1 = movesAfter1[0]!.outcome;
+
+    const mirror = (o: Outcome) =>
+      o === Outcome.Win ? Outcome.Loss : o === Outcome.Loss ? Outcome.Win : Outcome.Draw;
+
+    expect(outcomeAfter1).toBe(mirror(openingOutcome));
+  }, 130000);
+
+  it("turn N+1 prediction is consistent for the full 10-distinct-card game", () => {
+    // Uses the same 10-card set as the performance test (all distinct → large search tree).
+    const p = [createCard(10, 5, 3, 8), createCard(7, 6, 4, 9), createCard(2, 8, 6, 3), createCard(5, 4, 7, 1), createCard(9, 3, 2, 6)];
+    const o = [createCard(4, 7, 5, 2), createCard(8, 3, 9, 6), createCard(1, 5, 8, 4), createCard(6, 9, 1, 7), createCard(3, 2, 4, 10)];
+    const opening = createInitialState(p, o);
+
+    const openingMoves = findBestMove(opening);
+    const openingOutcome = openingMoves[0]!.outcome;
+
+    const stateAfter1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+    const movesAfter1 = findBestMove(stateAfter1);
+    const outcomeAfter1 = movesAfter1[0]!.outcome;
+
+    const mirror = (o: Outcome) =>
+      o === Outcome.Win ? Outcome.Loss : o === Outcome.Loss ? Outcome.Win : Outcome.Draw;
+
+    expect(outcomeAfter1).toBe(mirror(openingOutcome));
+  }, 130000);
+
+  it("self-play from a mid-game position achieves the predicted outcome", () => {
+    // Five cards are pre-placed on the board before findBestMove is ever called.
+    const p = [
+      createCard(10, 5, 3, 8),  // p[0] — pre-placed at pos 0
+      createCard(7,  6, 4, 9),  // p[1] — pre-placed at pos 2
+      createCard(2,  8, 6, 3),  // p[2] — pre-placed at pos 4
+      createCard(5,  4, 7, 1),  // p[3] — remaining in hand
+      createCard(9,  3, 2, 6),  // p[4] — remaining in hand
+    ];
+    const o = [
+      createCard(4,  7, 5, 2),  // o[0] — pre-placed at pos 1
+      createCard(8,  3, 9, 6),  // o[1] — pre-placed at pos 3
+      createCard(1,  5, 8, 4),  // o[2] — remaining in hand
+      createCard(6,  9, 1, 7),  // o[3] — remaining in hand
+      createCard(3,  2, 4, 10), // o[4] — remaining in hand
+    ];
+
+    let state = createInitialState(p, o);
+    state = placeCard(state, p[0]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[1]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[2]!, 4);
+
+    const predictedOutcome = findBestMove(state)[0]!.outcome;
+    const actualOutcome = selfPlay(state);
+    expect(actualOutcome).toBe(predictedOutcome);
+  });
+});
+
 describe("solver performance", () => {
-  it("solves a full game from turn 1 within 15 seconds", () => {
+  it("solves a full game from turn 1 within 25 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
     const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
     const state = createInitialState(p, o);
@@ -216,7 +619,7 @@ describe("solver performance", () => {
     const elapsed = performance.now() - start;
 
     expect(moves.length).toBe(45); // 5 cards × 9 positions
-    expect(elapsed).toBeLessThan(60000); // 60 seconds (correct TT bounds are slower than naive caching)
+    expect(elapsed).toBeLessThan(25000); // 25 seconds
 
-  }, 65000);
+  }, 30000);
 });

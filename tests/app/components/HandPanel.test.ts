@@ -3,9 +3,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, selectCard } from '../../../src/app/store';
+import { game, startGame, selectCard, rankedMoves, currentState } from '../../../src/app/store';
 import HandPanel from '../../../src/app/components/game/HandPanel.svelte';
-import { createCard, Owner } from '../../../src/engine';
+import { createCard, Owner, findBestMove } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -23,10 +23,13 @@ beforeEach(() => {
     ruleset: { plus: false, same: false },
     playerHand: ph,
     opponentHand: oh,
+    firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
   });
   startGame();
+  // Worker is mocked — populate rankedMoves directly for component tests.
+  rankedMoves.set(findBestMove(get(currentState)!));
 });
 
 describe('HandPanel', () => {
@@ -48,6 +51,18 @@ describe('HandPanel', () => {
   });
 
   it('highlights the card matching the top ranked move', () => {
+    render(HandPanel, { props: { owner: Owner.Player } });
+    const highlighted = screen
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('ring-2'));
+    expect(highlighted.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('highlights the best-move card when moves come from a deserialized source (Worker)', () => {
+    // Simulate Worker structured-clone: new card object references
+    const moves = findBestMove(get(currentState)!);
+    rankedMoves.set(JSON.parse(JSON.stringify(moves)));
+
     render(HandPanel, { props: { owner: Owner.Player } });
     const highlighted = screen
       .getAllByRole('button')

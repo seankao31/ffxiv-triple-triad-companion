@@ -2,17 +2,25 @@
 <!-- ABOUTME: Ownership is shown via background colour: blue for player, red for opponent. -->
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
-  import { Owner } from '../../../engine';
+  import { Owner, Outcome } from '../../../engine';
 
   let {
     cell,
     highlighted = false,
+    evaluation = null,
     onclick,
   }: {
     cell: BoardCellData;
     highlighted?: boolean;
+    evaluation?: Outcome | null;
     onclick: () => void;
   } = $props();
+
+  const evalBg: Record<Outcome, string> = {
+    [Outcome.Win]: 'bg-eval-win/20',
+    [Outcome.Draw]: 'bg-eval-draw/20',
+    [Outcome.Loss]: 'bg-eval-loss/20',
+  };
 
   function displayValue(v: number): string {
     return v === 10 ? 'A' : String(v);
@@ -21,12 +29,17 @@
 
 <button
   {onclick}
-  class="w-20 h-20 border border-gray-600 rounded flex items-center justify-center
-    {highlighted ? 'ring-2 ring-yellow-400' : ''}
-    {cell ? (cell.owner === Owner.Player ? 'bg-blue-900' : 'bg-red-900') : 'bg-gray-800 hover:bg-gray-700'}"
+  data-eval={!cell && evaluation ? evaluation : undefined}
+  class="w-24 h-24 border border-surface-600 rounded flex items-center justify-center
+    {highlighted ? 'ring-2 ring-accent-gold' : ''}
+    {cell
+      ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim shadow-inner' : 'bg-accent-red-dim shadow-inner')
+      : evaluation
+        ? evalBg[evaluation]
+        : 'bg-surface-800 hover:bg-surface-700'}"
 >
   {#if cell}
-    <div class="grid grid-cols-3 gap-0 text-xs font-bold w-full h-full p-1">
+    <div class="grid grid-cols-3 gap-0 text-xs font-bold font-mono w-full h-full p-1">
       <div></div>
       <div class="flex items-center justify-center">{displayValue(cell.card.top)}</div>
       <div></div>
@@ -38,6 +51,6 @@
       <div></div>
     </div>
   {:else}
-    <span class="text-gray-600 text-2xl">·</span>
+    <span class="text-surface-500 text-2xl">·</span>
   {/if}
 </button>

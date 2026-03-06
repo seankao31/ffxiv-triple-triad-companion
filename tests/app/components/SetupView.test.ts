@@ -5,7 +5,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { game } from '../../../src/app/store';
 import SetupView from '../../../src/app/components/setup/SetupView.svelte';
-import { createCard } from '../../../src/engine';
+import { createCard, Owner } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -21,6 +21,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false },
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
+    firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
   });
@@ -59,5 +60,18 @@ describe('SetupView', () => {
     render(SetupView);
     await fireEvent.click(screen.getByRole('button', { name: /start game/i }));
     expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('renders a first-move selector defaulting to Player (You)', () => {
+    render(SetupView);
+    const playerRadio = screen.getByLabelText(/you/i);
+    expect(playerRadio).toBeChecked();
+  });
+
+  it('updates firstTurn in store when Opponent radio is clicked', async () => {
+    render(SetupView);
+    const opponentRadio = screen.getByLabelText(/opponent/i);
+    await fireEvent.click(opponentRadio);
+    expect(get(game).firstTurn).toBe(Owner.Opponent);
   });
 });

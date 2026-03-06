@@ -7,7 +7,7 @@ import { CardType } from '../../../src/engine';
 
 describe('CardInput', () => {
   it('renders four value inputs and a type selector', () => {
-    render(CardInput, { props: { onchange: vi.fn() } });
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn() } });
     expect(screen.getByLabelText('Top')).toBeInTheDocument();
     expect(screen.getByLabelText('Right')).toBeInTheDocument();
     expect(screen.getByLabelText('Bottom')).toBeInTheDocument();
@@ -17,39 +17,38 @@ describe('CardInput', () => {
 
   it('calls onchange with a Card when all values are filled', async () => {
     const onchange = vi.fn();
-    render(CardInput, { props: { onchange } });
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
 
-    await fireEvent.change(screen.getByLabelText('Top'), { target: { value: '5' } });
-    await fireEvent.change(screen.getByLabelText('Right'), { target: { value: '3' } });
-    await fireEvent.change(screen.getByLabelText('Bottom'), { target: { value: '7' } });
-    await fireEvent.change(screen.getByLabelText('Left'), { target: { value: '2' } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '3' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '7' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '2' });
 
     expect(onchange).toHaveBeenLastCalledWith(
       expect.objectContaining({ top: 5, right: 3, bottom: 7, left: 2, type: CardType.None }),
     );
   });
 
-  it('calls onchange with null when any value is cleared', async () => {
+  it('calls onchange with null when any field is missing', async () => {
     const onchange = vi.fn();
-    render(CardInput, { props: { onchange } });
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
 
-    await fireEvent.change(screen.getByLabelText('Top'), { target: { value: '5' } });
-    await fireEvent.change(screen.getByLabelText('Right'), { target: { value: '3' } });
-    await fireEvent.change(screen.getByLabelText('Bottom'), { target: { value: '7' } });
-    await fireEvent.change(screen.getByLabelText('Left'), { target: { value: '2' } });
-    await fireEvent.change(screen.getByLabelText('Top'), { target: { value: '' } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '3' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '7' });
+    // Left is not filled — expect null from the last call (when Bottom was set)
 
     expect(onchange).toHaveBeenLastCalledWith(null);
   });
 
-  it('accepts 10 as a value (A)', async () => {
+  it('accepts "A" keypress as value 10', async () => {
     const onchange = vi.fn();
-    render(CardInput, { props: { onchange } });
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
 
-    await fireEvent.change(screen.getByLabelText('Top'), { target: { value: '10' } });
-    await fireEvent.change(screen.getByLabelText('Right'), { target: { value: '10' } });
-    await fireEvent.change(screen.getByLabelText('Bottom'), { target: { value: '10' } });
-    await fireEvent.change(screen.getByLabelText('Left'), { target: { value: '10' } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: 'A' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: 'A' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: 'A' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: 'A' });
 
     expect(onchange).toHaveBeenLastCalledWith(
       expect.objectContaining({ top: 10, right: 10, bottom: 10, left: 10 }),
@@ -58,16 +57,61 @@ describe('CardInput', () => {
 
   it('emits the selected card type', async () => {
     const onchange = vi.fn();
-    render(CardInput, { props: { onchange } });
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
 
-    await fireEvent.change(screen.getByLabelText('Top'), { target: { value: '5' } });
-    await fireEvent.change(screen.getByLabelText('Right'), { target: { value: '5' } });
-    await fireEvent.change(screen.getByLabelText('Bottom'), { target: { value: '5' } });
-    await fireEvent.change(screen.getByLabelText('Left'), { target: { value: '5' } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '5' });
     await fireEvent.change(screen.getByRole('combobox'), { target: { value: 'primal' } });
 
     expect(onchange).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: CardType.Primal }),
     );
+  });
+
+  it('interprets "a" keypress as value 10 for Top', async () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
+    const top = screen.getByLabelText('Top');
+    await fireEvent.keyDown(top, { key: 'a' });
+    // top is now 10, but other fields empty → onchange(null)
+    expect(onchange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('interprets "0" keypress as value 10', async () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, onadvance: vi.fn() } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '0' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '5' });
+    expect(onchange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ top: 10, right: 5, bottom: 5, left: 5 }),
+    );
+  });
+
+  it('calls onadvance after filling the last field (left)', async () => {
+    const onadvance = vi.fn();
+    render(CardInput, { props: { onchange: vi.fn(), onadvance } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '5' });
+    expect(onadvance).toHaveBeenCalledOnce();
+  });
+
+  it('auto-advances focus from Top to Right on valid keypress', async () => {
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn() } });
+    const top = screen.getByLabelText('Top');
+    top.focus();
+    await fireEvent.keyDown(top, { key: '5' });
+    expect(document.activeElement).toBe(screen.getByLabelText('Right'));
+  });
+
+  it('card container is large enough to avoid dropdown overlap (w-36)', () => {
+    const { container } = render(CardInput, { props: { onchange: vi.fn() } });
+    const card = container.firstElementChild;
+    expect(card?.classList.contains('w-36')).toBe(true);
   });
 });

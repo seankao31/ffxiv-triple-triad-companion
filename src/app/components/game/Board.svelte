@@ -3,12 +3,25 @@
 <script lang="ts">
   import BoardCell from './BoardCell.svelte';
   import { currentState, rankedMoves, game, playCard } from '../../store';
+  import { Outcome, cardEquals } from '../../../engine';
 
   let suggestedPosition = $derived.by(() => {
     const selected = $game.selectedCard;
     if (!selected) return null;
-    const move = $rankedMoves.find((m) => m.card === selected);
+    const move = $rankedMoves.find((m) => cardEquals(m.card, selected));
     return move?.position ?? null;
+  });
+
+  let evalMap = $derived.by(() => {
+    const selected = $game.selectedCard;
+    if (!selected) return null;
+    const map = new Map<number, Outcome>();
+    for (const move of $rankedMoves) {
+      if (cardEquals(move.card, selected)) {
+        map.set(move.position, move.outcome);
+      }
+    }
+    return map;
   });
 </script>
 
@@ -17,6 +30,7 @@
     <BoardCell
       cell={$currentState?.board[i] ?? null}
       highlighted={suggestedPosition === i}
+      evaluation={evalMap?.get(i) ?? null}
       onclick={() => playCard(i)}
     />
   {/each}
