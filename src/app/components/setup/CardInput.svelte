@@ -13,7 +13,7 @@
 
   let values = $state<(number | null)[]>([null, null, null, null]);
   let type = $state<CardType>(CardType.None);
-  let inputEls: HTMLInputElement[] = [];
+  let inputEls: HTMLInputElement[] = $state([]);
 
   function displayValue(v: number | null): string {
     if (v === null) return '';

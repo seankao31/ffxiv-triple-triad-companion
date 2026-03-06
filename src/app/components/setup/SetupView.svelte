@@ -7,7 +7,6 @@
   import { Owner } from '../../../engine';
 
   let error = $state('');
-  let playerHandRef: { focusFirst: () => void } | undefined = $state(undefined);
   let opponentHandRef: { focusFirst: () => void } | undefined = $state(undefined);
 
   function handleStart() {
@@ -46,7 +45,6 @@
       label="Your Hand"
       onchange={updatePlayerCard}
       onadvance={() => opponentHandRef?.focusFirst()}
-      bind:this={playerHandRef}
     />
     <HandInput
       label="Opponent Hand"
