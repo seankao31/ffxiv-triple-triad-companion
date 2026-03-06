@@ -35,10 +35,11 @@ function buildCardIndex(state: GameState): Map<number, number> {
 
 // Encodes board + turn as a single number for use as a Map key.
 // Each cell: 0 = empty, 2*idx-1 = card idx owned by player, 2*idx = card idx owned by opponent.
-// Packed into 5 bits per cell (9 cells) + 1 turn bit = 46 bits (safe integer).
+// Turn bit occupies bit 0 (0=player, 1=opponent). Cells packed starting at bit 1 (shift=2),
+// 5 bits each (max cell value 20 < 32). Total: 1 + 9*5 = 46 bits (safe integer).
 function hashState(board: GameState["board"], currentTurn: Owner, cardIndex: Map<number, number>): number {
   let h = currentTurn === Owner.Player ? 0 : 1;
-  let shift = 1;
+  let shift = 2;
   for (let i = 0; i < 9; i++) {
     const cell = board[i];
     if (cell) {
