@@ -34,15 +34,33 @@ This structure also works for future imperfect-information modes (Three Open, Sw
 
 ---
 
-## Synchronous Solver in a Derived Store
+## Solver in a Web Worker with Persistent Transposition Table
 
-**Decision:** `rankedMoves` is a Svelte `derived` store that calls `findBestMove(currentState)` synchronously whenever the game state changes.
+**Decision:** The solver runs in a dedicated Web Worker (`src/engine/solver.worker.ts`). `rankedMoves` is a `writable` store updated via Worker message results. A `solverLoading` writable tracks in-progress solve requests. `SolverPanel` shows a loading indicator while the Worker is computing.
 
-**Rejected:** Web Worker, async computation, or debounced solver.
+**Rejected (originally):** Web Worker was initially considered unnecessary. The synchronous `derived` store approach was tried first.
 
-**Why:** The minimax solver with alpha-beta pruning and transposition table is fast enough for real-time use in a browser (sub-second for most mid-game positions). Moving to a Web Worker adds message-passing complexity, serialization overhead, and async UI states — all unnecessary at current performance levels. The derived store keeps the data flow simple and reactive. If performance becomes an issue (e.g., with PIMC for imperfect info), the solver call can be moved to a Worker without touching any component.
+**Why reversed:** Benchmarking with realistic distinct cards (5 unique cards per side) showed the opening-position solve takes ~21 seconds on V8. This freezes the browser UI thread entirely. With all-identical test hands the deduplication in minimax collapses each 5-card hand to 1 unique card, masking the real performance. The 21-second freeze was only discovered after testing with actual card values.
 
-**Hiccup encountered:** In Vitest's V8 environment, calling `findBestMove` from a fresh opening position with balanced hands (similar card values) caused the transposition table to exceed the JS `Map` size limit (~16.7M entries). The solver performance is fine in Bun's runtime but the V8 environment used by Vitest is slower and the balanced hands produce a flat search tree with minimal pruning. Solved by using asymmetric test hands (player all-10s, opponent all-1s) in store and component tests — these prune almost immediately. The tests verify store behaviour, not solver correctness, so any cards that terminate fast are appropriate.
+**Web Worker design:** A singleton Worker is created at store module load time. It holds one persistent solver instance created via `createSolver()` (a factory exported from `solver.ts`). The Worker accepts two message types:
+- `{ type: 'newGame', playerHand, opponentHand }` — calls `solver.reset()` to clear TT and rebuild card index
+- `{ type: 'solve', state }` — calls `solver.solve(state)`, posts back `{ type: 'result', moves }`
+
+**Persistent transposition table:** The TT persists across all turns of a game. The card set (which cards exist, not their board positions) never changes within a game, so TT entries remain valid across turns. `reset()` is called only on new game start, which clears the TT and rebuilds the card index from the full initial hands. This means turn 1 is slow (~21s) but all subsequent turns reuse the TT and complete in <1ms.
+
+**Test strategy:** The Worker is mocked globally in `tests/app/setup.ts`. Component and store tests set `rankedMoves` directly rather than triggering Worker computation. Engine tests (`bun test`) test the solver logic directly without Workers.
+
+---
+
+## Distinct Cards in Performance Tests
+
+**Decision:** Engine solver performance tests use 10 distinct cards (5 unique per side) and a 15-second timeout.
+
+**Rejected:** Using asymmetric hands (player all-10s, opponent all-1s) for performance tests.
+
+**Why:** Identical cards trigger deduplication in minimax, collapsing each 5-card hand to effectively 1 unique card per side. This makes the search nearly instant (~14ms) and useless as a performance regression test. The meaningful question is how long a real game takes, which requires distinct cards. 15 seconds is the observed upper bound for the opening-position solve with fresh TT; subsequent turns are sub-millisecond.
+
+**Store/component tests:** Still use fast asymmetric hands (all-10s vs all-1s) but with the Worker mocked. The asymmetric hands are valid here because these tests exercise store and component behaviour, not solver correctness or performance.
 
 ---
 

@@ -69,12 +69,71 @@ Post-launch feedback on the Phase 2 Live Solver UI. Six improvements addressing 
 
 ## Engine Changes
 
-None required. `findBestMove` already returns all card+position combos with outcomes. The UI filters by selected card.
+None required for features 1–6. `findBestMove` already returns all card+position combos with outcomes. The UI filters by selected card.
 
 ## Store Changes
 
 - Add `firstTurn: Owner` to `AppState` (defaults to `Owner.Player`)
 - `startGame` passes `firstTurn` to `createInitialState`
+
+---
+
+## Post-Implementation Issues (discovered during testing)
+
+Four bugs/regressions identified after the initial implementation was complete.
+
+### 7. CardInput Type Dropdown Overlap
+
+**Problem:** The type dropdown (`w-14`, absolutely positioned `top-1 right-1`) overlaps the Top and Right number input fields inside the `w-28 h-28` card container. The inputs are unreadable when the dropdown is visible.
+
+**Solution:** Increase the card container size so the dropdown has room without overlapping the cross layout. Target size: `w-36 h-36`. Adjust internal spacing accordingly.
+
+### 8. Browser Freeze on Game Start
+
+**Problem:** The browser UI thread blocks for ~21 seconds after clicking "Start Game" while `findBestMove` runs synchronously from the opening position with distinct (real) cards. The minimax search tree from turn 1 is enormous — alpha-beta pruning with a fresh transposition table provides little help on the first call.
+
+**Root cause:** `findBestMove` creates a fresh `Map` transposition table on every invocation. From the opening position with 5 unique cards per hand (no deduplication benefit), the full tree takes ~21 seconds on V8.
+
+**Note:** This freeze was masked during development because tests used asymmetric hands (all-10s player, all-1s opponent). Identical cards collapse to 1 unique card per side via deduplication, making the search effectively instant (~14ms).
+
+### 9. Browser Freeze on Card Click / Undo
+
+**Problem:** Clicking a card or pressing Undo also freezes the browser for several seconds. This is not from per-card evaluation (which only filters existing `rankedMoves` data). The freeze comes from `playCard` and `undo` triggering `currentState` to change, which re-runs `findBestMove` synchronously via the `derived` store.
+
+**Same root cause as #8.** Turn 2 and later positions are fast (<1ms) because the transposition table built during turn 1 is reused — but only within a single `findBestMove` call. When the `derived` store re-runs from scratch on the new state, a fresh TT is created and the search is slower.
+
+**Key insight:** The card set never changes within a game. A TT entry is valid as long as the same cards are in play. Only a new game (different card configuration) requires a fresh TT.
+
+### 10. Distinct Cards Required in Tests
+
+**Problem:** Using identical asymmetric hands (all-10s vs all-1s) in component and store tests masked the true solver performance. Tests should use distinct realistic card sets to catch performance regressions and correctness issues.
+
+**Solution:** Update engine performance tests to use 10 distinct cards (5 per side) with a realistic timeout (15 seconds). Update store/component tests to also use distinct cards, but mock the Worker so solver calls don't run in the test environment.
+
+---
+
+## Engine Changes (revised — issues 8–9)
+
+`solver.ts` requires refactoring to support a persistent transposition table:
+
+- Export a `createSolver()` factory that returns a solver instance with a persistent TT
+- The instance exposes `solve(state: GameState): RankedMove[]` (same logic as `findBestMove`)
+- `reset(playerHand: Card[], opponentHand: Card[])` builds a fresh cardIndex from the full initial hands and clears the TT — called when a new game starts
+- The existing `findBestMove(state)` export is kept for engine tests (it always creates a fresh TT)
+
+## Store Changes (revised — issues 8–9)
+
+The solver runs in a Web Worker to keep the UI thread responsive:
+
+- `rankedMoves` changes from a `derived` store to `writable<RankedMove[]>` (initially `[]`)
+- Add `solverLoading: writable<boolean>` (initially `false`)
+- A singleton Worker is created at module load time (`src/engine/solver.worker.ts`)
+- Worker messages:
+  - `{ type: 'newGame', playerHand: Card[], opponentHand: Card[] }` → calls `solver.reset()`
+  - `{ type: 'solve', state: GameState }` → calls `solver.solve()`, posts back `{ type: 'result', moves: RankedMove[] }`
+- `startGame()` posts `newGame` then immediately posts `solve` for the opening state
+- `currentState` is subscribed; on change, posts `solve` for the new state
+- On `result` message: `rankedMoves.set(moves)`, `solverLoading.set(false)`
 
 ## Type Icon Reference
 
