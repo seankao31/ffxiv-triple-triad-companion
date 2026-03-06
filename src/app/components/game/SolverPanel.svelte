@@ -52,7 +52,6 @@
 <div class="flex flex-col gap-2 min-w-52">
   <h3
     class="text-sm font-semibold text-surface-400 uppercase tracking-wide"
-    style="font-family: 'Rajdhani', sans-serif;"
     title={isOpponentTurn ? "Outcomes shown from the opponent's perspective. Their 'Win' means you lose." : "Outcomes shown from your perspective."}
   >
     {isOpponentTurn ? "Opponent's Best Moves" : "Best Moves"}

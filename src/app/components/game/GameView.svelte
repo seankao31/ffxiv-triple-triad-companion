@@ -15,7 +15,7 @@
 <div class="flex flex-col h-screen p-4">
   <div class="flex items-center justify-between mb-4">
     <h1 class="text-lg font-bold">Project Triad</h1>
-    <div class="text-base font-semibold text-surface-300" style="font-family: 'Rajdhani', sans-serif; font-weight: 600;">
+    <div class="text-base font-semibold text-surface-300">
       You: {score.player} — Opponent: {score.opponent}
     </div>
     <button

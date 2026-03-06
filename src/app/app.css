@@ -22,6 +22,7 @@
   --color-type-scion: #d4a843;
   --color-type-society: #4caf50;
   --color-type-garlean: #4a90d9;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 body {
@@ -29,9 +30,4 @@ body {
   color: var(--color-surface-300);
   font-family: 'Rajdhani', sans-serif;
   letter-spacing: 0.01em;
-}
-
-.mono {
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0;
 }
