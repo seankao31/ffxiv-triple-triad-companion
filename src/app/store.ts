@@ -3,6 +3,7 @@
 import { writable, derived, get } from 'svelte/store';
 import {
   createInitialState, placeCard as enginePlaceCard, findBestMove,
+  Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
 
@@ -14,6 +15,7 @@ export type AppState = {
   playerHand: (Card | null)[];
   opponentHand: (Card | null)[];
   history: GameState[];
+  firstTurn: Owner;
   selectedCard: Card | null;
 };
 
@@ -22,6 +24,7 @@ const initialAppState: AppState = {
   ruleset: { plus: false, same: false },
   playerHand: [null, null, null, null, null],
   opponentHand: [null, null, null, null, null],
+  firstTurn: Owner.Player,
   history: [],
   selectedCard: null,
 };
@@ -54,6 +57,10 @@ export function updateRuleset(ruleset: RuleSet): void {
   game.update((s) => ({ ...s, ruleset }));
 }
 
+export function updateFirstTurn(turn: Owner): void {
+  game.update((s) => ({ ...s, firstTurn: turn }));
+}
+
 export function startGame(): void {
   const s = get(game);
   if (s.playerHand.some((c) => c === null) || s.opponentHand.some((c) => c === null)) {
@@ -63,7 +70,7 @@ export function startGame(): void {
     const initial = createInitialState(
       s.playerHand as Card[],
       s.opponentHand as Card[],
-      undefined,
+      s.firstTurn,
       s.ruleset,
     );
     return { ...s, phase: 'play', history: [initial] };

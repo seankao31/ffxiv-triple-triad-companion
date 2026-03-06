@@ -21,6 +21,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false },
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
+    firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
   });

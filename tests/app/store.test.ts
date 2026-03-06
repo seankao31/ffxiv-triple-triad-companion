@@ -5,7 +5,7 @@ import { get } from 'svelte/store';
 import {
   game, currentState, rankedMoves,
   startGame, playCard, undoMove, selectCard,
-  updatePlayerCard, updateOpponentCard, updateRuleset,
+  updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome } from '../../src/engine';
 
@@ -23,6 +23,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false },
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
+    firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
   });
@@ -52,6 +53,10 @@ describe('setup', () => {
     updateRuleset({ plus: true, same: false });
     expect(get(game).ruleset).toEqual({ plus: true, same: false });
   });
+
+  it('defaults firstTurn to Player', () => {
+    expect(get(game).firstTurn).toBe(Owner.Player);
+  });
 });
 
 describe('startGame', () => {
@@ -67,6 +72,16 @@ describe('startGame', () => {
     expect(state.phase).toBe('play');
     expect(state.history).toHaveLength(1);
     expect(get(currentState)).not.toBeNull();
+  });
+
+  it('respects firstTurn when creating initial state', () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateFirstTurn(Owner.Opponent);
+    startGame();
+    expect(get(currentState)!.currentTurn).toBe(Owner.Opponent);
   });
 
   it('throws if any hand slot is null', () => {

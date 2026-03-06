@@ -23,6 +23,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false },
     playerHand: ph,
     opponentHand: oh,
+    firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
   });
