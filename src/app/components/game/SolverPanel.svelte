@@ -1,4 +1,4 @@
-<!-- ABOUTME: Displays the solver's ranked move suggestions with outcome and robustness score. -->
+<!-- ABOUTME: Shows card notation, outcome labels, and adapts header based on whose turn it is. -->
 <!-- ABOUTME: Highlights the top move with a ring; shows Win/Draw/Loss label per move. -->
 <script lang="ts">
   import { rankedMoves, currentState } from '../../store';

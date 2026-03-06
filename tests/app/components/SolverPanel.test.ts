@@ -59,17 +59,16 @@ describe('SolverPanel', () => {
   it('shows "Best Moves" header on player turn', () => {
     render(SolverPanel);
     // It's player's turn at game start
-    expect(screen.getByText(/best moves/i)).toBeInTheDocument();
+    expect(screen.getByText('Best Moves')).toBeInTheDocument();
   });
 
   it('shows "Opponent" in header on opponent turn', () => {
     // Play one move so it becomes opponent's turn
     const state = get(currentState);
-    if (state) {
-      const ph = state.playerHand;
-      selectCard(ph[0]!);
-      playCard(0);
-    }
+    expect(state).not.toBeNull();
+    const ph = state!.playerHand;
+    selectCard(ph[0]!);
+    playCard(0);
     render(SolverPanel);
     // After one player move, it's opponent's turn
     expect(screen.getByText(/opponent/i)).toBeInTheDocument();
