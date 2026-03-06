@@ -206,7 +206,7 @@ describe("findBestMove — additional scenarios", () => {
 });
 
 describe("solver performance", () => {
-  it("solves a full game from turn 1 within 15 seconds", () => {
+  it("solves a full game from turn 1 within 25 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
     const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
     const state = createInitialState(p, o);
@@ -216,7 +216,7 @@ describe("solver performance", () => {
     const elapsed = performance.now() - start;
 
     expect(moves.length).toBe(45); // 5 cards × 9 positions
-    expect(elapsed).toBeLessThan(60000); // 60 seconds (correct TT bounds are slower than naive caching)
+    expect(elapsed).toBeLessThan(25000); // 25 seconds
 
-  }, 65000);
+  }, 30000);
 });
