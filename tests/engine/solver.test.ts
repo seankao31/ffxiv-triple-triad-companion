@@ -4,7 +4,7 @@
 import { describe, it, expect } from "bun:test";
 import { type Board, type GameState, createCard, createInitialState, getScore, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
-import { findBestMove, createSolver } from "../../src/engine/solver";
+import { findBestMove, createSolver, type Solver } from "../../src/engine/solver";
 
 describe("findBestMove", () => {
   it("returns no moves for a full board", () => {
@@ -347,6 +347,93 @@ describe("createSolver — TT persistence", () => {
 
     expect(outcomeAfter1).toBe(mirror(openingOutcome));
   });
+});
+
+describe("createSolver — Loss prediction accuracy", () => {
+  // Plays out a full game using findBestMove (fresh TT per call) for exact predictions.
+  // Returns outcome from initialState.currentTurn's perspective.
+  function selfPlayExact(initialState: GameState): Outcome {
+    let state = initialState;
+    for (;;) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length === 0 || state.board.every(c => c !== null)) break;
+      const moves = findBestMove(state);
+      if (moves.length === 0) break;
+      state = placeCard(state, moves[0]!.card, moves[0]!.position);
+    }
+    const score = getScore(state);
+    const playerWon = score.player > score.opponent;
+    const opponentWon = score.player < score.opponent;
+    if (initialState.currentTurn === Owner.Player) {
+      return playerWon ? Outcome.Win : opponentWon ? Outcome.Loss : Outcome.Draw;
+    } else {
+      return opponentWon ? Outcome.Win : playerWon ? Outcome.Loss : Outcome.Draw;
+    }
+  }
+
+  // Plays out remaining moves using solver.solve() so the warm TT makes each call fast.
+  // Returns outcome from initialState.currentTurn's perspective.
+  function selfPlayWithSolver(initialState: GameState, solver: Solver): Outcome {
+    let state = initialState;
+    for (;;) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length === 0 || state.board.every(c => c !== null)) break;
+      const moves = solver.solve(state);
+      if (moves.length === 0) break;
+      state = placeCard(state, moves[0]!.card, moves[0]!.position);
+    }
+    const score = getScore(state);
+    const playerWon = score.player > score.opponent;
+    const opponentWon = score.player < score.opponent;
+    if (initialState.currentTurn === Owner.Player) {
+      return playerWon ? Outcome.Win : opponentWon ? Outcome.Loss : Outcome.Draw;
+    } else {
+      return opponentWon ? Outcome.Win : playerWon ? Outcome.Loss : Outcome.Draw;
+    }
+  }
+
+  it("player loses when taking a predicted-Loss move on turn 3 and both play optimally thereafter (Plus rule)", () => {
+    // Both players hold the same 5 cards with Plus rule: combos create real
+    // strategic divergence even from a symmetric starting position.
+    // After Player's optimal first move and Opponent's optimal response, Player
+    // should have at least one move predicted as Loss. Taking that move and
+    // playing optimally from there must actually produce a loss.
+    //
+    // Using findBestMove (fresh TT per call) for both prediction and verification:
+    // the persistent solver TT stores alpha-beta bounds that can give non-exact
+    // values for suboptimal moves, so fresh-TT calls are needed for exact results.
+    const cards = () => [
+      createCard(8,  2, 3, 8),
+      createCard(4,  8, 8, 1),
+      createCard(8,  8, 4, 1),
+      createCard(10, 10, 2, 5),
+      createCard(2,  5, 9, 9),
+    ];
+    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false });
+    const solver = createSolver();
+    solver.reset(cards(), cards());
+
+    // Turn 1: Player's optimal first move (solver.solve is fast for turn 1 after opening)
+    const openingMoves = solver.solve(opening);
+    const state1 = placeCard(opening, openingMoves[0]!.card, openingMoves[0]!.position);
+
+    // Turn 2: Opponent's optimal response
+    const oppMoves1 = solver.solve(state1);
+    const state2 = placeCard(state1, oppMoves1[0]!.card, oppMoves1[0]!.position);
+
+    // Turn 3: find a Loss-predicted move using fresh TT for an exact prediction
+    const playerMoves2 = findBestMove(state2);
+    const losingMove = playerMoves2.find(m => m.outcome === Outcome.Loss);
+    expect(losingMove).toBeDefined();
+
+    const state3 = placeCard(state2, losingMove!.card, losingMove!.position);
+
+    // Verify with selfPlay (also uses fresh TT per call for exact outcomes).
+    // state3.currentTurn is Opponent; selfPlay returns from Opponent's view.
+    const outcomeForOpponent = selfPlayExact(state3);
+    // Opponent winning confirms the Loss prediction was correct.
+    expect(outcomeForOpponent).toBe(Outcome.Win);
+  }, 130000);
 });
 
 describe("solver self-play consistency", () => {
