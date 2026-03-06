@@ -12,6 +12,7 @@ function cardId(c: Card): number {
 }
 
 // Builds a mapping from cardId to a small index (1-10) for compact board hashing.
+// Indexes all cards in the game: remaining hands AND cards already placed on the board.
 function buildCardIndex(state: GameState): Map<number, number> {
   const index = new Map<number, number>();
   let nextIdx = 1;
@@ -22,6 +23,12 @@ function buildCardIndex(state: GameState): Map<number, number> {
   for (const card of state.opponentHand) {
     const id = cardId(card);
     if (!index.has(id)) index.set(id, nextIdx++);
+  }
+  for (const cell of state.board) {
+    if (cell) {
+      const id = cardId(cell.card);
+      if (!index.has(id)) index.set(id, nextIdx++);
+    }
   }
   return index;
 }

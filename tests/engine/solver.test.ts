@@ -267,6 +267,31 @@ describe("createSolver", () => {
   });
 });
 
+describe("findBestMove — mid-game correctness", () => {
+  it("gives correct outcomes when board contains cards no longer in any hand", () => {
+    // After 5 cards are placed, board cells hold cards absent from remaining hands.
+    // buildCardIndex must include those board cards for TT hashing to be correct.
+    const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
+    const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
+    let state = createInitialState(p, o);
+    state = placeCard(state, p[2]!, 0);
+    state = placeCard(state, o[0]!, 1);
+    state = placeCard(state, p[3]!, 2);
+    state = placeCard(state, o[1]!, 3);
+    state = placeCard(state, p[4]!, 4);
+
+    // createSolver with reset() correctly indexes all original cards — use as reference
+    const solver = createSolver();
+    solver.reset(p, o);
+    const referenceMoves = solver.solve(state);
+
+    const directMoves = findBestMove(state);
+
+    expect(directMoves.map(m => m.outcome)).toEqual(referenceMoves.map(m => m.outcome));
+    expect(directMoves.map(m => m.position)).toEqual(referenceMoves.map(m => m.position));
+  });
+});
+
 describe("solver performance", () => {
   it("solves a full game from turn 1 within 25 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
