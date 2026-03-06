@@ -2,7 +2,7 @@
 // ABOUTME: Holds game phase, hands, ruleset, firstTurn setting, history stack, and selected card.
 import { writable, derived, get } from 'svelte/store';
 import {
-  createInitialState, placeCard as enginePlaceCard, findBestMove,
+  createInitialState, placeCard as enginePlaceCard,
   Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
@@ -33,9 +33,35 @@ export const game = writable<AppState>(initialAppState);
 
 export const currentState = derived(game, ($g) => $g.history.at(-1) ?? null);
 
-export const rankedMoves = derived(currentState, ($state): RankedMove[] =>
-  $state ? findBestMove($state) : [],
+export const rankedMoves = writable<RankedMove[]>([]);
+export const solverLoading = writable<boolean>(false);
+
+const solverWorker = new Worker(
+  new URL('../engine/solver.worker.ts', import.meta.url),
+  { type: 'module' },
 );
+
+solverWorker.onmessage = (e: MessageEvent) => {
+  if (e.data.type === 'result') {
+    rankedMoves.set(e.data.moves);
+    solverLoading.set(false);
+  }
+};
+
+function triggerSolve(state: GameState) {
+  solverLoading.set(true);
+  solverWorker.postMessage({ type: 'solve', state });
+}
+
+// Trigger solve when game state changes; clean up when returning to setup.
+currentState.subscribe((state) => {
+  if (state) {
+    triggerSolve(state);
+  } else {
+    rankedMoves.set([]);
+    solverLoading.set(false);
+  }
+});
 
 export function updatePlayerCard(index: number, card: Card | null): void {
   game.update((s) => {
@@ -66,6 +92,13 @@ export function startGame(): void {
   if (s.playerHand.some((c) => c === null) || s.opponentHand.some((c) => c === null)) {
     throw new Error('All hand slots must be filled before starting the game.');
   }
+  // Send newGame before updating state so the Worker resets its TT before
+  // the solve request (triggered by the currentState subscription) arrives.
+  solverWorker.postMessage({
+    type: 'newGame',
+    playerHand: s.playerHand as Card[],
+    opponentHand: s.opponentHand as Card[],
+  });
   game.update((s) => {
     const initial = createInitialState(
       s.playerHand as Card[],
@@ -75,6 +108,7 @@ export function startGame(): void {
     );
     return { ...s, phase: 'play', history: [initial] };
   });
+  // currentState subscription fires during game.update() → triggerSolve called automatically
 }
 
 export function selectCard(card: Card | null): void {

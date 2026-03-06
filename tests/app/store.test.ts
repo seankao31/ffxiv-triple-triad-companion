@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import {
-  game, currentState, rankedMoves,
+  game, currentState, rankedMoves, solverLoading,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
 } from '../../src/app/store';
@@ -177,13 +177,27 @@ describe('derived stores', () => {
     expect(get(rankedMoves)).toEqual([]);
   });
 
-  it('rankedMoves updates after startGame', () => {
+  it('solverLoading is false initially', () => {
+    expect(get(solverLoading)).toBe(false);
+  });
+});
+
+describe('async solver', () => {
+  it('startGame sets solverLoading to true while worker computes', () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
+    expect(get(solverLoading)).toBe(true);
+  });
 
-    expect(get(rankedMoves).length).toBeGreaterThan(0);
+  it('rankedMoves is empty after startGame until worker responds', () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    oh.forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    expect(get(rankedMoves)).toEqual([]);
   });
 });

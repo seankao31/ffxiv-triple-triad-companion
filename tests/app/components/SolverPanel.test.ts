@@ -3,9 +3,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
-import { game, startGame, currentState, selectCard, playCard } from '../../../src/app/store';
+import { game, startGame, currentState, selectCard, playCard, rankedMoves } from '../../../src/app/store';
 import SolverPanel from '../../../src/app/components/game/SolverPanel.svelte';
-import { createCard, Owner } from '../../../src/engine';
+import { createCard, Owner, findBestMove } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -28,6 +28,8 @@ beforeEach(() => {
     selectedCard: null,
   });
   startGame();
+  // Worker is mocked — populate rankedMoves directly for component tests.
+  rankedMoves.set(findBestMove(get(currentState)!));
 });
 
 describe('SolverPanel', () => {

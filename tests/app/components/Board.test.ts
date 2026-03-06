@@ -3,9 +3,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, selectCard } from '../../../src/app/store';
+import { game, startGame, selectCard, rankedMoves, currentState } from '../../../src/app/store';
 import Board from '../../../src/app/components/game/Board.svelte';
-import { createCard, Owner } from '../../../src/engine';
+import { createCard, Owner, findBestMove } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -56,6 +56,7 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    rankedMoves.set(findBestMove(get(currentState)!));
     selectCard(ph[0]!);
 
     const { container } = render(Board);
@@ -67,6 +68,7 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    rankedMoves.set(findBestMove(get(currentState)!));
     selectCard(ph[0]!);
 
     const { container } = render(Board);
