@@ -59,7 +59,7 @@
 </script>
 
 <!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
-<div class="relative w-28 h-28 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col">
+<div class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col">
   <!-- Type dropdown at top-right -->
   <div class="absolute top-1 right-1">
     <select

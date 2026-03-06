@@ -108,4 +108,10 @@ describe('CardInput', () => {
     await fireEvent.keyDown(top, { key: '5' });
     expect(document.activeElement).toBe(screen.getByLabelText('Right'));
   });
+
+  it('card container is large enough to avoid dropdown overlap (w-36)', () => {
+    const { container } = render(CardInput, { props: { onchange: vi.fn() } });
+    const card = container.firstElementChild;
+    expect(card?.classList.contains('w-36')).toBe(true);
+  });
 });
