@@ -61,4 +61,17 @@ describe('SetupView', () => {
     await fireEvent.click(screen.getByRole('button', { name: /start game/i }));
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
+
+  it('renders a first-move selector defaulting to Player (You)', () => {
+    render(SetupView);
+    const playerRadio = screen.getByLabelText(/you/i);
+    expect(playerRadio).toBeChecked();
+  });
+
+  it('updates firstTurn in store when Opponent radio is clicked', async () => {
+    render(SetupView);
+    const opponentRadio = screen.getByLabelText(/opponent/i);
+    await fireEvent.click(opponentRadio);
+    expect(get(game).firstTurn).toBe(Owner.Opponent);
+  });
 });

@@ -3,7 +3,8 @@
 <script lang="ts">
   import HandInput from './HandInput.svelte';
   import RulesetInput from './RulesetInput.svelte';
-  import { startGame, updatePlayerCard, updateOpponentCard } from '../../store';
+  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn } from '../../store';
+  import { Owner } from '../../../engine';
 
   let error = $state('');
 
@@ -21,6 +22,22 @@
   <h1 class="text-2xl font-bold">Project Triad — Setup</h1>
 
   <RulesetInput />
+
+  <fieldset class="flex gap-6 items-center">
+    <legend class="text-sm font-semibold text-surface-400 mr-2">First Move</legend>
+    <label class="flex items-center gap-2 text-sm cursor-pointer">
+      <input type="radio" name="firstTurn" value="player"
+        checked={$game.firstTurn === Owner.Player}
+        onchange={() => updateFirstTurn(Owner.Player)} />
+      You
+    </label>
+    <label class="flex items-center gap-2 text-sm cursor-pointer">
+      <input type="radio" name="firstTurn" value="opponent"
+        checked={$game.firstTurn === Owner.Opponent}
+        onchange={() => updateFirstTurn(Owner.Opponent)} />
+      Opponent
+    </label>
+  </fieldset>
 
   <div class="flex gap-12">
     <HandInput label="Your Hand" onchange={updatePlayerCard} />
