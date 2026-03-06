@@ -3,12 +3,12 @@
 <script lang="ts">
   import BoardCell from './BoardCell.svelte';
   import { currentState, rankedMoves, game, playCard } from '../../store';
-  import { Outcome } from '../../../engine';
+  import { Outcome, cardEquals } from '../../../engine';
 
   let suggestedPosition = $derived.by(() => {
     const selected = $game.selectedCard;
     if (!selected) return null;
-    const move = $rankedMoves.find((m) => m.card === selected);
+    const move = $rankedMoves.find((m) => cardEquals(m.card, selected));
     return move?.position ?? null;
   });
 
@@ -17,7 +17,7 @@
     if (!selected) return null;
     const map = new Map<number, Outcome>();
     for (const move of $rankedMoves) {
-      if (move.card === selected) {
+      if (cardEquals(move.card, selected)) {
         map.set(move.position, move.outcome);
       }
     }

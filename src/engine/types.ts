@@ -74,6 +74,10 @@ export interface Neighbor {
   readonly defendingEdge: "top" | "right" | "bottom" | "left";
 }
 
+export function cardEquals(a: Card, b: Card): boolean {
+  return a.top === b.top && a.right === b.right && a.bottom === b.bottom && a.left === b.left && a.type === b.type;
+}
+
 export function createCard(
   top: number,
   right: number,

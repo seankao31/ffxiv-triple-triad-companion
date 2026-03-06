@@ -292,6 +292,38 @@ describe("findBestMove — mid-game correctness", () => {
   });
 });
 
+describe("createSolver — TT persistence", () => {
+  it("TT is empty after reset()", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const solver = createSolver();
+    solver.reset(p, o);
+    expect(solver.ttSize()).toBe(0);
+  });
+
+  it("TT is populated after solve()", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    solver.solve(state);
+    expect(solver.ttSize()).toBeGreaterThan(0);
+  });
+
+  it("TT size is unchanged when solving the same state twice (all hits)", () => {
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+    const solver = createSolver();
+    solver.reset(p, o);
+    solver.solve(state);
+    const sizeAfterFirst = solver.ttSize();
+    solver.solve(state);
+    expect(solver.ttSize()).toBe(sizeAfterFirst);
+  });
+});
+
 describe("solver performance", () => {
   it("solves a full game from turn 1 within 25 seconds", () => {
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];

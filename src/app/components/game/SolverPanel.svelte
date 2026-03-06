@@ -2,7 +2,7 @@
 <!-- ABOUTME: Highlights the top move with a ring; shows Win/Draw/Loss label per move. -->
 <script lang="ts">
   import { rankedMoves, solverLoading, currentState, game } from '../../store';
-  import { Outcome, CardType, Owner, type Card } from '../../../engine';
+  import { Outcome, CardType, Owner, cardEquals, type Card } from '../../../engine';
 
   const outcomeLabel: Record<Outcome, string> = {
     [Outcome.Win]: 'Win',
@@ -65,7 +65,7 @@
       <li
         class="flex items-center gap-2 text-sm p-2 rounded
           {i === 0 ? 'bg-surface-700 ring-1 ring-accent-gold' : 'bg-surface-800'}
-          {move.card === selectedCard ? 'border-l-2 border-accent-blue' : ''}"
+          {selectedCard && cardEquals(move.card, selectedCard) ? 'border-l-2 border-accent-blue' : ''}"
       >
         <span class="font-mono text-surface-300 text-xs">
           {notation.values}{#if notation.typeAbbr}<span class="{notation.typeClass}">[{notation.typeAbbr}]</span>{/if}

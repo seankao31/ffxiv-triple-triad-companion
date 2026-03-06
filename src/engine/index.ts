@@ -14,6 +14,7 @@ export {
   Owner,
   Outcome,
   ADJACENCY,
+  cardEquals,
   createCard,
   createInitialState,
   getScore,

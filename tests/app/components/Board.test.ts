@@ -76,4 +76,19 @@ describe('Board', () => {
     const evalCells = container.querySelectorAll('[data-eval]');
     expect(evalCells.length).toBe(9);
   });
+
+  it('shows outcome overlays when moves come from a deserialized source (Worker)', async () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    startGame();
+    // Simulate Worker structured-clone: new object references for card objects
+    const moves = findBestMove(get(currentState)!);
+    rankedMoves.set(JSON.parse(JSON.stringify(moves)));
+    selectCard(ph[0]!); // original reference — won't === deserialized move.card
+
+    const { container } = render(Board);
+    const evalCells = container.querySelectorAll('[data-eval]');
+    expect(evalCells.length).toBe(9);
+  });
 });

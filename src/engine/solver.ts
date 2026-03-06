@@ -228,6 +228,7 @@ export function findBestMove(state: GameState): RankedMove[] {
 export interface Solver {
   reset(playerHand: Card[], opponentHand: Card[]): void;
   solve(state: GameState): RankedMove[];
+  ttSize(): number;
 }
 
 export function createSolver(): Solver {
@@ -246,6 +247,9 @@ export function createSolver(): Solver {
     },
     solve(state: GameState): RankedMove[] {
       return findBestMoveWith(state, tt, cardIndex);
+    },
+    ttSize(): number {
+      return tt.size;
     },
   };
 }
