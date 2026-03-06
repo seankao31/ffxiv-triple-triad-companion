@@ -57,4 +57,16 @@ describe('HandPanel', () => {
       .filter((b) => b.classList.contains('ring-2'));
     expect(highlighted.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('highlights the best-move card when moves come from a deserialized source (Worker)', () => {
+    // Simulate Worker structured-clone: new card object references
+    const moves = findBestMove(get(currentState)!);
+    rankedMoves.set(JSON.parse(JSON.stringify(moves)));
+
+    render(HandPanel, { props: { owner: Owner.Player } });
+    const highlighted = screen
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('ring-2'));
+    expect(highlighted.length).toBeGreaterThanOrEqual(1);
+  });
 });
