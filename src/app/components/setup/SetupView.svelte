@@ -28,12 +28,12 @@
   </div>
 
   {#if error}
-    <p role="alert" class="text-red-400 text-sm">{error}</p>
+    <p role="alert" class="text-accent-red text-sm">{error}</p>
   {/if}
 
   <button
     onclick={handleStart}
-    class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold"
+    class="px-6 py-2 bg-accent-blue hover:bg-accent-blue/80 rounded font-semibold"
   >
     Start Game
   </button>

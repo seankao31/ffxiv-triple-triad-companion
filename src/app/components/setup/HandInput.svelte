@@ -14,7 +14,7 @@
 </script>
 
 <div>
-  <h3 class="text-sm font-semibold text-gray-300 mb-2">{label}</h3>
+  <h3 class="text-sm font-semibold text-surface-300 mb-2">{label}</h3>
   <div class="flex flex-col gap-3">
     {#each Array(5) as _, i}
       <CardInput onchange={(card) => onchange(i, card)} />

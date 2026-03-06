@@ -49,25 +49,25 @@
   <div></div>
   <input aria-label="Top" type="number" min="1" max="10"
     value={top} oninput={onTopChange} onchange={onTopChange}
-    class="w-10 text-center bg-gray-700 rounded border border-gray-600 p-1" />
+    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
   <div></div>
 
   <input aria-label="Left" type="number" min="1" max="10"
     value={left} oninput={onLeftChange} onchange={onLeftChange}
-    class="w-10 text-center bg-gray-700 rounded border border-gray-600 p-1" />
+    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
   <select value={type} onchange={onTypeChange}
-    class="bg-gray-700 rounded border border-gray-600 p-1 text-xs">
+    class="bg-surface-700 rounded border border-surface-600 p-1 text-xs">
     {#each Object.values(CardType) as ct}
       <option value={ct}>{ct}</option>
     {/each}
   </select>
   <input aria-label="Right" type="number" min="1" max="10"
     value={right} oninput={onRightChange} onchange={onRightChange}
-    class="w-10 text-center bg-gray-700 rounded border border-gray-600 p-1" />
+    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
 
   <div></div>
   <input aria-label="Bottom" type="number" min="1" max="10"
     value={bottom} oninput={onBottomChange} onchange={onBottomChange}
-    class="w-10 text-center bg-gray-700 rounded border border-gray-600 p-1" />
+    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
   <div></div>
 </div>

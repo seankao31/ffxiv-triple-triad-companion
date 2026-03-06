@@ -11,9 +11,9 @@
   };
 
   const outcomeColor: Record<Outcome, string> = {
-    [Outcome.Win]: 'text-green-400',
-    [Outcome.Draw]: 'text-yellow-400',
-    [Outcome.Loss]: 'text-red-400',
+    [Outcome.Win]: 'text-eval-win',
+    [Outcome.Draw]: 'text-eval-draw',
+    [Outcome.Loss]: 'text-eval-loss',
   };
 
   function positionLabel(pos: number): string {
@@ -24,16 +24,16 @@
 </script>
 
 <div class="flex flex-col gap-2">
-  <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Best Moves</h3>
+  <h3 class="text-xs font-semibold text-surface-400 uppercase tracking-wide">Best Moves</h3>
   <ul class="flex flex-col gap-1">
     {#each $rankedMoves as move, i}
       <li
         class="flex items-center gap-2 text-sm p-2 rounded
-          {i === 0 ? 'bg-gray-700 ring-1 ring-yellow-400' : 'bg-gray-800'}"
+          {i === 0 ? 'bg-surface-700 ring-1 ring-accent-gold' : 'bg-surface-800'}"
       >
-        <span class="font-mono text-gray-400 w-8">{positionLabel(move.position)}</span>
+        <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
         <span class="font-semibold {outcomeColor[move.outcome]}">{outcomeLabel[move.outcome]}</span>
-        <span class="text-gray-500 text-xs">rob={move.robustness.toFixed(2)}</span>
+        <span class="text-surface-500 text-xs">rob={move.robustness.toFixed(2)}</span>
       </li>
     {/each}
   </ul>
