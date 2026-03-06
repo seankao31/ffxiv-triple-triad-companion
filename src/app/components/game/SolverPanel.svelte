@@ -1,7 +1,7 @@
 <!-- ABOUTME: Shows card notation, outcome labels, and adapts header based on whose turn it is. -->
 <!-- ABOUTME: Highlights the top move with a ring; shows Win/Draw/Loss label per move. -->
 <script lang="ts">
-  import { rankedMoves, currentState, game } from '../../store';
+  import { rankedMoves, solverLoading, currentState, game } from '../../store';
   import { Outcome, CardType, Owner, type Card } from '../../../engine';
 
   const outcomeLabel: Record<Outcome, string> = {
@@ -56,6 +56,9 @@
   >
     {isOpponentTurn ? "Opponent's Best Moves" : "Best Moves"}
   </h3>
+  {#if $solverLoading}
+    <div role="status" class="text-surface-400 text-sm animate-pulse">Calculating…</div>
+  {/if}
   <ul class="flex flex-col gap-1">
     {#each $rankedMoves as move, i}
       {@const notation = cardNotation(move.card)}

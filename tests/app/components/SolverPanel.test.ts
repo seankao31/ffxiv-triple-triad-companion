@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
-import { game, startGame, currentState, selectCard, playCard, rankedMoves } from '../../../src/app/store';
+import { game, startGame, currentState, selectCard, playCard, rankedMoves, solverLoading } from '../../../src/app/store';
 import SolverPanel from '../../../src/app/components/game/SolverPanel.svelte';
 import { createCard, Owner, findBestMove } from '../../../src/engine';
 
@@ -62,6 +62,18 @@ describe('SolverPanel', () => {
     render(SolverPanel);
     // It's player's turn at game start
     expect(screen.getByText('Best Moves')).toBeInTheDocument();
+  });
+
+  it('shows a loading indicator when solverLoading is true', () => {
+    solverLoading.set(true);
+    render(SolverPanel);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('hides the loading indicator when solverLoading is false', () => {
+    solverLoading.set(false);
+    render(SolverPanel);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('shows "Opponent" in header on opponent turn', () => {
