@@ -7,6 +7,8 @@
   import { Owner } from '../../../engine';
 
   let error = $state('');
+  let playerHandRef: { focusFirst: () => void } | undefined = $state(undefined);
+  let opponentHandRef: { focusFirst: () => void } | undefined = $state(undefined);
 
   function handleStart() {
     try {
@@ -40,8 +42,17 @@
   </fieldset>
 
   <div class="flex gap-12">
-    <HandInput label="Your Hand" onchange={updatePlayerCard} />
-    <HandInput label="Opponent Hand" onchange={updateOpponentCard} />
+    <HandInput
+      label="Your Hand"
+      onchange={updatePlayerCard}
+      onadvance={() => opponentHandRef?.focusFirst()}
+      bind:this={playerHandRef}
+    />
+    <HandInput
+      label="Opponent Hand"
+      onchange={updateOpponentCard}
+      bind:this={opponentHandRef}
+    />
   </div>
 
   {#if error}

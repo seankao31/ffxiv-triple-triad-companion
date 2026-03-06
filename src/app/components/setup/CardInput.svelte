@@ -1,73 +1,131 @@
-<!-- ABOUTME: Input for a single card slot — four directional values and a card type. -->
-<!-- ABOUTME: Calls onchange with a Card when all fields are filled, or null otherwise. -->
+<!-- ABOUTME: Input for a single card slot rendered as a card shape. -->
+<!-- ABOUTME: Accepts single-char keypresses (1-9, A/a/0=10) and advances focus automatically. -->
 <script lang="ts">
   import { createCard, CardType, type Card } from '../../../engine';
 
-  let { onchange }: { onchange: (card: Card | null) => void } = $props();
+  let {
+    onchange,
+    onadvance = () => {},
+  }: {
+    onchange: (card: Card | null) => void;
+    onadvance?: () => void;
+  } = $props();
 
-  let top = $state('');
-  let right = $state('');
-  let bottom = $state('');
-  let left = $state('');
+  let values = $state<(number | null)[]>([null, null, null, null]);
   let type = $state<CardType>(CardType.None);
+  let inputEls: HTMLInputElement[] = [];
 
-  function emitFromValues(t: string, r: string, b: string, l: string, ty: CardType) {
-    const tv = parseInt(t);
-    const rv = parseInt(r);
-    const bv = parseInt(b);
-    const lv = parseInt(l);
-    if ([tv, rv, bv, lv].some((v) => isNaN(v) || v < 1 || v > 10)) {
-      onchange(null);
+  function displayValue(v: number | null): string {
+    if (v === null) return '';
+    return v === 10 ? 'A' : String(v);
+  }
+
+  function parseKey(key: string): number | null {
+    if (key >= '1' && key <= '9') return parseInt(key);
+    if (key === '0' || key === 'a' || key === 'A') return 10;
+    return null;
+  }
+
+  function emit() {
+    const [t, r, b, l] = values;
+    if (t !== null && r !== null && b !== null && l !== null) {
+      onchange(createCard(t, r, b, l, type));
     } else {
-      onchange(createCard(tv, rv, bv, lv, ty));
+      onchange(null);
     }
   }
 
-  function onTopChange(e: Event) {
-    top = (e.target as HTMLInputElement).value;
-    emitFromValues(top, right, bottom, left, type);
+  function handleKeyDown(index: number, e: KeyboardEvent) {
+    const parsed = parseKey(e.key);
+    if (parsed === null) return;
+    e.preventDefault();
+    values[index] = parsed;
+    emit();
+    if (index < 3) {
+      inputEls[index + 1]?.focus();
+    } else {
+      onadvance();
+    }
   }
-  function onRightChange(e: Event) {
-    right = (e.target as HTMLInputElement).value;
-    emitFromValues(top, right, bottom, left, type);
-  }
-  function onBottomChange(e: Event) {
-    bottom = (e.target as HTMLInputElement).value;
-    emitFromValues(top, right, bottom, left, type);
-  }
-  function onLeftChange(e: Event) {
-    left = (e.target as HTMLInputElement).value;
-    emitFromValues(top, right, bottom, left, type);
-  }
+
   function onTypeChange(e: Event) {
     type = (e.target as HTMLSelectElement).value as CardType;
-    emitFromValues(top, right, bottom, left, type);
+    emit();
+  }
+
+  export function focusFirst() {
+    inputEls[0]?.focus();
   }
 </script>
 
-<div class="grid grid-cols-3 gap-1 text-sm">
-  <div></div>
-  <input aria-label="Top" type="number" min="1" max="10"
-    value={top} oninput={onTopChange} onchange={onTopChange}
-    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
-  <div></div>
+<!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
+<div class="relative w-28 h-28 bg-surface-800 border border-surface-600 rounded-lg p-1 flex flex-col">
+  <!-- Type dropdown at top-right -->
+  <div class="absolute top-1 right-1">
+    <select
+      value={type}
+      onchange={onTypeChange}
+      class="bg-surface-700 border border-surface-600 rounded text-xs text-surface-300 p-0.5 w-14"
+    >
+      {#each Object.values(CardType) as ct}
+        <option value={ct}>{ct}</option>
+      {/each}
+    </select>
+  </div>
 
-  <input aria-label="Left" type="number" min="1" max="10"
-    value={left} oninput={onLeftChange} onchange={onLeftChange}
-    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
-  <select value={type} onchange={onTypeChange}
-    class="bg-surface-700 rounded border border-surface-600 p-1 text-xs">
-    {#each Object.values(CardType) as ct}
-      <option value={ct}>{ct}</option>
-    {/each}
-  </select>
-  <input aria-label="Right" type="number" min="1" max="10"
-    value={right} oninput={onRightChange} onchange={onRightChange}
-    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
-
-  <div></div>
-  <input aria-label="Bottom" type="number" min="1" max="10"
-    value={bottom} oninput={onBottomChange} onchange={onBottomChange}
-    class="w-10 text-center bg-surface-700 rounded border border-surface-600 p-1" />
-  <div></div>
+  <!-- Cross layout for directional values -->
+  <div class="flex-1 grid grid-cols-3 grid-rows-3 items-center justify-items-center">
+    <!-- Row 1: [empty] [top] [empty] -->
+    <div></div>
+    <input
+      aria-label="Top"
+      type="text"
+      inputmode="numeric"
+      maxlength="1"
+      readonly
+      value={displayValue(values[0] ?? null)}
+      onkeydown={(e) => handleKeyDown(0, e)}
+      bind:this={inputEls[0]}
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+    />
+    <div></div>
+    <!-- Row 2: [left] [empty] [right] -->
+    <input
+      aria-label="Left"
+      type="text"
+      inputmode="numeric"
+      maxlength="1"
+      readonly
+      value={displayValue(values[3] ?? null)}
+      onkeydown={(e) => handleKeyDown(3, e)}
+      bind:this={inputEls[3]}
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+    />
+    <div></div>
+    <input
+      aria-label="Right"
+      type="text"
+      inputmode="numeric"
+      maxlength="1"
+      readonly
+      value={displayValue(values[1] ?? null)}
+      onkeydown={(e) => handleKeyDown(1, e)}
+      bind:this={inputEls[1]}
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+    />
+    <!-- Row 3: [empty] [bottom] [empty] -->
+    <div></div>
+    <input
+      aria-label="Bottom"
+      type="text"
+      inputmode="numeric"
+      maxlength="1"
+      readonly
+      value={displayValue(values[2] ?? null)}
+      onkeydown={(e) => handleKeyDown(2, e)}
+      bind:this={inputEls[2]}
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+    />
+    <div></div>
+  </div>
 </div>
