@@ -30,16 +30,16 @@
 <button
   {onclick}
   data-eval={!cell && evaluation ? evaluation : undefined}
-  class="w-20 h-20 border border-surface-600 rounded flex items-center justify-center
+  class="w-24 h-24 border border-surface-600 rounded flex items-center justify-center
     {highlighted ? 'ring-2 ring-accent-gold' : ''}
     {cell
-      ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim' : 'bg-accent-red-dim')
+      ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim shadow-inner' : 'bg-accent-red-dim shadow-inner')
       : evaluation
         ? evalBg[evaluation]
         : 'bg-surface-800 hover:bg-surface-700'}"
 >
   {#if cell}
-    <div class="grid grid-cols-3 gap-0 text-xs font-bold w-full h-full p-1">
+    <div class="grid grid-cols-3 gap-0 text-xs font-bold font-mono w-full h-full p-1">
       <div></div>
       <div class="flex items-center justify-center">{displayValue(cell.card.top)}</div>
       <div></div>

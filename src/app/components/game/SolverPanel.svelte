@@ -49,9 +49,10 @@
   let selectedCard = $derived($game.selectedCard);
 </script>
 
-<div class="flex flex-col gap-2">
+<div class="flex flex-col gap-2 min-w-52">
   <h3
-    class="text-xs font-semibold text-surface-400 uppercase tracking-wide"
+    class="text-sm font-semibold text-surface-400 uppercase tracking-wide"
+    style="font-family: 'Rajdhani', sans-serif;"
     title={isOpponentTurn ? "Outcomes shown from the opponent's perspective. Their 'Win' means you lose." : "Outcomes shown from your perspective."}
   >
     {isOpponentTurn ? "Opponent's Best Moves" : "Best Moves"}
@@ -69,7 +70,7 @@
         </span>
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
         <span class="font-semibold {outcomeColor[move.outcome]}">{outcomeLabel[move.outcome]}</span>
-        <span class="text-surface-500 text-xs">rob={move.robustness.toFixed(2)}</span>
+        <span class="text-surface-500 text-xs opacity-60">rob={move.robustness.toFixed(2)}</span>
       </li>
     {/each}
   </ul>

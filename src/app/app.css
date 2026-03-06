@@ -27,4 +27,11 @@
 body {
   background-color: var(--color-surface-900);
   color: var(--color-surface-300);
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0;
 }

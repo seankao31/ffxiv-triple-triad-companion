@@ -59,13 +59,13 @@
 </script>
 
 <!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
-<div class="relative w-28 h-28 bg-surface-800 border border-surface-600 rounded-lg p-1 flex flex-col">
+<div class="relative w-28 h-28 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col">
   <!-- Type dropdown at top-right -->
   <div class="absolute top-1 right-1">
     <select
       value={type}
       onchange={onTypeChange}
-      class="bg-surface-700 border border-surface-600 rounded text-xs text-surface-300 p-0.5 w-14"
+      class="bg-surface-700 border border-surface-600 rounded text-xs text-surface-400 p-0.5 w-14"
     >
       {#each Object.values(CardType) as ct}
         <option value={ct}>{ct}</option>
@@ -83,10 +83,11 @@
       inputmode="numeric"
       maxlength="1"
       readonly
+      placeholder="·"
       value={displayValue(values[0] ?? null)}
       onkeydown={(e) => handleKeyDown(0, e)}
       bind:this={inputEls[0]}
-      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-base font-bold font-mono text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue placeholder:text-surface-600"
     />
     <div></div>
     <!-- Row 2: [left] [empty] [right] -->
@@ -96,10 +97,11 @@
       inputmode="numeric"
       maxlength="1"
       readonly
+      placeholder="·"
       value={displayValue(values[3] ?? null)}
       onkeydown={(e) => handleKeyDown(3, e)}
       bind:this={inputEls[3]}
-      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-base font-bold font-mono text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue placeholder:text-surface-600"
     />
     <div></div>
     <input
@@ -108,10 +110,11 @@
       inputmode="numeric"
       maxlength="1"
       readonly
+      placeholder="·"
       value={displayValue(values[1] ?? null)}
       onkeydown={(e) => handleKeyDown(1, e)}
       bind:this={inputEls[1]}
-      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-base font-bold font-mono text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue placeholder:text-surface-600"
     />
     <!-- Row 3: [empty] [bottom] [empty] -->
     <div></div>
@@ -121,10 +124,11 @@
       inputmode="numeric"
       maxlength="1"
       readonly
+      placeholder="·"
       value={displayValue(values[2] ?? null)}
       onkeydown={(e) => handleKeyDown(2, e)}
       bind:this={inputEls[2]}
-      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-sm font-bold text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue"
+      class="w-8 h-8 text-center bg-surface-700 border border-surface-600 rounded text-base font-bold font-mono text-surface-300 cursor-default focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue placeholder:text-surface-600"
     />
     <div></div>
   </div>
