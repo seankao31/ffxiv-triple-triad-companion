@@ -393,89 +393,26 @@ git commit -m "feat: redesign CardInput as card-shaped with single-char auto-adv
 
 ---
 
-### Task 5: SolverPanel — Card Notation and Opponent Turn Clarity
+### Task 5: SolverPanel — Card Notation, Best-Tier Filtering, and Opponent Turn Clarity
 
 **Files:**
 - Modify: `src/app/components/game/SolverPanel.svelte`
 - Modify: `tests/app/components/SolverPanel.test.ts`
 
-**Step 1: Write failing tests**
+**Implemented behavior:**
+- Card values displayed as `A-A-A-A` notation (10 → "A"); type shown as colored abbreviation `[P]`, `[Sc]`, `[So]`, `[G]`
+- Only moves from the best-outcome tier are shown (e.g. if any Win exists, only Win moves; see decisions doc for correctness rationale)
+- The shared outcome appears once in the header: "Best Moves — Win" (colored by outcome), not repeated per row
+- Dynamic header: "Opponent's Best Moves" vs "Best Moves" depending on `currentState.currentTurn`; tooltip explains perspective
+- Top-ranked move highlighted with `ring-accent-gold`; selected-card rows highlighted with `border-accent-blue`
 
-Add to `tests/app/components/SolverPanel.test.ts`:
-
+**Key derived:**
 ```typescript
-it('displays card values in move notation (e.g. "A-A-A-A")', () => {
-  render(SolverPanel);
-  const items = screen.getAllByRole('listitem');
-  // All player cards are 10-10-10-10, displayed as A-A-A-A
-  expect(items[0]!.textContent).toContain('A-A-A-A');
+let bestTierMoves = $derived.by(() => {
+  if ($rankedMoves.length === 0) return [];
+  const bestOutcome = $rankedMoves[0]!.outcome;
+  return $rankedMoves.filter(m => m.outcome === bestOutcome);
 });
-```
-
-For opponent turn header test, we need to set up a game where it's the opponent's turn:
-
-```typescript
-it('shows "Opponent Best Moves" header when it is the opponent turn', () => {
-  // Play one move so it becomes opponent's turn
-  const ph = makePlayerHand();
-  selectCard(ph[0]!);
-  playCard(0);
-
-  render(SolverPanel);
-  expect(screen.getByText(/opponent/i)).toBeInTheDocument();
-});
-```
-
-**Step 2: Run tests to verify they fail**
-
-Run: `bunx vitest run tests/app/components/SolverPanel.test.ts`
-Expected: FAIL — no card notation in output
-
-**Step 3: Implement card notation and dynamic header**
-
-Add a `cardNotation` helper:
-
-```typescript
-function cardNotation(card: Card): string {
-  const vals = [card.top, card.right, card.bottom, card.left]
-    .map(v => v === 10 ? 'A' : String(v))
-    .join('-');
-  if (card.type === CardType.None) return vals;
-  const typeAbbrev: Record<CardType, string> = {
-    [CardType.None]: '',
-    [CardType.Primal]: 'P',
-    [CardType.Scion]: 'Sc',
-    [CardType.Society]: 'So',
-    [CardType.Garlean]: 'G',
-  };
-  return vals;  // Type indicator rendered separately with color
-}
-```
-
-Type indicator rendered as a colored `<span>` next to the card values:
-
-```typescript
-const typeColor: Record<CardType, string> = {
-  [CardType.None]: '',
-  [CardType.Primal]: 'text-type-primal',
-  [CardType.Scion]: 'text-type-scion',
-  [CardType.Society]: 'text-type-society',
-  [CardType.Garlean]: 'text-type-garlean',
-};
-```
-
-Dynamic header: read `$currentState?.currentTurn` and show "Opponent's Best Moves" vs "Best Moves" accordingly. Add a `title` attribute (tooltip) explaining outcome perspective.
-
-**Step 4: Run tests to verify they pass**
-
-Run: `bunx vitest run tests/app/components/SolverPanel.test.ts`
-Expected: All pass
-
-**Step 5: Commit**
-
-```
-git add src/app/components/game/SolverPanel.svelte tests/app/components/SolverPanel.test.ts
-git commit -m "feat: add card notation to move list and opponent turn clarity"
 ```
 
 ---

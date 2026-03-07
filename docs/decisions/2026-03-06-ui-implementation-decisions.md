@@ -88,6 +88,20 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 
 ---
 
+## SolverPanel: Best-Outcome Tier Only
+
+**Decision:** `SolverPanel` shows only the moves whose outcome matches the best achievable outcome (e.g. if any Win exists, only Win moves are shown). The outcome label appears once in the header ("Best Moves — Win") rather than on each row.
+
+**Rejected:** Showing all three tiers (Win, Draw, Loss) in a single ranked list.
+
+**Why:** Alpha-beta with a shared transposition table can only guarantee exact values for the top-ranked move. Non-best-tier moves are susceptible to TT bound contamination: an `UpperBound` entry stored during an earlier move's search can inflate a true Loss to appear as Draw, or a true Draw to appear as Win. Showing lower tiers as if their labels were reliable is misleading.
+
+The best-outcome tier is reliable in the direction that matters: a labeled Win is a real Win, a labeled Draw in a Draw-only game is a real Draw. Inflation cannot exceed +1, so the top tier cannot be false-positively elevated. Within the best tier, robustness provides meaningful relative ranking even if individual scores drift slightly.
+
+Displaying the outcome once in the header rather than repeating it on every row eliminates visual redundancy — all visible rows share the same outcome by construction.
+
+---
+
 ## buildCardIndex Includes Board Cells
 
 **Decision:** `buildCardIndex` in `solver.ts` scans player hand, opponent hand, and all placed board cells when building the card→index mapping for TT hashing.
@@ -95,10 +109,6 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 **Why:** After cards are placed, they are removed from both hands. If only hands are scanned, placed cards get `undefined` from the index, producing `NaN` in the hash. `NaN` keys in a `Map` all collide (Map uses SameValueZero, `NaN === NaN` is true), producing incorrect TT lookups and wrong minimax results for mid-game positions.
 
 **Detection:** The `createSolver` path was not affected (its `reset()` pre-indexes all original hands before any cards are placed). Tests that compared `findBestMove(mid-game)` vs `createSolver.solve(mid-game)` exposed the discrepancy.
-
----
-
-## `startGame` Validates Outside `game.update()`
 
 ---
 
