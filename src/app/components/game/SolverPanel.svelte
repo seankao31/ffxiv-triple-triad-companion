@@ -1,5 +1,5 @@
-<!-- ABOUTME: Shows card notation, outcome labels, and adapts header based on whose turn it is. -->
-<!-- ABOUTME: Highlights the top move with a ring; shows Win/Draw/Loss label per move. -->
+<!-- ABOUTME: Shows card notation and outcome for the best-move tier, adapting header based on whose turn it is. -->
+<!-- ABOUTME: Highlights the top move with a ring; shows the shared outcome once in the header. -->
 <script lang="ts">
   import { rankedMoves, solverLoading, currentState, game } from '../../store';
   import { Outcome, CardType, Owner, cardEquals, type Card } from '../../../engine';
@@ -60,6 +60,9 @@
     title={isOpponentTurn ? "Outcomes shown from the opponent's perspective. Their 'Win' means you lose." : "Outcomes shown from your perspective."}
   >
     {isOpponentTurn ? "Opponent's Best Moves" : "Best Moves"}
+    {#if bestTierMoves.length > 0}
+      <span class="normal-case {outcomeColor[bestTierMoves[0]!.outcome]}">— {outcomeLabel[bestTierMoves[0]!.outcome]}</span>
+    {/if}
   </h3>
   {#if $solverLoading}
     <div role="status" class="text-surface-400 text-sm animate-pulse">Calculating…</div>
@@ -76,8 +79,7 @@
           {notation.values}{#if notation.typeAbbr}<span class="{notation.typeClass}">[{notation.typeAbbr}]</span>{/if}
         </span>
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
-        <span class="font-semibold {outcomeColor[move.outcome]}">{outcomeLabel[move.outcome]}</span>
-        <span class="text-surface-500 text-xs opacity-60">rob={move.robustness.toFixed(2)}</span>
+        <span class="text-surface-300 text-xs">rob={move.robustness.toFixed(2)}</span>
       </li>
     {/each}
   </ul>

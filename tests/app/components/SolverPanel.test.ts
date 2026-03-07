@@ -38,10 +38,18 @@ describe('SolverPanel', () => {
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0);
   });
 
-  it('shows outcome labels (Win, Draw, or Loss)', () => {
+  it('shows outcome label once in the header area, not per row', () => {
+    const card = createCard(10, 10, 10, 10);
+    rankedMoves.set([
+      { card, position: 0, outcome: Outcome.Win, robustness: 0.8 },
+      { card, position: 1, outcome: Outcome.Win, robustness: 0.5 },
+    ]);
     render(SolverPanel);
-    const text = document.body.textContent ?? '';
-    expect(text).toMatch(/win|draw|loss/i);
+    const items = screen.getAllByRole('listitem');
+    for (const item of items) {
+      expect(item.textContent).not.toMatch(/win|draw|loss/i);
+    }
+    expect(document.body.textContent).toMatch(/win|draw|loss/i);
   });
 
   it('renders the first move with a distinct highlight class', () => {
