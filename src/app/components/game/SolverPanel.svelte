@@ -47,6 +47,11 @@
 
   let isOpponentTurn = $derived($currentState?.currentTurn === Owner.Opponent);
   let selectedCard = $derived($game.selectedCard);
+  let bestTierMoves = $derived.by(() => {
+    if ($rankedMoves.length === 0) return [];
+    const bestOutcome = $rankedMoves[0]!.outcome;
+    return $rankedMoves.filter(m => m.outcome === bestOutcome);
+  });
 </script>
 
 <div class="flex flex-col gap-2 min-w-52">
@@ -60,7 +65,7 @@
     <div role="status" class="text-surface-400 text-sm animate-pulse">Calculating…</div>
   {/if}
   <ul class="flex flex-col gap-1">
-    {#each $rankedMoves as move, i}
+    {#each bestTierMoves as move, i}
       {@const notation = cardNotation(move.card)}
       <li
         class="flex items-center gap-2 text-sm p-2 rounded
