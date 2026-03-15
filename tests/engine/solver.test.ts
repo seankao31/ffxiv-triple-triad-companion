@@ -228,8 +228,7 @@ describe("createSolver", () => {
 
   it("solve() returns the same moves as findBestMove() for an initial state", () => {
     // Use identical hands so deduplication keeps the search fast (~14ms).
-    // Initial state (no placed cards) ensures buildCardIndex has all cards
-    // — no NaN hashing for board cells in either code path.
+    // Initial state (no placed cards) so all cards have valid ids for TT hashing.
     const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
     const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
     const state = createInitialState(p, o);
@@ -270,7 +269,7 @@ describe("createSolver", () => {
 describe("findBestMove — mid-game correctness", () => {
   it("gives correct outcomes when board contains cards no longer in any hand", () => {
     // After 5 cards are placed, board cells hold cards absent from remaining hands.
-    // buildCardIndex must include those board cards for TT hashing to be correct.
+    // Each placed card's id must be valid for TT hashing to be correct.
     const p = [createCard(10,5,3,8), createCard(7,6,4,9), createCard(2,8,6,3), createCard(5,4,7,1), createCard(9,3,2,6)];
     const o = [createCard(4,7,5,2), createCard(8,3,9,6), createCard(1,5,8,4), createCard(6,9,1,7), createCard(3,2,4,10)];
     let state = createInitialState(p, o);
