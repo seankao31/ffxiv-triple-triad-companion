@@ -107,3 +107,19 @@ Displaying the outcome once in the header rather than repeating it on every row 
 **Decision:** `startGame()` reads the current store value with `get(game)`, validates that all hand slots are non-null, and throws before calling `game.update()`.
 
 **Why:** Svelte's `writable.update()` swallows errors thrown inside its callback — the error never reaches the caller. By validating outside the update, the thrown error propagates normally, allowing `SetupView` to catch it and display an error message. The store read and subsequent update are not subject to race conditions because JavaScript is single-threaded.
+
+---
+
+## CardInput Backspace Navigation
+
+**Decision:** Backspace in a `CardInput` field clears that field and moves focus to the previous field. If the cursor is on the first field (Top), Backspace calls `onback()` to move to the previous card in the hand. The chain extends from `CardInput` → `HandInput` → `SetupView`: backspacing past card 0 of the opponent hand moves focus to the last field of the last player card.
+
+**Why:** Without this, a mis-typed stat requires clicking the wrong field or tabbing awkwardly. The pattern mirrors the existing auto-advance-on-entry behaviour in reverse, using the same `focusFirst()`/`focusLast()` exports already present on `CardInput` and `HandInput`.
+
+---
+
+## Web Worker `onerror` Handler
+
+**Decision:** `store.ts` registers a `solverWorker.onerror` handler that logs the error and calls `solverLoading.set(false)`.
+
+**Why:** Without it, a Worker crash (e.g. `RangeError: Map maximum size exceeded` from V8's hard `Map` limit) is silently swallowed. The UI stays in "Calculating…" indefinitely with no indication that anything went wrong. The `onerror` handler surfaces the crash to the console and resets the loading state so the UI is not permanently blocked.

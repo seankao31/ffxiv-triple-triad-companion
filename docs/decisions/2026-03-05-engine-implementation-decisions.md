@@ -64,7 +64,7 @@ The outer loop deduplication prevents `findBestMove` from returning duplicate `R
 
 ## RuleSet Stored on GameState
 
-**Decision:** `GameState` carries a `rules: RuleSet` field (`{ plus: boolean, same: boolean }`). `createInitialState` accepts an optional `rules` parameter defaulting to `{ plus: false, same: false }`.
+**Decision:** `GameState` carries a `rules: RuleSet` field covering all six rules: `{ plus, same, reverse, fallenAce, ascension, descension }`. `createInitialState` accepts an optional `rules` parameter defaulting to all `false`.
 
 **Rejected:** Passing RuleSet as a parameter to `placeCard`.
 
@@ -99,3 +99,19 @@ The outer loop deduplication prevents `findBestMove` from returning duplicate `R
 **Why adaptive instead of a hardcoded constant:** V8 (Chrome/browser) enforces a hard `Map` size limit of `2^24 = 16,777,216` entries. A fixed constant would leave performance on the table in engines with higher limits (e.g., future V8 versions, JSC). The try-catch fires exactly once per Map lifetime; subsequent inserts skip via the fast `tt.size >= discoveredLimit` check with no exception overhead.
 
 **Testing gap:** Tests run in Bun (JavaScriptCore), which has no Map size limit. We cannot write a test that uses a real Map and observes the V8 crash. The `maxTTSize` parameter exists to let tests inject an artificial limit and verify graceful degradation. This gap means V8-specific Map behaviour is only validated manually (by observing the browser console). This is a known limitation of the current single-engine test setup.
+
+---
+
+## Capture Rules: `captures()` Helper
+
+**Decision:** All six capture rules (Basic, Reverse, Fallen Ace, Ascension, Descension, Plus, Same) funnel through a single `captures(attackerValue, defenderValue, rules)` helper in `board.ts`. Stat modifiers (Ascension/Descension) are applied at every call site via `applyStatMod` before reaching `captures()`.
+
+**Fallen Ace logic:** Fallen Ace makes the *weakest* value also capture the *strongest*:
+- Without Reverse: 1 (weakest) also captures 10; 10 still captures 1 via the basic rule.
+- With Reverse: 10 (weakest) also captures 1; 1 still captures 10 via the Reverse rule.
+
+This means both 1 and 10 always capture each other when Fallen Ace is active, regardless of whether Reverse is enabled.
+
+**Ascension/Descension stat snapshot (i++ timing):** `placeCard` counts Primal/Scion cards on `state.board` *before* placing the new card. This snapshot is used for the entire resolution (Plus, Same, Combo cascade, standard capture). The placed card never counts toward its own resolution — the count only takes effect for future turns. This mirrors the in-game rule where the newly placed card's type contribution applies after its captures resolve.
+
+**Ascension/Descension scope:** The stat modifier applies only to cards of the matching type (Primal for Ascension, Scion for Descension), across all cards on the board and in hand for both players. Values are capped at 10 for Ascension and floored at 1 for Descension.
