@@ -2,7 +2,7 @@
 // ABOUTME: Covers forced wins, loss avoidance, and robustness scoring.
 
 import { describe, it, expect } from "bun:test";
-import { type Board, type GameState, createCard, createInitialState, getScore, Owner, Outcome } from "../../src/engine/types";
+import { type Board, type Card, type GameState, createCard, createInitialState, getScore, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 import { findBestMove, createSolver, type Solver } from "../../src/engine/solver";
 
@@ -622,4 +622,85 @@ describe("solver performance", () => {
     expect(elapsed).toBeLessThan(25000); // 25 seconds
 
   }, 30000);
+});
+
+describe("TT hash collision regression", () => {
+  it("does not return stale TT entry when same-stats card belongs to different players", () => {
+    // Both players hold one powerful card with identical stats (8,8,8,8).
+    // cardId() maps both to the same compact index, so hashState() produces the same
+    // hash for two positions that differ only in which player holds the strong card.
+    //
+    // Board layout (row-major): cells 0–5 filled, cells 6–8 empty.
+    //   P O P
+    //   O P O
+    //   _ _ _
+    //
+    // posA: Opponent has the (8,8,8,8) card in hand → Opponent wins → Loss for Player
+    // posB: Player has the (8,8,8,8) card in hand → Player wins → Win for Player
+    //
+    // The two boards are identical (same stats, same owners, same positions) so
+    // hashState() returns the same value for both — but the remaining hands differ.
+    // When a shared solver evaluates posA first, the TT entries for posA's game tree
+    // collide with lookups from posB's game tree, causing posB to return a wrong result.
+    const strong = createCard(8, 8, 8, 8);
+    const pw     = createCard(1, 1, 1, 1);
+    const ow     = createCard(2, 2, 2, 2);
+
+    const playerHand:   Card[] = [strong, pw, pw, pw, pw];
+    const opponentHand: Card[] = [strong, ow, ow, ow, ow];
+
+    const sharedBoard: Board = [
+      { card: pw, owner: Owner.Player   },  // 0
+      { card: ow, owner: Owner.Opponent },  // 1
+      { card: pw, owner: Owner.Player   },  // 2
+      { card: ow, owner: Owner.Opponent },  // 3
+      { card: pw, owner: Owner.Player   },  // 4
+      { card: ow, owner: Owner.Opponent },  // 5
+      null, null, null,                     // 6, 7, 8 (empty)
+    ] as Board;
+
+    // posA: Opponent holds the strong card. Player has only weak cards left.
+    const posA: GameState = {
+      board: sharedBoard,
+      playerHand:   [pw, pw],
+      opponentHand: [strong, ow],
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false },
+    };
+
+    // posB: Player holds the strong card. Opponent has only weak cards left.
+    // Board is identical to posA — same card stats, same owners, same positions.
+    const posB: GameState = {
+      board: sharedBoard,
+      playerHand:   [strong, pw],
+      opponentHand: [ow, ow],
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false },
+    };
+
+    // Ground truth: fresh solvers, no shared TT.
+    const solverA = createSolver();
+    solverA.reset(playerHand, opponentHand);
+    const outcomeA = solverA.solve(posA)[0]!.outcome;
+
+    const solverB = createSolver();
+    solverB.reset(playerHand, opponentHand);
+    const outcomeB_fresh = solverB.solve(posB)[0]!.outcome;
+
+    // Sanity: outcomes must differ for the collision to be observable.
+    expect(outcomeA).toBe(Outcome.Loss);      // Opponent holds strong card → Player loses
+    expect(outcomeB_fresh).toBe(Outcome.Win); // Player holds strong card → Player wins
+
+    // Shared solver: posA is evaluated first, filling the TT.
+    // Then posB is evaluated. With the bug, posB's sub-tree lookups hit stale TT
+    // entries from posA's search (same board hash, different remaining hands).
+    const sharedSolver = createSolver();
+    sharedSolver.reset(playerHand, opponentHand);
+    sharedSolver.solve(posA);
+    const outcomeB_polluted = sharedSolver.solve(posB)[0]!.outcome;
+
+    // FAILS on current code (bug present): outcomeB_polluted === draw (wrong)
+    // PASSES after the fix:               outcomeB_polluted === win  (correct)
+    expect(outcomeB_polluted).toBe(outcomeB_fresh);
+  });
 });
