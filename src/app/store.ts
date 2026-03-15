@@ -94,11 +94,7 @@ export function startGame(): void {
   }
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
-  solverWorker.postMessage({
-    type: 'newGame',
-    playerHand: s.playerHand as Card[],
-    opponentHand: s.opponentHand as Card[],
-  });
+  solverWorker.postMessage({ type: 'newGame' });
   game.update((s) => {
     const initial = createInitialState(
       s.playerHand as Card[],
