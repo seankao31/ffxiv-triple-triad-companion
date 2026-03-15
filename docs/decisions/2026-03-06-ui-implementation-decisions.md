@@ -43,12 +43,12 @@ This structure also works for future imperfect-information modes (Three Open, Sw
 **Why the switch:** From a fresh opening position with 10 distinct cards, the solver takes ~21 seconds — blocking the main thread and freezing the UI. Moving to a Worker keeps the UI responsive during the search. Symmetric/identical hands still run in ~14ms via deduplication, so quick positions remain fast.
 
 **Worker protocol:** Two message types:
-- `newGame` (sent before `game.update()` in `startGame`): calls `solver.reset(playerHand, opponentHand)` to clear the TT and pre-populate the card index from both full hands.
+- `newGame` (sent before `game.update()` in `startGame`): calls `solver.reset()` to clear the TT. No hand data needed — the TT hash uses `card.id` directly.
 - `solve` (triggered by the `currentState` subscription): calls `solver.solve(state)` and posts back `{ type: 'result', moves }`.
 
 **Message ordering matters:** `newGame` must be posted before `game.update()` so the Worker's message queue is `[newGame, solve]` — not `[solve (wrong TT), newGame]`. This is because `currentState.subscribe` fires synchronously during `game.update()`.
 
-**TT persistence:** `createSolver()` returns a closure holding its own `tt` (Map) and `cardIndex` (Map). `reset()` reinitializes both; `solve()` accumulates results across calls. The transposition table grows across turns, so positions explored on turn N are cached for free on turn N+1. `ttSize()` exposes TT entry count for test verification.
+**TT persistence:** `createSolver()` returns a closure holding its own `tt` (Map). `reset()` clears the TT; `solve()` accumulates results across calls. The transposition table grows across turns, so positions explored on turn N are cached for free on turn N+1. `ttSize()` exposes TT entry count for test verification.
 
 **Test isolation:** Vitest UI tests mock the Worker globally in `tests/app/setup.ts` (no-op `postMessage`, null `onmessage`). Tests that need solver output populate `rankedMoves` directly via `rankedMoves.set(findBestMove(get(currentState)!))` using asymmetric hands (all-10s vs all-1s) for fast termination.
 
@@ -82,9 +82,9 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 
 **Why:** These highlights reduce cognitive load — the user can see the solver's recommendation at a glance without reading the full `SolverPanel` list.
 
-**Card equality via values, not identity:** Move cards in `rankedMoves` are deserialized from the Worker via `postMessage` (structured clone), which creates new object references. Identity comparison (`===`) always returns false. `cardEquals(a, b)` compares all five fields (`top`, `right`, `bottom`, `left`, `type`) and is used in every component that matches a `rankedMoves` card against a hand or selected card: `Board.svelte` (suggestedPosition and evalMap), `HandPanel.svelte` (best-move ring), and `SolverPanel.svelte` (selected-card highlight). Defined in `types.ts`, exported from the engine barrel.
+**Card equality via `card.id`:** Move cards in `rankedMoves` are deserialized from the Worker via `postMessage` (structured clone), which creates new object references. Identity comparison (`===`) always returns false. Each `Card` carries a `readonly id: number` assigned at construction time by `createCard`. Because `id` is a primitive, it survives structured clone. Components compare `a.id === b.id` directly: `Board.svelte` (suggestedPosition and evalMap), `HandPanel.svelte` (best-move ring), and `SolverPanel.svelte` (selected-card highlight).
 
-**Test adequacy lesson:** Tests that populate `rankedMoves` with real (non-deserialized) references pass regardless of whether `===` or `cardEquals` is used, giving false confidence. Each component needs a dedicated test that simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` to catch reference equality regressions.
+**Test adequacy lesson:** Tests that populate `rankedMoves` with real (non-deserialized) references pass regardless of whether `===` or `id` equality is used, giving false confidence. Each component needs a dedicated test that simulates Worker deserialization via `JSON.parse(JSON.stringify(moves))` to catch reference equality regressions.
 
 ---
 
@@ -99,16 +99,6 @@ Config: `vite.config.ts` includes Vitest settings (`test.include`, `test.environ
 The best-outcome tier is reliable in the direction that matters: a labeled Win is a real Win, a labeled Draw in a Draw-only game is a real Draw. Inflation cannot exceed +1, so the top tier cannot be false-positively elevated. Within the best tier, robustness provides meaningful relative ranking even if individual scores drift slightly.
 
 Displaying the outcome once in the header rather than repeating it on every row eliminates visual redundancy — all visible rows share the same outcome by construction.
-
----
-
-## buildCardIndex Includes Board Cells
-
-**Decision:** `buildCardIndex` in `solver.ts` scans player hand, opponent hand, and all placed board cells when building the card→index mapping for TT hashing.
-
-**Why:** After cards are placed, they are removed from both hands. If only hands are scanned, placed cards get `undefined` from the index, producing `NaN` in the hash. `NaN` keys in a `Map` all collide (Map uses SameValueZero, `NaN === NaN` is true), producing incorrect TT lookups and wrong minimax results for mid-game positions.
-
-**Detection:** The `createSolver` path was not affected (its `reset()` pre-indexes all original hands before any cards are placed). Tests that compared `findBestMove(mid-game)` vs `createSolver.solve(mid-game)` exposed the discrepancy.
 
 ---
 
