@@ -14,14 +14,14 @@ function applyStatMod(value: number, cardType: CardType, rules: RuleSet, ascCoun
 }
 
 // Returns true if the attacker's edge value captures the defender's edge value under the active rules.
-// Handles Reverse (invert comparison) and Fallen Ace (A loses to 1, or 1 loses to A under Reverse+FA).
+// Fallen Ace makes the "weakest" value also capture the "strongest":
+//   Without Reverse: 1 (weakest) also captures 10; 10 still captures 1 via basic rule.
+//   With Reverse:    10 (weakest) also captures 1; 1 still captures 10 via Reverse rule.
 function captures(attackerValue: number, defenderValue: number, rules: RuleSet): boolean {
-  if (rules.fallenAce && !rules.reverse) {
-    if (attackerValue === 10 && defenderValue === 1) return false;
-    if (attackerValue === 1 && defenderValue === 10) return true;
+  if (rules.fallenAce) {
+    if (!rules.reverse && attackerValue === 1 && defenderValue === 10) return true;
+    if (rules.reverse && attackerValue === 10 && defenderValue === 1) return true;
   }
-  // Under Reverse + Fallen Ace: verify with Yshan whether the special case applies.
-  // For now, Fallen Ace is only active without Reverse (conservative interpretation).
   return rules.reverse ? attackerValue < defenderValue : attackerValue > defenderValue;
 }
 

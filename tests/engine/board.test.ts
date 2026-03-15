@@ -758,27 +758,25 @@ describe("Reverse rule", () => {
 });
 
 describe("Fallen Ace rule", () => {
-  it("A (10) does not capture 1 under Fallen Ace", () => {
+  it("A (10) still captures 1 under Fallen Ace (basic rule unchanged)", () => {
     const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
     const pCards = [createCard(10, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
-    // Player's top=10 vs opponent's bottom=1: normally 10>1 captures. Under Fallen Ace, 10 loses to 1 — no capture.
+    // Player top=10 vs opponent bottom=1: 10>1 → capture. Fallen Ace does not prevent this.
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
     state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=1
     state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=10 attacks bottom=1
-    // Under Fallen Ace: A (10) attacking 1 → no capture
-    expect(state.board[0]?.owner).toBe(Owner.Opponent); // NOT captured
+    expect(state.board[0]?.owner).toBe(Owner.Player); // captured
   });
 
   it("1 captures A (10) under Fallen Ace", () => {
     const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
     const pCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 10, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
-    // Opponent bottom=10 (A). Player top=1 attacks it. Normally 1>10 is false. Under Fallen Ace, 1 captures A.
+    // Opponent bottom=10 (A). Player top=1 attacks it. Normally 1>10 is false. Under Fallen Ace, 1 also captures A.
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
     state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=10
     state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=1 attacks bottom=10
-    // Under Fallen Ace: 1 vs A → 1 captures A
     expect(state.board[0]?.owner).toBe(Owner.Player); // captured
   });
 
@@ -791,6 +789,28 @@ describe("Fallen Ace rule", () => {
     state = placeCard(state, oCards[0]!, 0);
     state = placeCard(state, pCards[0]!, 3);
     expect(state.board[0]?.owner).toBe(Owner.Player);
+  });
+
+  it("A (10) captures 1 under Reverse + Fallen Ace", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false };
+    const pCards = [createCard(10, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Under Reverse alone: 10 vs 1 → 10<1? No → no capture. Fallen Ace adds: 10 also captures 1.
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=1
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=10 attacks bottom=1
+    expect(state.board[0]?.owner).toBe(Owner.Player); // captured via Fallen Ace special case
+  });
+
+  it("1 captures A (10) under Reverse + Fallen Ace (normal Reverse rule)", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false };
+    const pCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 10, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Under Reverse: 1 vs 10 → 1<10 → capture. Fallen Ace doesn't change this.
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=10
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=1 attacks bottom=10
+    expect(state.board[0]?.owner).toBe(Owner.Player); // captured via Reverse
   });
 });
 
