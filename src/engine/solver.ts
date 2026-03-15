@@ -4,46 +4,24 @@
 import { type GameState, type RankedMove, type Card, Owner, Outcome } from "./types";
 import { placeCard } from "./board";
 
-// Assigns a unique integer to each card based on its values and type.
+// Assigns a unique integer to each card based on its values and type for within-hand deduplication.
 const TYPE_IDX: Record<string, number> = { none: 0, primal: 1, scion: 2, society: 3, garlean: 4 };
 
-function cardId(c: Card): number {
+function statsKey(c: Card): number {
   return c.top * 5000 + c.right * 500 + c.bottom * 50 + c.left * 5 + TYPE_IDX[c.type]!;
-}
-
-// Builds a mapping from cardId to a small index (1-10) for compact board hashing.
-// Indexes all cards in the game: remaining hands AND cards already placed on the board.
-function buildCardIndex(state: GameState): Map<number, number> {
-  const index = new Map<number, number>();
-  let nextIdx = 1;
-  for (const card of state.playerHand) {
-    const id = cardId(card);
-    if (!index.has(id)) index.set(id, nextIdx++);
-  }
-  for (const card of state.opponentHand) {
-    const id = cardId(card);
-    if (!index.has(id)) index.set(id, nextIdx++);
-  }
-  for (const cell of state.board) {
-    if (cell) {
-      const id = cardId(cell.card);
-      if (!index.has(id)) index.set(id, nextIdx++);
-    }
-  }
-  return index;
 }
 
 // Encodes board + turn as a single number for use as a Map key.
 // Each cell: 0 = empty, 2*idx-1 = card idx owned by player, 2*idx = card idx owned by opponent.
 // Turn bit occupies bit 0 (0=player, 1=opponent). Cells packed starting at bit 1 (shift=2),
 // 5 bits each (max cell value 20 < 32). Total: 1 + 9*5 = 46 bits (safe integer).
-function hashState(board: GameState["board"], currentTurn: Owner, cardIndex: Map<number, number>): number {
+function hashState(board: GameState["board"], currentTurn: Owner): number {
   let h = currentTurn === Owner.Player ? 0 : 1;
   let shift = 2;
   for (let i = 0; i < 9; i++) {
     const cell = board[i];
     if (cell) {
-      const idx = cardIndex.get(cardId(cell.card))!;
+      const idx = cell.card.id + 1;
       h += (cell.owner === Owner.Player ? idx * 2 - 1 : idx * 2) * shift;
     }
     shift *= 32;
@@ -89,14 +67,13 @@ function minimax(
   alpha: number,
   beta: number,
   tt: Map<number, TTEntry>,
-  cardIndex: Map<number, number>,
 ): number {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
   // Terminal state: no cards to play or board is full
   if (hand.length === 0 || boardFull(state.board)) return terminalValue(state, evaluatingFor);
 
-  const key = hashState(state.board, state.currentTurn, cardIndex);
+  const key = hashState(state.board, state.currentTurn);
   const cached = tt.get(key);
   if (cached !== undefined) {
     if (cached.flag === TTFlag.Exact) return cached.value;
@@ -122,7 +99,7 @@ function minimax(
   outer:
   for (let ci = 0; ci < hand.length; ci++) {
     const card = hand[ci]!;
-    const ck = cardId(card);
+    const ck = statsKey(card);
     if (seenCards.has(ck)) continue;
     seenCards.add(ck);
 
@@ -130,7 +107,7 @@ function minimax(
       if (state.board[i] !== null) continue;
 
       const nextState = placeCard(state, card, i);
-      const value = minimax(nextState, evaluatingFor, alpha, beta, tt, cardIndex);
+      const value = minimax(nextState, evaluatingFor, alpha, beta, tt);
 
       if (isMaximizing) {
         if (value > bestValue) bestValue = value;
@@ -159,7 +136,7 @@ function minimax(
   return bestValue;
 }
 
-function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex: Map<number, number>): RankedMove[] {
+function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>): RankedMove[] {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
   if (hand.length === 0) return [];
@@ -177,7 +154,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
   const seenCards = new Set<number>();
 
   for (const card of hand) {
-    const ck = cardId(card);
+    const ck = statsKey(card);
     if (seenCards.has(ck)) continue;
     seenCards.add(ck);
 
@@ -185,7 +162,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
       if (state.board[i] !== null) continue;
 
       const nextState = placeCard(state, card, i);
-      const value = minimax(nextState, Owner.Player, -Infinity, Infinity, tt, cardIndex);
+      const value = minimax(nextState, Owner.Player, -Infinity, Infinity, tt);
       evaluated.push({ card, position: i, value, nextState });
     }
   }
@@ -204,7 +181,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
 
         totalResponses++;
         const responseState = placeCard(nextState, oppCard, i);
-        const responseValue = minimax(responseState, Owner.Player, -Infinity, Infinity, tt, cardIndex);
+        const responseValue = minimax(responseState, Owner.Player, -Infinity, Infinity, tt);
 
         // "Better" means: better for the current player (state.currentTurn).
         // Values are from Player's perspective: higher = better for Player.
@@ -232,35 +209,31 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, cardIndex:
 
 export function findBestMove(state: GameState): RankedMove[] {
   const tt = new Map<number, TTEntry>();
-  const cardIndex = buildCardIndex(state);
-  return findBestMoveWith(state, tt, cardIndex);
+  return findBestMoveWith(state, tt);
 }
 
 export interface Solver {
-  reset(playerHand: Card[], opponentHand: Card[]): void;
+  reset(): void;
   solve(state: GameState): RankedMove[];
   ttSize(): number;
+  hashFor(state: GameState): number;
 }
 
 export function createSolver(): Solver {
   let tt = new Map<number, TTEntry>();
-  let cardIndex = new Map<number, number>();
 
   return {
-    reset(playerHand: Card[], opponentHand: Card[]) {
+    reset() {
       tt = new Map();
-      cardIndex = new Map();
-      let nextIdx = 1;
-      for (const card of [...playerHand, ...opponentHand]) {
-        const id = cardId(card);
-        if (!cardIndex.has(id)) cardIndex.set(id, nextIdx++);
-      }
     },
     solve(state: GameState): RankedMove[] {
-      return findBestMoveWith(state, tt, cardIndex);
+      return findBestMoveWith(state, tt);
     },
     ttSize(): number {
       return tt.size;
+    },
+    hashFor(state: GameState): number {
+      return hashState(state.board, state.currentTurn);
     },
   };
 }
