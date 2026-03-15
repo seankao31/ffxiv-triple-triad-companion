@@ -18,7 +18,7 @@ function makeOpponentHand() {
 beforeEach(() => {
   game.set({
     phase: 'setup',
-    ruleset: { plus: false, same: false },
+    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     firstTurn: Owner.Player,

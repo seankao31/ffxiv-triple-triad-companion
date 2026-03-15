@@ -163,7 +163,7 @@ describe("same rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player at pos 8
@@ -195,7 +195,7 @@ describe("same rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     let s = placeCard(state, filler, 8);
@@ -223,7 +223,7 @@ describe("same rule", () => {
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -260,7 +260,7 @@ describe("plus rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player at pos 8
@@ -291,7 +291,7 @@ describe("plus rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player at pos 8
@@ -319,7 +319,7 @@ describe("plus rule", () => {
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -361,7 +361,7 @@ describe("combo cascade", () => {
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
       Owner.Player,
-      { plus: false, same: true },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player at pos 8
@@ -399,7 +399,7 @@ describe("combo cascade", () => {
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
       Owner.Player,
-      { plus: false, same: true },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     );
 
     // Turn 1: Player at pos 8
@@ -501,7 +501,7 @@ describe("full game", () => {
     const p = createCard(5, 5, 5, 5);
     const o = createCard(3, 3, 3, 3);
 
-    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o], Owner.Player, { plus: true, same: false });
+    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o], Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
 
     // Turn 1 (P): pos 0. No occupied neighbors.
     let s = placeCard(state, p, 0);
@@ -618,7 +618,7 @@ describe("getScore", () => {
       playerHand:   [card, card],        // 2 in hand
       opponentHand: [card, card, card],  // 3 in hand
       currentTurn: Owner.Player,
-      rules: { plus: false, same: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     const score = getScore(state);
@@ -659,7 +659,7 @@ describe("combined rules", () => {
       playerHand:   [pCard],
       opponentHand: [],
       currentTurn: Owner.Player,
-      rules: { plus: true, same: true },
+      rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     const s = placeCard(state, pCard, 4);
@@ -700,7 +700,7 @@ describe("combo cascade depth", () => {
       playerHand:   [pCard],
       opponentHand: [],
       currentTurn: Owner.Player,
-      rules: { plus: false, same: true },
+      rules: { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     const s = placeCard(state, pCard, 4);

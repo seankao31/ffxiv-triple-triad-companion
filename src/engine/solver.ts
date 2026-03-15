@@ -70,6 +70,7 @@ function minimax(
   alpha: number,
   beta: number,
   tt: Map<number, TTEntry>,
+  ttInsert: (key: number, entry: TTEntry) => void,
 ): number {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
@@ -110,7 +111,7 @@ function minimax(
       if (state.board[i] !== null) continue;
 
       const nextState = placeCard(state, card, i);
-      const value = minimax(nextState, evaluatingFor, alpha, beta, tt);
+      const value = minimax(nextState, evaluatingFor, alpha, beta, tt, ttInsert);
 
       if (isMaximizing) {
         if (value > bestValue) bestValue = value;
@@ -134,12 +135,12 @@ function minimax(
          : bestValue <= alpha ? TTFlag.UpperBound
          : TTFlag.Exact;
   }
-  tt.set(key, { value: bestValue, flag });
+  ttInsert(key, { value: bestValue, flag });
 
   return bestValue;
 }
 
-function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>): RankedMove[] {
+function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>, ttInsert: (key: number, entry: TTEntry) => void): RankedMove[] {
   const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
 
   if (hand.length === 0) return [];
@@ -165,7 +166,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>): RankedMov
       if (state.board[i] !== null) continue;
 
       const nextState = placeCard(state, card, i);
-      const value = minimax(nextState, Owner.Player, -Infinity, Infinity, tt);
+      const value = minimax(nextState, Owner.Player, -Infinity, Infinity, tt, ttInsert);
       evaluated.push({ card, position: i, value, nextState });
     }
   }
@@ -184,7 +185,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>): RankedMov
 
         totalResponses++;
         const responseState = placeCard(nextState, oppCard, i);
-        const responseValue = minimax(responseState, Owner.Player, -Infinity, Infinity, tt);
+        const responseValue = minimax(responseState, Owner.Player, -Infinity, Infinity, tt, ttInsert);
 
         // "Better" means: better for the current player (state.currentTurn).
         // Values are from Player's perspective: higher = better for Player.
@@ -212,7 +213,7 @@ function findBestMoveWith(state: GameState, tt: Map<number, TTEntry>): RankedMov
 
 export function findBestMove(state: GameState): RankedMove[] {
   const tt = new Map<number, TTEntry>();
-  return findBestMoveWith(state, tt);
+  return findBestMoveWith(state, tt, (key, entry) => tt.set(key, entry));
 }
 
 export interface Solver {
@@ -222,15 +223,27 @@ export interface Solver {
   hashFor(state: GameState): number;
 }
 
-export function createSolver(): Solver {
+export function createSolver(maxTTSize = Infinity): Solver {
   let tt = new Map<number, TTEntry>();
+  let discoveredLimit = maxTTSize;
+
+  function ttInsert(key: number, entry: TTEntry): void {
+    if (tt.size >= discoveredLimit) return;
+    try {
+      tt.set(key, entry);
+    } catch (e) {
+      if (!(e instanceof RangeError)) throw e;
+      discoveredLimit = tt.size; // record actual engine limit; future inserts skip via fast path
+    }
+  }
 
   return {
     reset() {
       tt = new Map();
+      discoveredLimit = maxTTSize; // reset to configured value for the new game
     },
     solve(state: GameState): RankedMove[] {
-      return findBestMoveWith(state, tt);
+      return findBestMoveWith(state, tt, ttInsert);
     },
     ttSize(): number {
       return tt.size;

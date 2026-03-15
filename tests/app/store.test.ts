@@ -20,7 +20,7 @@ function makeOpponentHand() {
 beforeEach(() => {
   game.set({
     phase: 'setup',
-    ruleset: { plus: false, same: false },
+    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     firstTurn: Owner.Player,
@@ -50,8 +50,8 @@ describe('setup', () => {
   });
 
   it('updates ruleset', () => {
-    updateRuleset({ plus: true, same: false });
-    expect(get(game).ruleset).toEqual({ plus: true, same: false });
+    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
+    expect(get(game).ruleset).toEqual({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
   });
 
   it('defaults firstTurn to Player', () => {

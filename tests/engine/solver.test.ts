@@ -2,7 +2,7 @@
 // ABOUTME: Covers forced wins, loss avoidance, and robustness scoring.
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { type Board, type Card, type GameState, createCard, createInitialState, getScore, resetCardIds, Owner, Outcome } from "../../src/engine/types";
+import { type Board, type Card, type GameState, type RankedMove, createCard, createInitialState, getScore, resetCardIds, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 import { findBestMove, createSolver, type Solver } from "../../src/engine/solver";
 
@@ -127,7 +127,7 @@ describe("tie-breaking", () => {
       playerHand: [P],
       opponentHand: [O1, O2],
       currentTurn: Owner.Player,
-      rules: { plus: false, same: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     const moves = findBestMove(state);
@@ -194,7 +194,7 @@ describe("findBestMove — additional scenarios", () => {
       playerHand:   [weakCard],
       opponentHand: [strongCard, strongCard],
       currentTurn: Owner.Player,
-      rules: { plus: false, same: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     const moves = findBestMove(state);
@@ -412,7 +412,7 @@ describe("createSolver — Loss prediction accuracy", () => {
       createCard(10, 10, 2, 5),
       createCard(2,  5, 9, 9),
     ];
-    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false });
+    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
     const solver = createSolver();
     solver.reset();
 
@@ -528,7 +528,7 @@ describe("solver self-play consistency", () => {
       createCard(1, 3, 9, 6),
       createCard(4, 2, 7, 1),
     ];
-    const opening = createInitialState(p, o, Owner.Player, { plus: true, same: false });
+    const opening = createInitialState(p, o, Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
 
     const predictedOutcome = findBestMove(opening)[0]!.outcome;
     const actualOutcome = selfPlay(opening);
@@ -547,7 +547,7 @@ describe("solver self-play consistency", () => {
       createCard(10, 10, 2, 5),
       createCard(2,  5, 9, 9),
     ];
-    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false });
+    const opening = createInitialState(cards(), cards(), Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
 
     const openingMoves = findBestMove(opening);
     const openingOutcome = openingMoves[0]!.outcome;
@@ -627,6 +627,27 @@ describe("solver performance", () => {
   }, 30000);
 });
 
+describe("createSolver — TT size cap", () => {
+  it("respects an injected maxTTSize and does not throw", () => {
+    // Use asymmetric hands so alpha-beta terminates fast even with minimal TT.
+    // The all-10s vs all-1s game prunes immediately (player always wins);
+    // alpha-beta barely needs the TT. Natural TT for this game exceeds 50
+    // entries, so the cap is actually triggered.
+    resetCardIds();
+    const p = Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+    const o = Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+    const state = createInitialState(p, o);
+
+    const solver = createSolver(50);
+    solver.reset();
+
+    let moves: RankedMove[];
+    expect(() => { moves = solver.solve(state); }).not.toThrow();
+    expect(moves!.length).toBeGreaterThan(0);
+    expect(solver.ttSize()).toBeLessThanOrEqual(50);
+  });
+});
+
 describe("TT hash collision regression", () => {
   it("assigns distinct hashes to boards with same-stats cards from different sources", () => {
     // pStrong and oStrong have identical stats but different card.id values.
@@ -647,7 +668,7 @@ describe("TT hash collision regression", () => {
       playerHand: [weak, weak, weak, weak],
       opponentHand: [oStrong, weak, weak, weak, weak],
       currentTurn: Owner.Opponent,
-      rules: { plus: false, same: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     // posB: oStrong is at cell 0, owned by Player (Opponent played it; Player captured it).
@@ -660,7 +681,7 @@ describe("TT hash collision regression", () => {
       playerHand: [pStrong, weak, weak, weak, weak],
       opponentHand: [weak, weak, weak, weak],
       currentTurn: Owner.Opponent,
-      rules: { plus: false, same: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     };
 
     // posA and posB look identical by card stats on the board — but have different
