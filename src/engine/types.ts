@@ -15,6 +15,7 @@ export enum Owner {
 }
 
 let _nextCardId = 0;
+export function resetCardIds(): void { _nextCardId = 0; }
 
 export interface Card {
   readonly id: number;

@@ -17,6 +17,7 @@ export {
   createCard,
   createInitialState,
   getScore,
+  resetCardIds,
 } from "./types";
 
 export { placeCard } from "./board";

@@ -14,13 +14,16 @@ function statsKey(c: Card): number {
 // Encodes board + turn as a single number for use as a Map key.
 // Each cell: 0 = empty, 2*idx-1 = card idx owned by player, 2*idx = card idx owned by opponent.
 // Turn bit occupies bit 0 (0=player, 1=opponent). Cells packed starting at bit 1 (shift=2),
-// 5 bits each (max cell value 20 < 32). Total: 1 + 9*5 = 46 bits (safe integer).
+// 5 bits each (max cell value = (card.id+1)*2, must be < 32 — requires card.id < 15).
+// In practice card.id is 0–9 per game (guaranteed by resetCardIds() at game start).
+// Total: 1 + 9*5 = 46 bits (safe integer).
 function hashState(board: GameState["board"], currentTurn: Owner): number {
   let h = currentTurn === Owner.Player ? 0 : 1;
   let shift = 2;
   for (let i = 0; i < 9; i++) {
     const cell = board[i];
     if (cell) {
+      if (cell.card.id >= 15) throw new Error(`card.id ${cell.card.id} exceeds hash encoding limit`);
       const idx = cell.card.id + 1;
       h += (cell.owner === Owner.Player ? idx * 2 - 1 : idx * 2) * shift;
     }

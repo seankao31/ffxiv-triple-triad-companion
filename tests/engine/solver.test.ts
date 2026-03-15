@@ -1,10 +1,14 @@
 // ABOUTME: Tests for the minimax solver — move ranking, tie-breaking.
 // ABOUTME: Covers forced wins, loss avoidance, and robustness scoring.
 
-import { describe, it, expect } from "bun:test";
-import { type Board, type Card, type GameState, createCard, createInitialState, getScore, Owner, Outcome } from "../../src/engine/types";
+import { describe, it, expect, beforeEach } from "bun:test";
+import { type Board, type Card, type GameState, createCard, createInitialState, getScore, resetCardIds, Owner, Outcome } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 import { findBestMove, createSolver, type Solver } from "../../src/engine/solver";
+
+beforeEach(() => {
+  resetCardIds();
+});
 
 describe("findBestMove", () => {
   it("returns no moves for a full board", () => {

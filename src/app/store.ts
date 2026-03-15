@@ -2,7 +2,7 @@
 // ABOUTME: Holds game phase, hands, ruleset, firstTurn setting, history stack, and selected card.
 import { writable, derived, get } from 'svelte/store';
 import {
-  createInitialState, placeCard as enginePlaceCard,
+  createInitialState, placeCard as enginePlaceCard, resetCardIds,
   Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
@@ -88,6 +88,7 @@ export function updateFirstTurn(turn: Owner): void {
 }
 
 export function startGame(): void {
+  resetCardIds();
   const s = get(game);
   if (s.playerHand.some((c) => c === null) || s.opponentHand.some((c) => c === null)) {
     throw new Error('All hand slots must be filled before starting the game.');
