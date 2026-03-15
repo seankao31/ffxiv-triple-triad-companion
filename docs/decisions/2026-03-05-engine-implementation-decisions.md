@@ -89,3 +89,13 @@ The outer loop deduplication prevents `findBestMove` from returning duplicate `R
 **Rejected:** Checking only `hand.length === 0`.
 
 **Why:** In a standard 5v5 game, one player places 5 cards and the other places 4 (since player goes first). At turn 9, the board fills while the second player's hand still has 1 card. Checking only hand length would miss this terminal condition and cause the search to recurse into a state with no legal moves, producing incorrect results.
+
+---
+
+## Transposition Table: Adaptive Size Cap for V8 Compatibility
+
+**Decision:** `createSolver` accepts an optional `maxTTSize` parameter (default `Infinity`). Internally, a `discoveredLimit` mutable variable starts at `maxTTSize` and is narrowed to `tt.size` if a `RangeError` is ever caught from `tt.set()`. All TT insertions go through a `ttInsert` closure that fast-paths out once the limit is known.
+
+**Why adaptive instead of a hardcoded constant:** V8 (Chrome/browser) enforces a hard `Map` size limit of `2^24 = 16,777,216` entries. A fixed constant would leave performance on the table in engines with higher limits (e.g., future V8 versions, JSC). The try-catch fires exactly once per Map lifetime; subsequent inserts skip via the fast `tt.size >= discoveredLimit` check with no exception overhead.
+
+**Testing gap:** Tests run in Bun (JavaScriptCore), which has no Map size limit. We cannot write a test that uses a real Map and observes the V8 crash. The `maxTTSize` parameter exists to let tests inject an artificial limit and verify graceful degradation. This gap means V8-specific Map behaviour is only validated manually (by observing the browser console). This is a known limitation of the current single-engine test setup.
