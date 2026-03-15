@@ -59,7 +59,7 @@ describe('HandPanel', () => {
   });
 
   it('highlights the best-move card when moves come from a deserialized source (Worker)', () => {
-    // Simulate Worker structured-clone: new card object references
+    // Simulate Worker structured-clone: card.id is a primitive number and survives deserialization
     const moves = findBestMove(get(currentState)!);
     rankedMoves.set(JSON.parse(JSON.stringify(moves)));
 

@@ -82,10 +82,10 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
-    // Simulate Worker structured-clone: new object references for card objects
+    // Simulate Worker structured-clone: card.id is a primitive number and survives deserialization
     const moves = findBestMove(get(currentState)!);
     rankedMoves.set(JSON.parse(JSON.stringify(moves)));
-    selectCard(ph[0]!); // original reference — won't === deserialized move.card
+    selectCard(ph[0]!); // original reference — id matches deserialized move.card.id
 
     const { container } = render(Board);
     const evalCells = container.querySelectorAll('[data-eval]');

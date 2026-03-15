@@ -2,7 +2,7 @@
 <!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. -->
 <script lang="ts">
   import { currentState, rankedMoves, game, selectCard } from '../../store';
-  import { Owner, cardEquals, type Card } from '../../../engine';
+  import { Owner, type Card } from '../../../engine';
 
   let { owner }: { owner: Owner } = $props();
 
@@ -34,7 +34,7 @@
       class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
         {isActive ? 'cursor-pointer hover:border-accent-blue' : 'cursor-default opacity-70'}
         {card === $game.selectedCard ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}
-        {bestCard && cardEquals(card, bestCard) && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}"
+        {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}"
     >
       <div></div>
       <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
