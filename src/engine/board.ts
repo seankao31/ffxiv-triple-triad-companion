@@ -1,8 +1,20 @@
 // ABOUTME: Game logic for card placement and capture resolution.
 // ABOUTME: Handles standard capture, Plus, Same, and Combo cascades.
 
-import type { Board, Card, GameState, Neighbor } from "./types";
+import type { Board, Card, GameState, Neighbor, RuleSet } from "./types";
 import { ADJACENCY, Owner } from "./types";
+
+// Returns true if the attacker's edge value captures the defender's edge value under the active rules.
+// Handles Reverse (invert comparison) and Fallen Ace (A loses to 1, or 1 loses to A under Reverse+FA).
+function captures(attackerValue: number, defenderValue: number, rules: RuleSet): boolean {
+  if (rules.fallenAce && !rules.reverse) {
+    if (attackerValue === 10 && defenderValue === 1) return false;
+    if (attackerValue === 1 && defenderValue === 10) return true;
+  }
+  // Under Reverse + Fallen Ace: verify with Yshan whether the special case applies.
+  // For now, Fallen Ace is only active without Reverse (conservative interpretation).
+  return rules.reverse ? attackerValue < defenderValue : attackerValue > defenderValue;
+}
 
 // Returns positions of opponent cards flipped by the Plus rule.
 // Plus triggers when 2+ adjacent pairs share the same sum of touching values.
@@ -82,6 +94,7 @@ function resolveCombo(
   board: [...Board],
   currentTurn: Owner,
   initialFlips: number[],
+  rules: RuleSet,
 ): void {
   const queue = [...initialFlips];
   const processed = new Set<number>();
@@ -95,7 +108,7 @@ function resolveCombo(
     for (const neighbor of ADJACENCY[pos]!) {
       const neighborCell = board[neighbor.position];
       if (neighborCell && neighborCell.owner !== currentTurn) {
-        if (cell.card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {
+        if (captures(cell.card[neighbor.attackingEdge], neighborCell.card[neighbor.defendingEdge], rules)) {
           board[neighbor.position] = { card: neighborCell.card, owner: currentTurn };
           queue.push(neighbor.position);
         }
@@ -137,13 +150,13 @@ export function placeCard(
   const sameFlips = state.rules.same ? resolveSame(newBoard, card, position, state.currentTurn) : [];
 
   // Combo cascade: BFS standard captures from all Plus/Same flipped positions
-  resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips]);
+  resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips], state.rules);
 
-  // Standard capture: flip adjacent opponent cards with strictly lower values
+  // Standard capture: flip adjacent opponent cards per active capture rules
   for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = newBoard[neighbor.position];
     if (neighborCell && neighborCell.owner !== state.currentTurn) {
-      if (card[neighbor.attackingEdge] > neighborCell.card[neighbor.defendingEdge]) {
+      if (captures(card[neighbor.attackingEdge], neighborCell.card[neighbor.defendingEdge], state.rules)) {
         newBoard[neighbor.position] = { card: neighborCell.card, owner: state.currentTurn };
       }
     }

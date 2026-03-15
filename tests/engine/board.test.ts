@@ -1,8 +1,8 @@
 // ABOUTME: Tests for game logic — card placement, captures, combos.
 // ABOUTME: Covers standard, Plus, Same, and Combo cascade rules.
 
-import { describe, expect, test } from "bun:test";
-import { type Board, type GameState, createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
+import { describe, expect, it, test } from "bun:test";
+import { type Board, type GameState, type RuleSet, createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 
 describe("placeCard", () => {
@@ -712,5 +712,84 @@ describe("combo cascade depth", () => {
     expect(s.board[6]!.owner).toBe(Owner.Player);
     // Combo depth 2: pos6.top(8) > pos3.bottom(1)
     expect(s.board[3]!.owner).toBe(Owner.Player);
+  });
+});
+
+describe("Reverse rule", () => {
+  it("captures opponent card with strictly lower attacking value", () => {
+    // Under Reverse: attacker captures when attacker < defender.
+    // Card with top=3 placed above opponent card with top=5 (defender's bottom=5):
+    // 3 < 5 → should capture.
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const p = [createCard(3, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Place opponent at position 0 (top-left), then player above — but row 0 is top row.
+    // Simpler: place player at pos 3 (middle-left), opponent at pos 0 (top-left).
+    // Player's right edge attacks opponent's left edge.
+    // Player right=1, opponent left=1 → equal, no capture under reverse (need strict <).
+    // Rethink: use a clear case where Reverse flips the normal result.
+    // Standard: player top=7 placed above opponent bottom=5 → 7>5 → capture.
+    // Reverse: same cards → 7<5 is false → NO capture. Reversed result.
+    const pReverse = [createCard(7, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oReverse = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    let state = createInitialState(pReverse, oReverse, Owner.Opponent, rules);
+    state = placeCard(state, oReverse[0]!, 0); // opponent places at top-left
+    state = placeCard(state, pReverse[0]!, 3); // player places at middle-left (attacks opponent's bottom with player's top)
+    // player top=7 vs opponent bottom=5: under Reverse, 7 < 5 is false → no capture
+    // Player owns: 1 board card + 4 in hand = 5
+    expect(getScore(state).player).toBe(5);
+    expect(getScore(state).opponent).toBe(5); // opponent card not captured, still owns it
+  });
+
+  it("captures when attacker value is strictly less than defender value", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const pCards = [createCard(3, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 7, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Opponent places card with bottom=7 at pos 0; player places card with top=3 at pos 3.
+    // Player top=3 attacks opponent bottom=7: under Reverse, 3 < 7 → capture.
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3 (left-middle), top=3 attacks opponent's bottom=7
+    // Under Reverse: 3 < 7 → player captures opponent card
+    // Player owns: 1 placed + 1 captured = 2 on board + 4 in hand = 6
+    const captured = state.board[0];
+    expect(captured?.owner).toBe(Owner.Player); // opponent card was captured
+  });
+});
+
+describe("Fallen Ace rule", () => {
+  it("A (10) does not capture 1 under Fallen Ace", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const pCards = [createCard(10, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Player's top=10 vs opponent's bottom=1: normally 10>1 captures. Under Fallen Ace, 10 loses to 1 — no capture.
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=1
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=10 attacks bottom=1
+    // Under Fallen Ace: A (10) attacking 1 → no capture
+    expect(state.board[0]?.owner).toBe(Owner.Opponent); // NOT captured
+  });
+
+  it("1 captures A (10) under Fallen Ace", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const pCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 10, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Opponent bottom=10 (A). Player top=1 attacks it. Normally 1>10 is false. Under Fallen Ace, 1 captures A.
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0, bottom=10
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3, top=1 attacks bottom=10
+    // Under Fallen Ace: 1 vs A → 1 captures A
+    expect(state.board[0]?.owner).toBe(Owner.Player); // captured
+  });
+
+  it("normal captures still apply under Fallen Ace", () => {
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const pCards = [createCard(7, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Player top=7 vs opponent bottom=5: 7>5 → capture (unchanged by Fallen Ace)
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0);
+    state = placeCard(state, pCards[0]!, 3);
+    expect(state.board[0]?.owner).toBe(Owner.Player);
   });
 });
