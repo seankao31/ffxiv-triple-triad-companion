@@ -109,6 +109,57 @@ describe('CardInput', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Right'));
   });
 
+  it('Backspace on Right moves focus to Top', async () => {
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn(), onback: vi.fn() } });
+    screen.getByLabelText('Right').focus();
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: 'Backspace' });
+    expect(document.activeElement).toBe(screen.getByLabelText('Top'));
+  });
+
+  it('Backspace on Bottom moves focus to Right', async () => {
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn(), onback: vi.fn() } });
+    screen.getByLabelText('Bottom').focus();
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: 'Backspace' });
+    expect(document.activeElement).toBe(screen.getByLabelText('Right'));
+  });
+
+  it('Backspace on Left moves focus to Bottom', async () => {
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn(), onback: vi.fn() } });
+    screen.getByLabelText('Left').focus();
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: 'Backspace' });
+    expect(document.activeElement).toBe(screen.getByLabelText('Bottom'));
+  });
+
+  it('Backspace on Top calls onback', async () => {
+    const onback = vi.fn();
+    render(CardInput, { props: { onchange: vi.fn(), onadvance: vi.fn(), onback } });
+    screen.getByLabelText('Top').focus();
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: 'Backspace' });
+    expect(onback).toHaveBeenCalledOnce();
+  });
+
+  it('Backspace clears the current field and emits null when card is incomplete', async () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, onadvance: vi.fn(), onback: vi.fn() } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '3' });
+    // Backspace on Right: clears Right, moves to Top — card is now incomplete
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: 'Backspace' });
+    expect(onchange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('Backspace clears the field and re-emits card with updated value', async () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, onadvance: vi.fn(), onback: vi.fn() } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '3' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '7' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '2' });
+    // Backspace on Left: clears Left → card becomes incomplete
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: 'Backspace' });
+    expect(onchange).toHaveBeenLastCalledWith(null);
+  });
+
   it('card container is large enough to avoid dropdown overlap (w-36)', () => {
     const { container } = render(CardInput, { props: { onchange: vi.fn() } });
     const card = container.firstElementChild;

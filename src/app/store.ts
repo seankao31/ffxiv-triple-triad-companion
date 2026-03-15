@@ -48,6 +48,11 @@ solverWorker.onmessage = (e: MessageEvent) => {
   }
 };
 
+solverWorker.onerror = (e) => {
+  console.error('Solver worker error:', e.message, e);
+  solverLoading.set(false);
+};
+
 function triggerSolve(state: GameState) {
   solverLoading.set(true);
   solverWorker.postMessage({ type: 'solve', state });

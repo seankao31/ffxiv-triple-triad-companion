@@ -6,9 +6,11 @@
   let {
     onchange,
     onadvance = () => {},
+    onback = () => {},
   }: {
     onchange: (card: Card | null) => void;
     onadvance?: () => void;
+    onback?: () => void;
   } = $props();
 
   let values = $state<(number | null)[]>([null, null, null, null]);
@@ -36,6 +38,17 @@
   }
 
   function handleKeyDown(index: number, e: KeyboardEvent) {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      values[index] = null;
+      emit();
+      if (index > 0) {
+        inputEls[index - 1]?.focus();
+      } else {
+        onback();
+      }
+      return;
+    }
     const parsed = parseKey(e.key);
     if (parsed === null) return;
     e.preventDefault();
@@ -55,6 +68,10 @@
 
   export function focusFirst() {
     inputEls[0]?.focus();
+  }
+
+  export function focusLast() {
+    inputEls[3]?.focus();
   }
 </script>
 

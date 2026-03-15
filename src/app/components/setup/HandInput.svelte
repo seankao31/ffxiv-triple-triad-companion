@@ -1,5 +1,5 @@
 <!-- ABOUTME: Renders 5 CardInput slots for one hand (player or opponent). -->
-<!-- ABOUTME: Wires auto-advance between cards and exposes focusFirst for cross-hand navigation. -->
+<!-- ABOUTME: Wires auto-advance and back-navigation between cards; exposes focusFirst/focusLast. -->
 <script lang="ts">
   import CardInput from './CardInput.svelte';
   import type { Card } from '../../../engine';
@@ -8,16 +8,22 @@
     label,
     onchange,
     onadvance = () => {},
+    onback = () => {},
   }: {
     label: string;
     onchange: (index: number, card: Card | null) => void;
     onadvance?: () => void;
+    onback?: () => void;
   } = $props();
 
-  let cardRefs: Array<{ focusFirst: () => void } | undefined> = $state(Array(5).fill(undefined));
+  let cardRefs: Array<{ focusFirst: () => void; focusLast: () => void } | undefined> = $state(Array(5).fill(undefined));
 
   export function focusFirst() {
     cardRefs[0]?.focusFirst();
+  }
+
+  export function focusLast() {
+    cardRefs[4]?.focusLast();
   }
 </script>
 
@@ -28,6 +34,7 @@
       <CardInput
         onchange={(card) => onchange(i, card)}
         onadvance={i < 4 ? () => cardRefs[i + 1]?.focusFirst() : onadvance}
+        onback={i > 0 ? () => cardRefs[i - 1]?.focusLast() : onback}
         bind:this={cardRefs[i]}
       />
     {/each}
