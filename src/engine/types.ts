@@ -14,7 +14,10 @@ export enum Owner {
   Opponent = "opponent",
 }
 
+let _nextCardId = 0;
+
 export interface Card {
+  readonly id: number;
   readonly top: number; // 1-10, where 10 = A
   readonly right: number;
   readonly bottom: number;
@@ -85,7 +88,7 @@ export function createCard(
   left: number,
   type: CardType = CardType.None,
 ): Card {
-  return { top, right, bottom, left, type };
+  return { id: _nextCardId++, top, right, bottom, left, type };
 }
 
 export function createInitialState(
