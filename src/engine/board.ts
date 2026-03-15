@@ -2,7 +2,16 @@
 // ABOUTME: Handles standard capture, Plus, Same, and Combo cascades.
 
 import type { Board, Card, GameState, Neighbor, RuleSet } from "./types";
-import { ADJACENCY, Owner } from "./types";
+import { ADJACENCY, CardType, Owner } from "./types";
+
+// Applies Ascension/Descension stat modifiers to an edge value based on card type.
+// Ascension: Primal cards get +ascCount (capped at 10). Descension: Scion cards get -descCount (floored at 1).
+// The counts are snapshotted before card placement so the placed card never counts toward its own resolution.
+function applyStatMod(value: number, cardType: CardType, rules: RuleSet, ascCount: number, descCount: number): number {
+  if (rules.ascension && cardType === CardType.Primal) return Math.min(10, value + ascCount);
+  if (rules.descension && cardType === CardType.Scion) return Math.max(1, value - descCount);
+  return value;
+}
 
 // Returns true if the attacker's edge value captures the defender's edge value under the active rules.
 // Handles Reverse (invert comparison) and Fallen Ace (A loses to 1, or 1 loses to A under Reverse+FA).
@@ -23,13 +32,18 @@ function resolvePlus(
   card: Card,
   position: number,
   currentTurn: Owner,
+  rules: RuleSet,
+  ascCount: number,
+  descCount: number,
 ): number[] {
   const sums: { neighbor: Neighbor; sum: number }[] = [];
 
   for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = board[neighbor.position];
     if (!neighborCell) continue;
-    const sum = card[neighbor.attackingEdge] + neighborCell.card[neighbor.defendingEdge];
+    const attackVal = applyStatMod(card[neighbor.attackingEdge], card.type, rules, ascCount, descCount);
+    const defendVal = applyStatMod(neighborCell.card[neighbor.defendingEdge], neighborCell.card.type, rules, ascCount, descCount);
+    const sum = attackVal + defendVal;
     sums.push({ neighbor, sum });
   }
 
@@ -64,13 +78,18 @@ function resolveSame(
   card: Card,
   position: number,
   currentTurn: Owner,
+  rules: RuleSet,
+  ascCount: number,
+  descCount: number,
 ): number[] {
   const samePairs: Neighbor[] = [];
 
   for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = board[neighbor.position];
     if (!neighborCell) continue;
-    if (card[neighbor.attackingEdge] === neighborCell.card[neighbor.defendingEdge]) {
+    const attackVal = applyStatMod(card[neighbor.attackingEdge], card.type, rules, ascCount, descCount);
+    const defendVal = applyStatMod(neighborCell.card[neighbor.defendingEdge], neighborCell.card.type, rules, ascCount, descCount);
+    if (attackVal === defendVal) {
       samePairs.push(neighbor);
     }
   }
@@ -95,6 +114,8 @@ function resolveCombo(
   currentTurn: Owner,
   initialFlips: number[],
   rules: RuleSet,
+  ascCount: number,
+  descCount: number,
 ): void {
   const queue = [...initialFlips];
   const processed = new Set<number>();
@@ -108,7 +129,9 @@ function resolveCombo(
     for (const neighbor of ADJACENCY[pos]!) {
       const neighborCell = board[neighbor.position];
       if (neighborCell && neighborCell.owner !== currentTurn) {
-        if (captures(cell.card[neighbor.attackingEdge], neighborCell.card[neighbor.defendingEdge], rules)) {
+        const attackVal = applyStatMod(cell.card[neighbor.attackingEdge], cell.card.type, rules, ascCount, descCount);
+        const defendVal = applyStatMod(neighborCell.card[neighbor.defendingEdge], neighborCell.card.type, rules, ascCount, descCount);
+        if (captures(attackVal, defendVal, rules)) {
           board[neighbor.position] = { card: neighborCell.card, owner: currentTurn };
           queue.push(neighbor.position);
         }
@@ -138,25 +161,36 @@ export function placeCard(
     throw new Error("Card is not in the current player's hand");
   }
 
+  // Snapshot Ascension/Descension counts from board BEFORE placing (i++ timing: placed card excluded).
+  let ascCount = 0;
+  let descCount = 0;
+  for (const cell of state.board) {
+    if (!cell) continue;
+    if (state.rules.ascension && cell.card.type === CardType.Primal) ascCount++;
+    if (state.rules.descension && cell.card.type === CardType.Scion) descCount++;
+  }
+
   const newBoard = [...state.board] as unknown as [
     ...Board,
   ];
   newBoard[position] = { card, owner: state.currentTurn };
 
   // Plus rule: flip opponent cards in adjacent pairs that share the same sum
-  const plusFlips = state.rules.plus ? resolvePlus(newBoard, card, position, state.currentTurn) : [];
+  const plusFlips = state.rules.plus ? resolvePlus(newBoard, card, position, state.currentTurn, state.rules, ascCount, descCount) : [];
 
   // Same rule: flip opponent cards that form 2+ equal-value pairs
-  const sameFlips = state.rules.same ? resolveSame(newBoard, card, position, state.currentTurn) : [];
+  const sameFlips = state.rules.same ? resolveSame(newBoard, card, position, state.currentTurn, state.rules, ascCount, descCount) : [];
 
   // Combo cascade: BFS standard captures from all Plus/Same flipped positions
-  resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips], state.rules);
+  resolveCombo(newBoard, state.currentTurn, [...plusFlips, ...sameFlips], state.rules, ascCount, descCount);
 
   // Standard capture: flip adjacent opponent cards per active capture rules
   for (const neighbor of ADJACENCY[position]!) {
     const neighborCell = newBoard[neighbor.position];
     if (neighborCell && neighborCell.owner !== state.currentTurn) {
-      if (captures(card[neighbor.attackingEdge], neighborCell.card[neighbor.defendingEdge], state.rules)) {
+      const attackVal = applyStatMod(card[neighbor.attackingEdge], card.type, state.rules, ascCount, descCount);
+      const defendVal = applyStatMod(neighborCell.card[neighbor.defendingEdge], neighborCell.card.type, state.rules, ascCount, descCount);
+      if (captures(attackVal, defendVal, state.rules)) {
         newBoard[neighbor.position] = { card: neighborCell.card, owner: state.currentTurn };
       }
     }
