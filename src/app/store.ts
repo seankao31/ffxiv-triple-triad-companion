@@ -48,6 +48,7 @@ export const currentState = derived(game, ($g) => $g.history.at(-1) ?? null);
 
 export const rankedMoves = writable<RankedMove[]>([]);
 export const solverLoading = writable<boolean>(false);
+export const pimcProgress = writable<{ current: number; total: number } | null>(null);
 
 const solverWorker = new Worker(
   new URL('../engine/solver.worker.ts', import.meta.url),
@@ -59,21 +60,37 @@ const solverWorker = new Worker(
 let solveGeneration = 0;
 
 solverWorker.onmessage = (e: MessageEvent) => {
-  if (e.data.type === 'result' && e.data.generation === solveGeneration) {
+  const { type, generation } = e.data;
+  if (generation !== solveGeneration) return;
+  if (type === 'result') {
     rankedMoves.set(e.data.moves);
     solverLoading.set(false);
+    pimcProgress.set(null);
+  } else if (type === 'pimc-progress') {
+    pimcProgress.set({ current: e.data.current, total: e.data.total });
   }
 };
 
 solverWorker.onerror = (e) => {
   console.error('Solver worker error:', e.message, e);
   solverLoading.set(false);
+  pimcProgress.set(null);
 };
 
 function triggerSolve(state: GameState) {
+  const unknownCardIds = get(game).unknownCardIds;
   solveGeneration++;
   solverLoading.set(true);
-  solverWorker.postMessage({ type: 'solve', state, generation: solveGeneration });
+  if (unknownCardIds.size > 0) {
+    solverWorker.postMessage({
+      type: 'pimc',
+      state,
+      unknownCardIds: [...unknownCardIds],
+      generation: solveGeneration,
+    });
+  } else {
+    solverWorker.postMessage({ type: 'solve', state, generation: solveGeneration });
+  }
 }
 
 // Trigger solve when game state changes; clean up when returning to setup.
@@ -83,6 +100,7 @@ currentState.subscribe((state) => {
   } else {
     rankedMoves.set([]);
     solverLoading.set(false);
+    pimcProgress.set(null);
   }
 });
 

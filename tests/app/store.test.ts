@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import {
-  game, currentState, rankedMoves, solverLoading,
+  game, currentState, rankedMoves, solverLoading, pimcProgress,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, revealCard,
@@ -418,5 +418,59 @@ describe('revealCard', () => {
       const card = state.opponentHand.find((c) => c.id === placeholderId)!;
       expect(card.top).toBe(9);
     }
+  });
+});
+
+describe('PIMC store integration', () => {
+  function setupThreeOpen() {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 remain null
+    startGame();
+  }
+
+  it('pimcProgress is null initially', () => {
+    expect(get(pimcProgress)).toBeNull();
+  });
+
+  it('triggerSolve sends pimc message when unknownCardIds is non-empty', () => {
+    setupThreeOpen();
+    const msg = lastWorkerInstance!.lastPostedMessage as { type: string };
+    expect(msg.type).toBe('pimc');
+  });
+
+  it('pimc message includes unknownCardIds and generation', () => {
+    setupThreeOpen();
+    const msg = lastWorkerInstance!.lastPostedMessage as {
+      type: string; unknownCardIds: number[]; generation: number;
+    };
+    expect(msg.type).toBe('pimc');
+    expect(Array.isArray(msg.unknownCardIds)).toBe(true);
+    expect(msg.unknownCardIds.length).toBe(2);
+    expect(typeof msg.generation).toBe('number');
+  });
+
+  it('pimc-progress message updates pimcProgress store', () => {
+    setupThreeOpen();
+    const gen = (lastWorkerInstance!.lastPostedMessage as { generation: number }).generation;
+    lastWorkerInstance!.onmessage!({
+      data: { type: 'pimc-progress', generation: gen, current: 5, total: 50 },
+    } as MessageEvent);
+    expect(get(pimcProgress)).toEqual({ current: 5, total: 50 });
+  });
+
+  it('result message clears pimcProgress', () => {
+    setupThreeOpen();
+    const gen = (lastWorkerInstance!.lastPostedMessage as { generation: number }).generation;
+    lastWorkerInstance!.onmessage!({
+      data: { type: 'pimc-progress', generation: gen, current: 10, total: 50 },
+    } as MessageEvent);
+    lastWorkerInstance!.onmessage!({
+      data: { type: 'result', generation: gen, moves: [] },
+    } as MessageEvent);
+    expect(get(pimcProgress)).toBeNull();
   });
 });
