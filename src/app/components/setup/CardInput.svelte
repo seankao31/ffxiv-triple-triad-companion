@@ -95,7 +95,10 @@
 </script>
 
 <!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  tabindex="-1"
   class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col
   {isUnknown ? 'opacity-60 border-dashed' : ''}"
   onclick={(e) => {

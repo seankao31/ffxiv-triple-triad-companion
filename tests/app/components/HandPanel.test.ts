@@ -35,6 +35,62 @@ beforeEach(() => {
   rankedMoves.set(findBestMove(get(currentState)!));
 });
 
+describe('unknown card reveal', () => {
+  function setupWithUnknown() {
+    updateThreeOpen(true);
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.set({
+      phase: 'setup',
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      swap: false,
+      threeOpen: true,
+      playerHand: ph,
+      opponentHand: [oh[0]!, oh[1]!, oh[2]!, oh[3]!, null],
+      firstTurn: Owner.Opponent,
+      history: [],
+      selectedCard: null,
+      unknownCardIds: new Set(),
+    });
+    startGame();
+    rankedMoves.set(findBestMove(get(currentState)!));
+  }
+
+  it('clicking "?" on opponent turn opens a CardInput reveal form', async () => {
+    setupWithUnknown();
+    render(HandPanel, { props: { owner: Owner.Opponent } });
+    const unknownButton = screen.getByText('?').closest('button')!;
+    await fireEvent.click(unknownButton);
+    expect(screen.getByLabelText('Top')).toBeInTheDocument();
+  });
+
+  it('completing CardInput calls revealCard and closes the form', async () => {
+    setupWithUnknown();
+    render(HandPanel, { props: { owner: Owner.Opponent } });
+    await fireEvent.click(screen.getByText('?').closest('button')!);
+
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '5' });
+
+    expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
+    expect(get(game).unknownCardIds.size).toBe(0);
+  });
+
+  it('clicking "?" on player turn does not open reveal form', async () => {
+    const state = get(currentState)!;
+    const opponentCardId = state.opponentHand[0]!.id;
+    game.update((g) => ({ ...g, unknownCardIds: new Set([opponentCardId]) }));
+
+    render(HandPanel, { props: { owner: Owner.Opponent } });
+    const unknownButton = screen.getByText('?').closest('button')!;
+    await fireEvent.click(unknownButton);
+
+    expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
+  });
+});
+
 describe('HandPanel', () => {
   it('renders 5 cards for the player hand', () => {
     render(HandPanel, { props: { owner: Owner.Player } });
