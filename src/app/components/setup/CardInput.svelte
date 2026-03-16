@@ -95,8 +95,15 @@
 </script>
 
 <!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
-<div class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col
-  {isUnknown ? 'opacity-60 border-dashed' : ''}">
+<div
+  role="button"
+  class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col
+  {isUnknown ? 'opacity-60 border-dashed' : ''}"
+  onclick={(e) => {
+    if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) {
+      inputEls[0]?.focus();
+    }
+  }}>
   <!-- Type dropdown at top-right (hidden when unknown) -->
   {#if !isUnknown}
     <div class="absolute top-1 right-1">

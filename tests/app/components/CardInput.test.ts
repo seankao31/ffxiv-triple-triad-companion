@@ -207,4 +207,12 @@ describe('CardInput', () => {
     await fireEvent.keyDown(screen.getByLabelText('Top'), { key: ' ' });
     expect(onadvance).not.toHaveBeenCalled();
   });
+
+  it('clicking the container outside inputs focuses the Top field', async () => {
+    const { container } = render(CardInput, { props: { onchange: vi.fn() } });
+    const root = container.firstElementChild as HTMLElement;
+    // Click the root div (not an input or select)
+    await fireEvent.click(root);
+    expect(document.activeElement).toBe(screen.getByLabelText('Top'));
+  });
 });
