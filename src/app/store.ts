@@ -6,6 +6,7 @@ import {
   Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
+import { createPlaceholderCard } from '../engine/types';
 
 export type Phase = 'setup' | 'swap' | 'play';
 
@@ -23,6 +24,9 @@ export type AppState = {
   firstTurn: Owner;
   history: GameState[];
   selectedCard: Card | null;
+  // IDs of opponent hand cards that are placeholder (unknown) in Three Open games.
+  // HandPanel uses this set to decide whether to show stats or a face-down "?" display.
+  unknownCardIds: Set<number>;
 };
 
 const initialAppState: AppState = {
@@ -35,6 +39,7 @@ const initialAppState: AppState = {
   firstTurn: Owner.Player,
   history: [],
   selectedCard: null,
+  unknownCardIds: new Set(),
 };
 
 export const game = writable<AppState>(initialAppState);
@@ -144,17 +149,26 @@ export function startGame(): void {
     game.update((g) => ({ ...g, phase: 'swap' }));
     return;
   }
+  // Fill any null opponent slots with placeholder cards (Three Open only).
+  // IDs are pre-computed to match what createCard would assign: playerHandSize + slotIndex.
+  const unknownCardIds = new Set<number>();
+  const filledOpponentHand = s.opponentHand.map((c, i) => {
+    if (c !== null) return c;
+    const placeholderId = s.playerHand.length + i;
+    unknownCardIds.add(placeholderId);
+    return createPlaceholderCard(placeholderId);
+  });
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
   solverWorker.postMessage({ type: 'newGame' });
   game.update((g) => {
     const initial = createInitialState(
       g.playerHand as Card[],
-      g.opponentHand as Card[],
+      filledOpponentHand,
       g.firstTurn,
       g.ruleset,
     );
-    return { ...g, phase: 'play', history: [initial] };
+    return { ...g, phase: 'play', history: [initial], unknownCardIds };
   });
   // currentState subscription fires during game.update() → triggerSolve called automatically
 }
