@@ -571,5 +571,31 @@ describe('PIMC parallel dispatch', () => {
     // pimcProgress should still show 0 completed (stale result discarded)
     expect(get(pimcProgress)?.current).toBe(0);
   });
+
+  it('mid-flight generation bump discards remaining in-flight results without corrupting new batch', () => {
+    setupThreeOpen();
+    const poolWorker = workerInstances[1]!;
+    const simMsgs = poolWorker.postedMessages.filter((m: any) => (m as any).type === 'simulate') as any[];
+    const gen1 = simMsgs[0]!.generation;
+    const card = createCard(5, 5, 5, 5);
+
+    // Deliver one result for gen1
+    poolWorker.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 0 } } as MessageEvent);
+    expect(get(pimcProgress)!.current).toBe(1);
+
+    // Bump generation by pushing a new state to history (triggers triggerSolve via currentState)
+    const initial = get(currentState)!;
+    game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
+
+    // Clear postedMessages before checking to get only the new batch's messages
+    const newSimMsgs = poolWorker.postedMessages.filter((m: any) => (m as any).type === 'simulate' && (m as any).generation > gen1) as any[];
+    expect(newSimMsgs.length).toBeGreaterThan(0);
+    const gen2 = newSimMsgs[0]!.generation;
+    expect(gen2).toBeGreaterThan(gen1);
+
+    // Late gen1 result arrives — must be discarded, gen2 pimcProgress must show 0 completed
+    poolWorker.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
+    expect(get(pimcProgress)!.current).toBe(0); // gen2 has 0 completed, gen1 result was discarded
+  });
 });
 
