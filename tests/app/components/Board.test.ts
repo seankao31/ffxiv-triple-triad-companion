@@ -46,7 +46,8 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
-    selectCard(ph[0]!);
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    selectCard(get(game).playerHand[0]!);
 
     render(Board);
     await fireEvent.click(screen.getAllByRole('button')[0]!);
@@ -59,8 +60,10 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
     rankedMoves.set(findBestMove(get(currentState)!));
-    selectCard(ph[0]!);
+    selectCard(freshHand[0]!);
 
     const { container } = render(Board);
     expect(container.querySelector('.ring-2')).not.toBeNull();
@@ -71,8 +74,10 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
     rankedMoves.set(findBestMove(get(currentState)!));
-    selectCard(ph[0]!);
+    selectCard(freshHand[0]!);
 
     const { container } = render(Board);
     // All 9 cells are empty, each should have data-eval attribute
@@ -85,10 +90,12 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
     // Simulate Worker structured-clone: card.id is a primitive number and survives deserialization
     const moves = findBestMove(get(currentState)!);
     rankedMoves.set(JSON.parse(JSON.stringify(moves)));
-    selectCard(ph[0]!); // original reference — id matches deserialized move.card.id
+    selectCard(freshHand[0]!); // fresh reference — id matches deserialized move.card.id
 
     const { container } = render(Board);
     const evalCells = container.querySelectorAll('[data-eval]');
@@ -100,9 +107,11 @@ describe('Board', () => {
     const oh = makeOpponentHand();
     game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
     startGame();
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
     const moves = findBestMove(get(currentState)!);
     rankedMoves.set(JSON.parse(JSON.stringify(moves)));
-    selectCard(ph[0]!);
+    selectCard(freshHand[0]!);
 
     const { container } = render(Board);
     expect(container.querySelector('.ring-2')).not.toBeNull();

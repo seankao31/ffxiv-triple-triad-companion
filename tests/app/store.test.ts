@@ -119,7 +119,9 @@ describe('playCard', () => {
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
-    return { ph, oh };
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
+    return { ph: freshHand, oh };
   }
 
   it('places card and pushes new state to history', () => {
@@ -153,7 +155,9 @@ describe('undoMove', () => {
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
-    return { ph };
+    // startGame re-creates cards with fresh IDs; use the store's hand for card references.
+    const freshHand = get(game).playerHand;
+    return { ph: freshHand };
   }
 
   it('pops the last state from history', () => {
@@ -273,7 +277,7 @@ describe('swap rule', () => {
 
     const hand = get(game).playerHand;
     expect(hand).not.toContain(given);
-    expect(hand).toContain(received);
+    expect(hand).toContainEqual(expect.objectContaining({ top: 7, right: 7, bottom: 7, left: 7 }));
     expect(hand.filter((c) => c !== null)).toHaveLength(5);
   });
 
@@ -286,7 +290,7 @@ describe('swap rule', () => {
     const received = createCard(3, 3, 3, 3);
     handleSwap(given, received);
 
-    expect(get(game).playerHand[1]).toBe(received);
+    expect(get(game).playerHand[1]).toMatchObject({ top: 3, right: 3, bottom: 3, left: 3 });
   });
 
   it('phase transitions to swap when swap is enabled and Start Game is pressed', () => {
@@ -366,10 +370,31 @@ describe('three open rule', () => {
     const unknownIds = get(game).unknownCardIds;
     expect(unknownIds.size).toBe(2);
     // Placeholder IDs should correspond to opponent hand positions 3 and 4
-    // (playerHandSize=5, so opponentSlot3=ID 8, opponentSlot4=ID 9)
     const state = get(currentState)!;
     const placeholders = state.opponentHand.filter((c) => unknownIds.has(c.id));
     expect(placeholders).toHaveLength(2);
+  });
+
+  it('placeholder IDs do not collide with known opponent card IDs even after extra createCard calls', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    // Simulate _nextCardId pollution BEFORE opponent cards are created
+    // (as if CardInput.onTypeChange called createCard for earlier fields)
+    createCard(1, 1, 1, 1);
+    createCard(1, 1, 1, 1);
+    createCard(1, 1, 1, 1);
+    // Known opponent cards now get higher IDs (8, 9, 10 if player hand was 0-4)
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 are null
+    startGame();
+    const unknownIds = get(game).unknownCardIds;
+    const state = get(currentState)!;
+    // Known opponent cards should NOT be in unknownCardIds
+    const knownOpponents = state.opponentHand.filter((c) => !unknownIds.has(c.id));
+    expect(knownOpponents).toHaveLength(3);
+    expect(unknownIds.size).toBe(2);
   });
 });
 

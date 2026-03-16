@@ -2,11 +2,10 @@
 // ABOUTME: Holds game phase, hands, ruleset, firstTurn setting, history stack, and selected card.
 import { writable, derived, get } from 'svelte/store';
 import {
-  createInitialState, placeCard as enginePlaceCard, resetCardIds,
+  createCard, createInitialState, placeCard as enginePlaceCard, resetCardIds,
   Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
-import { createPlaceholderCard } from '../engine/types';
 
 export type Phase = 'setup' | 'swap' | 'play';
 
@@ -138,23 +137,32 @@ export function updateThreeOpen(threeOpen: boolean): void {
 
 export function handleSwap(given: Card, received: Card): void {
   const s = get(game);
-  const playerHand = s.playerHand.map((c) => (c && c.id === given.id ? received : c));
+  // Reset card IDs and re-create all cards to guarantee deterministic IDs.
+  resetCardIds();
+  const freshPlayerHand = s.playerHand.map((c) => {
+    if (!c) return null;
+    // Replace the given card with the received card (match by original ID before reset).
+    const base = c.id === given.id ? received : c;
+    return createCard(base.top, base.right, base.bottom, base.left, base.type);
+  });
+  const freshOpponentHand = (s.opponentHand as Card[]).map((c) =>
+    createCard(c.top, c.right, c.bottom, c.left, c.type),
+  );
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
   solverWorker.postMessage({ type: 'newGame' });
   game.update((g) => {
     const initial = createInitialState(
-      playerHand as Card[],
-      g.opponentHand as Card[],
+      freshPlayerHand as Card[],
+      freshOpponentHand,
       g.firstTurn,
       g.ruleset,
     );
-    return { ...g, playerHand, phase: 'play', history: [initial] };
+    return { ...g, playerHand: freshPlayerHand, phase: 'play', history: [initial] };
   });
 }
 
 export function startGame(): void {
-  resetCardIds();
   const s = get(game);
   if (s.playerHand.some((c) => c === null)) {
     throw new Error('All player hand slots must be filled before starting the game.');
@@ -162,31 +170,43 @@ export function startGame(): void {
   if (!s.threeOpen && s.opponentHand.some((c) => c === null)) {
     throw new Error('All opponent hand slots must be filled before starting the game.');
   }
-  // If Swap is enabled, go to the swap sub-phase instead of starting play immediately.
+
+  // Reset card IDs FIRST, then re-create every card so IDs are deterministic
+  // regardless of how many createCard() calls happened during setup (e.g. from CardInput).
+  resetCardIds();
+  const freshPlayerHand = s.playerHand.map((c) =>
+    createCard(c!.top, c!.right, c!.bottom, c!.left, c!.type),
+  );
+
   if (s.swap) {
-    game.update((g) => ({ ...g, phase: 'swap' }));
+    // Re-create known opponent cards too, then go to swap phase.
+    const freshOpponentHand = s.opponentHand.map((c) =>
+      c ? createCard(c.top, c.right, c.bottom, c.left, c.type) : null,
+    );
+    game.update((g) => ({ ...g, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'swap' }));
     return;
   }
-  // Fill any null opponent slots with placeholder cards (Three Open only).
-  // IDs are pre-computed to match what createCard would assign: playerHandSize + slotIndex.
+
+  // Re-create known opponent cards; assign placeholder IDs from the same counter (not hardcoded).
   const unknownCardIds = new Set<number>();
-  const filledOpponentHand = s.opponentHand.map((c, i) => {
-    if (c !== null) return c;
-    const placeholderId = s.playerHand.length + i;
-    unknownCardIds.add(placeholderId);
-    return createPlaceholderCard(placeholderId);
+  const filledOpponentHand = s.opponentHand.map((c) => {
+    if (c !== null) return createCard(c.top, c.right, c.bottom, c.left, c.type);
+    const placeholder = createCard(1, 1, 1, 1);  // ID auto-assigned by counter
+    unknownCardIds.add(placeholder.id);
+    return placeholder;
   });
+
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
   solverWorker.postMessage({ type: 'newGame' });
   game.update((g) => {
     const initial = createInitialState(
-      g.playerHand as Card[],
+      freshPlayerHand,
       filledOpponentHand,
       g.firstTurn,
       g.ruleset,
     );
-    return { ...g, phase: 'play', history: [initial], unknownCardIds };
+    return { ...g, playerHand: freshPlayerHand, phase: 'play', history: [initial], unknownCardIds };
   });
   // currentState subscription fires during game.update() → triggerSolve called automatically
 }

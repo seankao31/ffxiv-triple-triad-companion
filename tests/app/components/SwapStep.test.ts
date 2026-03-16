@@ -58,7 +58,7 @@ describe('SwapStep', () => {
     handleSwap(given, received);
     const hand = get(game).playerHand;
     expect(hand).not.toContain(given);
-    expect(hand).toContain(received);
+    expect(hand).toContainEqual(expect.objectContaining({ top: 5, right: 5, bottom: 5, left: 5 }));
   });
 
   it('transitions to play phase after handleSwap', () => {
