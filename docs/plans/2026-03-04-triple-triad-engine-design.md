@@ -4,9 +4,9 @@
 
 A Triple Triad companion app that provides real-time move optimization for FFXIV Triple Triad. The core is a pure TypeScript game engine with a minimax solver, later to be ported to Rust/WASM for imperfect-information performance.
 
-## v1 Scope
+## Scope
 
-- **Rules**: Standard capture + Plus + Same + Combo cascades
+- **Rules**: Standard capture + Plus + Same + Combo cascades + Reverse + Fallen Ace + Ascension + Descension
 - **Format**: All Open only (perfect information)
 - **Features**: Live Solver (game assistant with ranked move suggestions)
 
@@ -18,7 +18,7 @@ Engine-first approach: the game engine is a standalone TypeScript library with n
 
 - **Card**: Four directional values (top, right, bottom, left) as numbers 1-10 (10 = A), plus a type enum (Primal, Scion, Society, Garlean, None).
 - **BoardCell**: Either empty, or holds a Card + owner (Player | Opponent).
-- **RuleSet**: Which optional rules are active for this game (`plus: boolean`, `same: boolean`). Stored on GameState so capture logic is consistent throughout a game without external configuration.
+- **RuleSet**: Which optional rules are active for this game (`plus`, `same`, `reverse`, `fallenAce`, `ascension`, `descension` — all boolean). Stored on GameState so capture logic is consistent throughout a game without external configuration.
 - **GameState**: Immutable value object containing:
   - 3x3 board (9 cells)
   - Player hand (up to 5 cards)
@@ -45,7 +45,7 @@ Capture resolution order:
 - **Evaluation**: Terminal state = board full OR current player's hand is empty. At terminal states, count card ownership. Full-depth search means no heuristic needed for non-terminal states.
 - **Transposition table**: Keyed on board state + turn hash. Stores `(value, flag)` where flag is `Exact | LowerBound | UpperBound` — required for correct alpha-beta integration (naive exact caching with alpha-beta produces incorrect bounds).
 - **Two-pass structure**: First pass evaluates all moves with minimax (populating the TT). Second pass calculates robustness using the same TT — equivalent to one pass because the TT already has the answers.
-- **Tie-breaking (robustness)**: When moves share the same minimax outcome, prefer the move where the highest fraction of opponent responses maintain that outcome. Robustness = `sameOutcomeCount / totalResponses`.
+- **Tie-breaking (robustness)**: When moves share the same minimax outcome, prefer the move where the highest fraction of opponent responses lead to a *strictly better* outcome for us than minimax predicts. Robustness = `betterOutcomeCount / totalResponses`.
 - **Card deduplication**: Identical cards in a hand produce identical subtrees. `findBestMove` deduplicates by card signature in the outer loop to avoid redundant top-level evaluations.
 
 ### Key Design Decisions
@@ -54,7 +54,7 @@ Capture resolution order:
 - **Pure functions**: No side effects. Input → output. Trivially testable and portable.
 - **Engine isolation**: The engine never imports from the UI layer. When porting to Rust/WASM, only the engine module is swapped.
 - **First turn is configurable**: `createInitialState` accepts an optional `firstTurn` parameter (defaults to `Player`). In FFXIV, the player who goes first varies by game setup.
-- **RuleSet on GameState**: Plus/Same rules are optional and stored on GameState rather than passed per-call. This ensures a game's ruleset is consistent throughout all `placeCard` calls without callers needing to track it separately.
+- **RuleSet on GameState**: All rules are optional and stored on GameState rather than passed per-call. This ensures a game's ruleset is consistent throughout all `placeCard` calls without callers needing to track it separately.
 
 ## Tech Stack
 
@@ -109,8 +109,8 @@ ffxivcollect.com API (`https://ffxivcollect.com/api/...`). Returns card stats, t
 
 ### Usage
 
-- **v1**: Not used at runtime. User inputs card stats manually.
-- **Later**: Powers card search/autocomplete, deck builder, and probability distributions for imperfect-information solver (PIMC).
+- **Current**: Not used at runtime. User inputs card stats manually (≤4 keystrokes per field with auto-advance — faster than search/select).
+- **Later**: Powers deck builder and probability distributions for imperfect-information solver (PIMC).
 
 ## UI (Later Phase)
 
@@ -151,10 +151,9 @@ PC-first, wide-screen layout:
 - Terminal state: full board returns no moves
 - Turn 1: returns all 45 moves ranked
 
-## Future Work (Out of v1 Scope)
+## Future Work
 
 - **Imperfect information**: PIMC (Perfect Information Monte Carlo) solver for Three Open / Hidden formats. Rust/WASM port for performance.
 - **Deck Builder**: Genetic algorithm to find optimal 5-card combinations from user's collection.
 - **Post-Game Analysis**: Move classification (Brilliant/Best/Mistake/Blunder), advantage timeline.
-- **Additional rules**: Ascension, Descension, Reverse, Fallen Ace, Order, Chaos, Swap, Sudden Death.
-- **Card search UI**: Autocomplete backed by scraped card database.
+- **Additional rules**: Order, Chaos, Swap, Sudden Death.

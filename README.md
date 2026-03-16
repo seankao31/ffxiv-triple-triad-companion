@@ -118,6 +118,5 @@ See `PRD.md` for the full product vision. Potential next steps:
 
 - **Imperfect information** — Three Open support with PIMC solver and `(Card | null)[]` hand slots
 - **Swap rule** — mid-game card exchange UI in the play phase
-- **Card database** — select from `cards.json` instead of entering values manually
 - **Deck Builder** (PRD §3.3) — collection manager + optimization algorithm
 - **Post-Game Analysis** (PRD §3.4) — game replay with move classification

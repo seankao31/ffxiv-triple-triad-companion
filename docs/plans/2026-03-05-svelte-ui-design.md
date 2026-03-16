@@ -15,7 +15,7 @@ Transitioning setup → play creates the initial `GameState` via `createInitialS
 ```
 App.svelte
 ├── SetupView.svelte          — phase: 'setup'
-│   ├── RulesetInput.svelte   — checkboxes for Plus, Same, etc.
+│   ├── RulesetInput.svelte   — checkboxes for Plus, Same, Reverse, Fallen Ace, Ascension, Descension
 │   ├── HandInput.svelte      — player hand (5 × CardInput)
 │   ├── HandInput.svelte      — opponent hand (5 × CardInput)
 │   └── [Start Game button]
@@ -44,9 +44,15 @@ type GameStore = {
 };
 ```
 
-`rankedMoves` is a Svelte `derived` store that calls `findBestMove(currentState)` reactively whenever `history` changes. The solver runs synchronously on the main thread (fast enough for MVP; can be moved to a Web Worker later).
+`rankedMoves` is a Svelte `writable` store updated via a dedicated Web Worker (`src/engine/solver.worker.ts`). `solverLoading` is a writable that tracks in-progress solves. The Worker holds a single `Solver` instance (from `createSolver()`) that persists its transposition table across turns, so positions explored on turn N are cached for free on turn N+1.
 
-Data flow is unidirectional: user action → store mutation → derived stores update → components re-render. No prop drilling beyond passing a card or position to a leaf component.
+**Worker protocol:**
+- `newGame` — sent before `game.update()` in `startGame`; calls `solver.reset()` to clear the TT.
+- `solve` — triggered by the `currentState` subscription; posts back `{ type: 'result', moves }`.
+
+Message ordering matters: `newGame` must be posted before `game.update()` so the Worker queue is `[newGame, solve]`, not `[solve (stale TT), newGame]`. `solverWorker.onerror` resets `solverLoading` and surfaces crashes so the UI is never permanently blocked.
+
+Data flow is unidirectional: user action → store mutation → Worker message → `rankedMoves.set()` → components re-render. No prop drilling beyond passing a card or position to a leaf component.
 
 ## Play Interaction
 
@@ -66,7 +72,6 @@ Data flow is unidirectional: user action → store mutation → derived stores u
 - **Partial information (Three Open):** `(Card | null)[]` hand types are already in the store. Adding unknown-slot support to `CardInput` is an isolated change.
 - **Swap and mid-game reveals:** handled in the play phase by allowing the user to update the board state when an unknown card is revealed. The setup form does not need special Swap handling — users enter the post-swap hand state as they see it.
 - **PIMC solver:** when the probabilistic solver is added, it will use the known hand contents to constrain unknown-slot sampling. No UI changes needed.
-- **Web Worker:** the solver call in the `derived` store can be moved to a Worker without touching any component.
 
 ## Tech Stack
 
