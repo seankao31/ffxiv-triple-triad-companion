@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
-import { game, startGame, currentState, selectCard, playCard, rankedMoves, solverLoading } from '../../../src/app/store';
+import { game, startGame, currentState, selectCard, playCard, rankedMoves, solverLoading, pimcProgress } from '../../../src/app/store';
 import SolverPanel from '../../../src/app/components/game/SolverPanel.svelte';
 import { createCard, Owner, Outcome, findBestMove } from '../../../src/engine';
 
@@ -109,5 +109,20 @@ describe('SolverPanel', () => {
     render(SolverPanel);
     // After one player move, it's opponent's turn
     expect(screen.getByText(/opponent/i)).toBeInTheDocument();
+  });
+
+  it('shows PIMC simulation progress when pimcProgress is set', () => {
+    pimcProgress.set({ current: 10, total: 50 });
+    render(SolverPanel);
+    expect(screen.getByText(/10.*50/)).toBeInTheDocument();
+  });
+
+  it('shows confidence percentage when move has confidence field', () => {
+    const card = createCard(10, 10, 10, 10);
+    rankedMoves.set([
+      { card, position: 0, outcome: Outcome.Win, robustness: 0, confidence: 0.72 },
+    ]);
+    render(SolverPanel);
+    expect(screen.getByRole('listitem').textContent).toMatch(/72%/);
   });
 });

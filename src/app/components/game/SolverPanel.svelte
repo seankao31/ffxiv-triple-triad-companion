@@ -1,7 +1,7 @@
 <!-- ABOUTME: Shows card notation and outcome for the best-move tier, adapting header based on whose turn it is. -->
 <!-- ABOUTME: Highlights the top move with a ring; shows the shared outcome once in the header. -->
 <script lang="ts">
-  import { rankedMoves, solverLoading, currentState, game } from '../../store';
+  import { rankedMoves, solverLoading, pimcProgress, currentState, game } from '../../store';
   import { Outcome, CardType, Owner, type Card } from '../../../engine';
 
   const outcomeLabel: Record<Outcome, string> = {
@@ -65,7 +65,13 @@
     {/if}
   </h3>
   {#if $solverLoading}
-    <div role="status" class="text-surface-400 text-sm animate-pulse">Calculating…</div>
+    <div role="status" class="text-surface-400 text-sm animate-pulse">
+      {#if $pimcProgress}
+        Calculating… ({$pimcProgress.current}/{$pimcProgress.total} simulations)
+      {:else}
+        Calculating…
+      {/if}
+    </div>
   {/if}
   <ul class="flex flex-col gap-1">
     {#each bestTierMoves as move, i}
@@ -79,7 +85,11 @@
           {notation.values}{#if notation.typeAbbr}<span class="{notation.typeClass}">[{notation.typeAbbr}]</span>{/if}
         </span>
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
-        <span class="text-surface-300 text-xs">rob={move.robustness.toFixed(2)}</span>
+        {#if move.confidence !== undefined}
+          <span class="text-surface-300 text-xs">{Math.round(move.confidence * 100)}%</span>
+        {:else}
+          <span class="text-surface-300 text-xs">rob={move.robustness.toFixed(2)}</span>
+        {/if}
       </li>
     {/each}
   </ul>
