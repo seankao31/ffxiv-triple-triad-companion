@@ -15,6 +15,9 @@ export type AppState = {
   // Swap is a pre-game format rule: after hand entry, one card from each side is exchanged.
   // Tracked here (not in RuleSet) because it's a setup mechanic, not a capture rule.
   swap: boolean;
+  // Three Open allows up to 2 opponent hand slots to be unknown at game start.
+  // Tracked here (not in RuleSet) because it affects setup and solve strategy, not capture logic.
+  threeOpen: boolean;
   playerHand: (Card | null)[];
   opponentHand: (Card | null)[];
   firstTurn: Owner;
@@ -26,6 +29,7 @@ const initialAppState: AppState = {
   phase: 'setup',
   ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
   swap: false,
+  threeOpen: false,
   playerHand: [null, null, null, null, null],
   opponentHand: [null, null, null, null, null],
   firstTurn: Owner.Player,
@@ -105,6 +109,10 @@ export function updateSwap(swap: boolean): void {
   game.update((s) => ({ ...s, swap }));
 }
 
+export function updateThreeOpen(threeOpen: boolean): void {
+  game.update((s) => ({ ...s, threeOpen }));
+}
+
 export function handleSwap(given: Card, received: Card): void {
   const s = get(game);
   const playerHand = s.playerHand.map((c) => (c && c.id === given.id ? received : c));
@@ -125,8 +133,11 @@ export function handleSwap(given: Card, received: Card): void {
 export function startGame(): void {
   resetCardIds();
   const s = get(game);
-  if (s.playerHand.some((c) => c === null) || s.opponentHand.some((c) => c === null)) {
-    throw new Error('All hand slots must be filled before starting the game.');
+  if (s.playerHand.some((c) => c === null)) {
+    throw new Error('All player hand slots must be filled before starting the game.');
+  }
+  if (!s.threeOpen && s.opponentHand.some((c) => c === null)) {
+    throw new Error('All opponent hand slots must be filled before starting the game.');
   }
   // If Swap is enabled, go to the swap sub-phase instead of starting play immediately.
   if (s.swap) {

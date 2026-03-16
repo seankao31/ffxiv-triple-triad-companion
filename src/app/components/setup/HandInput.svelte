@@ -9,11 +9,13 @@
     onchange,
     onadvance = () => {},
     onback = () => {},
+    allowUnknown = false,
   }: {
     label: string;
     onchange: (index: number, card: Card | null) => void;
     onadvance?: () => void;
     onback?: () => void;
+    allowUnknown?: boolean;
   } = $props();
 
   let cardRefs: Array<{ focusFirst: () => void; focusLast: () => void } | undefined> = $state(Array(5).fill(undefined));
@@ -35,6 +37,7 @@
         onchange={(card) => onchange(i, card)}
         onadvance={i < 4 ? () => cardRefs[i + 1]?.focusFirst() : onadvance}
         onback={i > 0 ? () => cardRefs[i - 1]?.focusLast() : onback}
+        {allowUnknown}
         bind:this={cardRefs[i]}
       />
     {/each}

@@ -4,7 +4,7 @@
   import HandInput from './HandInput.svelte';
   import RulesetInput from './RulesetInput.svelte';
   import SwapStep from './SwapStep.svelte';
-  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn } from '../../store';
+  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen } from '../../store';
   import { Owner } from '../../../engine';
 
   let error = $state('');
@@ -58,6 +58,7 @@
         label="Opponent Hand"
         onchange={updateOpponentCard}
         onback={() => playerHandRef?.focusLast()}
+        allowUnknown={$game.threeOpen}
         bind:this={opponentHandRef}
       />
     </div>

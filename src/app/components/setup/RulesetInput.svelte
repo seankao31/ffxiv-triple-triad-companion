@@ -1,7 +1,7 @@
-<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Swap). -->
+<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Swap, Three Open). -->
 <!-- ABOUTME: Updates the ruleset and format flags in the central game store on change. -->
 <script lang="ts">
-  import { game, updateRuleset, updateSwap } from '../../store';
+  import { game, updateRuleset, updateSwap, updateThreeOpen } from '../../store';
 
   let plus = $state($game.ruleset.plus);
   let same = $state($game.ruleset.same);
@@ -10,6 +10,7 @@
   let ascension = $state($game.ruleset.ascension);
   let descension = $state($game.ruleset.descension);
   let swap = $state($game.swap);
+  let threeOpen = $state($game.threeOpen);
 
   function updateRules() {
     updateRuleset({ plus, same, reverse, fallenAce, ascension, descension });
@@ -44,5 +45,9 @@
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
     <input type="checkbox" bind:checked={swap} onchange={() => updateSwap(swap)} class="accent-accent-blue" />
     Swap
+  </label>
+  <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
+    <input type="checkbox" bind:checked={threeOpen} onchange={() => updateThreeOpen(threeOpen)} class="accent-accent-blue" />
+    Three Open
   </label>
 </div>

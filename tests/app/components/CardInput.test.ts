@@ -165,4 +165,29 @@ describe('CardInput', () => {
     const card = container.firstElementChild;
     expect(card?.classList.contains('w-36')).toBe(true);
   });
+
+  it('does not show unknown toggle when allowUnknown is false (default)', () => {
+    render(CardInput, { props: { onchange: vi.fn() } });
+    expect(screen.queryByLabelText('Toggle unknown')).not.toBeInTheDocument();
+  });
+
+  it('shows unknown toggle button when allowUnknown is true', () => {
+    render(CardInput, { props: { onchange: vi.fn(), allowUnknown: true } });
+    expect(screen.getByLabelText('Toggle unknown')).toBeInTheDocument();
+  });
+
+  it('clicking unknown toggle emits null and hides stat inputs', async () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, allowUnknown: true } });
+    await fireEvent.click(screen.getByLabelText('Toggle unknown'));
+    expect(onchange).toHaveBeenLastCalledWith(null);
+    expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
+  });
+
+  it('clicking unknown toggle again restores stat inputs', async () => {
+    render(CardInput, { props: { onchange: vi.fn(), allowUnknown: true } });
+    await fireEvent.click(screen.getByLabelText('Toggle unknown'));
+    await fireEvent.click(screen.getByLabelText('Toggle unknown'));
+    expect(screen.getByLabelText('Top')).toBeInTheDocument();
+  });
 });

@@ -6,7 +6,7 @@ import {
   game, currentState, rankedMoves, solverLoading,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
-  updateSwap, handleSwap,
+  updateSwap, handleSwap, updateThreeOpen,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome } from '../../src/engine';
 import { lastWorkerInstance } from './setup';
@@ -24,6 +24,7 @@ beforeEach(() => {
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     swap: false,
+    threeOpen: false,
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     firstTurn: Owner.Player,
@@ -301,5 +302,41 @@ describe('swap rule', () => {
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
     startGame();
     expect(get(game).phase).toBe('play');
+  });
+});
+
+describe('three open rule', () => {
+  it('updateThreeOpen sets threeOpen flag', () => {
+    updateThreeOpen(true);
+    expect(get(game).threeOpen).toBe(true);
+    updateThreeOpen(false);
+    expect(get(game).threeOpen).toBe(false);
+  });
+
+  it('startGame allows null opponent slots when threeOpen is true', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    // leave some opponent slots null
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 remain null
+    expect(() => startGame()).not.toThrow();
+  });
+
+  it('startGame still rejects null player slots even when threeOpen is true', () => {
+    updateThreeOpen(true);
+    // only fill 4 player slots
+    makePlayerHand().slice(0, 4).forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    expect(() => startGame()).toThrow();
+  });
+
+  it('startGame still rejects null opponent slots when threeOpen is false', () => {
+    updateThreeOpen(false);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    // leave some opponent slots null
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    expect(() => startGame()).toThrow();
   });
 });
