@@ -30,6 +30,7 @@ beforeEach(() => {
     firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
+    unknownCardIds: new Set(),
   });
 });
 

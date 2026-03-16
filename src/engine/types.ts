@@ -74,6 +74,7 @@ export interface RankedMove {
   readonly position: number; // 0-8 board index
   readonly outcome: Outcome;
   readonly robustness: number; // fraction of opponent responses that lead to a strictly better outcome for us (opponent mistakes); 0 for wins since nothing beats a win
+  readonly confidence?: number; // fraction of PIMC simulations where this was the top move (undefined for perfect-information games)
 }
 
 export interface Neighbor {
@@ -90,6 +91,13 @@ export function createCard(
   type: CardType = CardType.None,
 ): Card {
   return { id: _nextCardId++, top, right, bottom, left, type };
+}
+
+// Creates a stand-in card for an unknown opponent hand slot in Three Open games.
+// Uses the given ID so the hash encoding stays consistent after the real card is revealed.
+// Not exported from the engine barrel — internal to the app layer only.
+export function createPlaceholderCard(id: number): Card {
+  return { id, top: 1, right: 1, bottom: 1, left: 1, type: CardType.None };
 }
 
 export function createInitialState(

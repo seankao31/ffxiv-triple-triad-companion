@@ -22,11 +22,13 @@ beforeEach(() => {
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     swap: false,
+    threeOpen: false,
     playerHand: ph,
     opponentHand: oh,
     firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
+    unknownCardIds: new Set(),
   });
   startGame();
   // Worker is mocked — populate rankedMoves directly for component tests.

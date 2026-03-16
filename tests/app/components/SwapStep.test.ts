@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, handleSwap, updateSwap } from '../../../src/app/store';
+import { game, handleSwap } from '../../../src/app/store';
 import SwapStep from '../../../src/app/components/setup/SwapStep.svelte';
 import { createCard, Owner } from '../../../src/engine';
 
@@ -22,20 +22,21 @@ beforeEach(() => {
     phase: 'swap',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     swap: true,
+    threeOpen: false,
     playerHand: ph,
     opponentHand: oh,
     firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
+    unknownCardIds: new Set(),
   });
 });
 
 describe('SwapStep', () => {
   it('renders a list of player hand cards to select from', () => {
     render(SwapStep);
-    // Should render 5 selectable card buttons
+    // Should render 5 selectable card buttons plus the Confirm button
     const buttons = screen.getAllByRole('button');
-    // At least 5 card buttons (plus the Confirm button)
     expect(buttons.length).toBeGreaterThanOrEqual(5);
   });
 
@@ -44,7 +45,7 @@ describe('SwapStep', () => {
     expect(screen.getByRole('button', { name: /confirm swap/i })).toBeInTheDocument();
   });
 
-  it('Confirm Swap button is disabled until both card and received card are chosen', () => {
+  it('Confirm Swap button is disabled until both given and received cards are chosen', () => {
     render(SwapStep);
     const confirm = screen.getByRole('button', { name: /confirm swap/i });
     expect(confirm).toBeDisabled();

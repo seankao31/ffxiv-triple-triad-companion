@@ -22,3 +22,4 @@ export {
 
 export { placeCard } from "./board";
 export { findBestMove } from "./solver";
+export { weightedSample, buildCandidatePool, runPIMC, type PIMCCard } from "./pimc";
