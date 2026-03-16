@@ -9,7 +9,7 @@ import {
   updateSwap, handleSwap, updateThreeOpen, revealCard,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome, resetCardIds } from '../../src/engine';
-import { lastWorkerInstance } from './setup';
+import { lastWorkerInstance, workerInstances } from './setup';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -21,6 +21,10 @@ function makeOpponentHand() {
 
 beforeEach(() => {
   resetCardIds();
+  // Clear accumulated messages on all worker instances so each test starts with a clean slate.
+  for (const w of workerInstances) {
+    w.postedMessages.length = 0;
+  }
   game.set({
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
@@ -467,7 +471,7 @@ describe('revealCard', () => {
   });
 });
 
-describe('PIMC store integration', () => {
+describe('PIMC parallel dispatch', () => {
   function setupThreeOpen() {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
@@ -478,45 +482,94 @@ describe('PIMC store integration', () => {
     startGame();
   }
 
-  it('pimcProgress is null initially', () => {
+  it('dispatches 50 simulate messages total across pool workers', () => {
+    setupThreeOpen();
+    const poolWorkers = workerInstances.slice(1); // indices 1+ are pool workers
+    const totalSims = poolWorkers.reduce(
+      (sum, w) => sum + w.postedMessages.filter((m: any) => (m as any).type === 'simulate').length,
+      0,
+    );
+    expect(totalSims).toBe(50);
+  });
+
+  it('each simulate message carries the current generation', () => {
+    setupThreeOpen();
+    const poolWorkers = workerInstances.slice(1);
+    const simMsgs = poolWorkers.flatMap((w) =>
+      w.postedMessages.filter((m: any) => (m as any).type === 'simulate'),
+    ) as Array<{ generation: number }>;
+    const gen = simMsgs[0]!.generation;
+    expect(simMsgs.every((m) => m.generation === gen)).toBe(true);
+  });
+
+  it('updates pimcProgress as sim-results arrive', () => {
+    setupThreeOpen();
+    const poolWorker = workerInstances[1]!;
+    const simMsg = poolWorker.postedMessages.find((m: any) => (m as any).type === 'simulate') as any;
+
+    const card = createCard(5, 5, 5, 5);
+    poolWorker.onmessage!({
+      data: {
+        type: 'sim-result',
+        move: { card, position: 0, outcome: Outcome.Win, robustness: 1 },
+        generation: simMsg.generation,
+        simIndex: 0,
+      },
+    } as MessageEvent);
+
+    const progress = get(pimcProgress);
+    expect(progress).not.toBeNull();
+    expect(progress!.current).toBe(1);
+    expect(progress!.total).toBe(50);
+  });
+
+  it('sets rankedMoves and clears loading when all 50 results arrive', () => {
+    setupThreeOpen();
+    const poolWorkers = workerInstances.slice(1);
+    const simMsgs = poolWorkers.flatMap((w) =>
+      w.postedMessages.filter((m: any) => (m as any).type === 'simulate'),
+    ) as Array<{ generation: number; simIndex: number }>;
+    const gen = simMsgs[0]!.generation;
+
+    const card = createCard(5, 5, 5, 5);
+    poolWorkers.forEach((w) => {
+      const workerSims = w.postedMessages.filter((m: any) => (m as any).type === 'simulate') as any[];
+      workerSims.forEach((msg) => {
+        w.onmessage!({
+          data: {
+            type: 'sim-result',
+            move: { card, position: msg.simIndex % 9, outcome: Outcome.Win, robustness: 1 },
+            generation: gen,
+            simIndex: msg.simIndex,
+          },
+        } as MessageEvent);
+      });
+    });
+
+    expect(get(solverLoading)).toBe(false);
     expect(get(pimcProgress)).toBeNull();
+    expect(get(rankedMoves).length).toBeGreaterThan(0);
+    expect(get(rankedMoves)[0]!.confidence).toBeGreaterThan(0);
   });
 
-  it('triggerSolve sends pimc message when unknownCardIds is non-empty', () => {
+  it('discards stale sim-results from previous generation', () => {
     setupThreeOpen();
-    const msg = lastWorkerInstance!.lastPostedMessage as { type: string };
-    expect(msg.type).toBe('pimc');
-  });
+    const poolWorker = workerInstances[1]!;
+    const simMsg = poolWorker.postedMessages.find((m: any) => (m as any).type === 'simulate') as any;
+    const staleGen = simMsg.generation - 1;
 
-  it('pimc message includes unknownCardIds and generation', () => {
-    setupThreeOpen();
-    const msg = lastWorkerInstance!.lastPostedMessage as {
-      type: string; unknownCardIds: number[]; generation: number;
-    };
-    expect(msg.type).toBe('pimc');
-    expect(Array.isArray(msg.unknownCardIds)).toBe(true);
-    expect(msg.unknownCardIds.length).toBe(2);
-    expect(typeof msg.generation).toBe('number');
-  });
-
-  it('pimc-progress message updates pimcProgress store', () => {
-    setupThreeOpen();
-    const gen = (lastWorkerInstance!.lastPostedMessage as { generation: number }).generation;
-    lastWorkerInstance!.onmessage!({
-      data: { type: 'pimc-progress', generation: gen, current: 5, total: 50 },
+    const card = createCard(5, 5, 5, 5);
+    poolWorker.onmessage!({
+      data: {
+        type: 'sim-result',
+        move: { card, position: 0, outcome: Outcome.Win, robustness: 1 },
+        generation: staleGen,
+        simIndex: 0,
+      },
     } as MessageEvent);
-    expect(get(pimcProgress)).toEqual({ current: 5, total: 50 });
-  });
 
-  it('result message clears pimcProgress', () => {
-    setupThreeOpen();
-    const gen = (lastWorkerInstance!.lastPostedMessage as { generation: number }).generation;
-    lastWorkerInstance!.onmessage!({
-      data: { type: 'pimc-progress', generation: gen, current: 10, total: 50 },
-    } as MessageEvent);
-    lastWorkerInstance!.onmessage!({
-      data: { type: 'result', generation: gen, moves: [] },
-    } as MessageEvent);
-    expect(get(pimcProgress)).toBeNull();
+    // pimcProgress should still show 0 completed (stale result discarded)
+    expect(get(pimcProgress)?.current).toBe(0);
   });
 });
+

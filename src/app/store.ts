@@ -49,6 +49,8 @@ export const rankedMoves = writable<RankedMove[]>([]);
 export const solverLoading = writable<boolean>(false);
 export const pimcProgress = writable<{ current: number; total: number } | null>(null);
 
+const PIMC_ITERATIONS = 50;
+
 const solverWorker = new Worker(
   new URL('../engine/solver.worker.ts', import.meta.url),
   { type: 'module' },
@@ -65,8 +67,6 @@ solverWorker.onmessage = (e: MessageEvent) => {
     rankedMoves.set(e.data.moves);
     solverLoading.set(false);
     pimcProgress.set(null);
-  } else if (type === 'pimc-progress') {
-    pimcProgress.set({ current: e.data.current, total: e.data.total });
   }
 };
 
@@ -76,17 +76,74 @@ solverWorker.onerror = (e) => {
   pimcProgress.set(null);
 };
 
+// Mutable state for in-progress PIMC batch (reset on each triggerSolve PIMC call).
+let pimcTally = new Map<string, { move: RankedMove; count: number }>();
+let pimcPending = 0;
+let pimcTotal = 0;
+
+function handlePoolMessage(e: MessageEvent) {
+  const { type, generation } = e.data;
+  if (generation !== solveGeneration) return;
+  if (type === 'sim-result') {
+    const move: RankedMove | null = e.data.move;
+    if (move) {
+      const key = `${move.card.id}:${move.position}`;
+      const existing = pimcTally.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        pimcTally.set(key, { move, count: 1 });
+      }
+    }
+    pimcPending--;
+    pimcProgress.set({ current: pimcTotal - pimcPending, total: pimcTotal });
+    if (pimcPending === 0) {
+      const results: RankedMove[] = Array.from(pimcTally.values()).map(({ move, count }) => ({
+        ...move,
+        confidence: count / pimcTotal,
+      }));
+      results.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+      rankedMoves.set(results);
+      solverLoading.set(false);
+      pimcProgress.set(null);
+    }
+  }
+}
+
+// Worker pool for parallel PIMC simulations.
+const pimcWorkerPool: Worker[] = Array.from(
+  { length: Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : null) ?? 4) },
+  () => {
+    const w = new Worker(
+      new URL('../engine/solver.worker.ts', import.meta.url),
+      { type: 'module' },
+    );
+    w.onmessage = handlePoolMessage;
+    return w;
+  },
+);
+
 function triggerSolve(state: GameState) {
   const unknownCardIds = get(game).unknownCardIds;
   solveGeneration++;
   solverLoading.set(true);
   if (unknownCardIds.size > 0) {
-    solverWorker.postMessage({
-      type: 'pimc',
-      state,
-      unknownCardIds: [...unknownCardIds],
-      generation: solveGeneration,
-    });
+    // Reset PIMC batch state for this generation.
+    pimcTally = new Map();
+    pimcPending = PIMC_ITERATIONS;
+    pimcTotal = PIMC_ITERATIONS;
+    pimcProgress.set({ current: 0, total: PIMC_ITERATIONS });
+    const unknownCardIdsArr = [...unknownCardIds];
+    for (let i = 0; i < PIMC_ITERATIONS; i++) {
+      const worker = pimcWorkerPool[i % pimcWorkerPool.length]!;
+      worker.postMessage({
+        type: 'simulate',
+        state,
+        unknownCardIds: unknownCardIdsArr,
+        generation: solveGeneration,
+        simIndex: i,
+      });
+    }
   } else {
     solverWorker.postMessage({ type: 'solve', state, generation: solveGeneration });
   }

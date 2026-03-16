@@ -3,23 +3,29 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
-// Tracks the most recently constructed Worker mock instance, so tests can
-// simulate worker responses by calling onmessage/onerror directly.
-export let lastWorkerInstance: {
+export interface MockWorker {
   onmessage: ((e: MessageEvent) => void) | null;
   onerror: ((e: ErrorEvent) => void) | null;
-  lastPostedMessage: unknown;
-} | null = null;
+  postedMessages: unknown[];
+  get lastPostedMessage(): unknown;
+}
 
-// Mock Worker so store tests don't attempt to load solver.worker.ts
-vi.stubGlobal('Worker', class {
+// All Worker instances created by the store at module load time.
+// Index 0 = main solver worker; indices 1+ = PIMC pool workers.
+export const workerInstances: MockWorker[] = [];
+
+// Backward-compat alias: main solver worker (index 0).
+export let lastWorkerInstance: MockWorker | null = null;
+
+vi.stubGlobal('Worker', class implements MockWorker {
   onmessage: ((e: MessageEvent) => void) | null = null;
   onerror: ((e: ErrorEvent) => void) | null = null;
-  lastPostedMessage: unknown = null;
-  postMessage(msg: unknown) { this.lastPostedMessage = msg; }
+  postedMessages: unknown[] = [];
+  get lastPostedMessage() { return this.postedMessages.at(-1) ?? null; }
+  postMessage(msg: unknown) { this.postedMessages.push(msg); }
   terminate() {}
   constructor() {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    lastWorkerInstance = this as typeof lastWorkerInstance;
+    workerInstances.push(this as unknown as MockWorker);
+    if (workerInstances.length === 1) lastWorkerInstance = this as unknown as MockWorker;
   }
 });
