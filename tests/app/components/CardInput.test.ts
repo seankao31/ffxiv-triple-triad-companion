@@ -190,4 +190,21 @@ describe('CardInput', () => {
     await fireEvent.click(screen.getByLabelText('Toggle unknown'));
     expect(screen.getByLabelText('Top')).toBeInTheDocument();
   });
+
+  it('Space key toggles unknown and calls onadvance when allowUnknown is true', async () => {
+    const onchange = vi.fn();
+    const onadvance = vi.fn();
+    render(CardInput, { props: { onchange, onadvance, allowUnknown: true } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: ' ' });
+    expect(onchange).toHaveBeenLastCalledWith(null);
+    expect(onadvance).toHaveBeenCalledOnce();
+  });
+
+  it('Space key does nothing when allowUnknown is false', async () => {
+    const onchange = vi.fn();
+    const onadvance = vi.fn();
+    render(CardInput, { props: { onchange, onadvance } });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: ' ' });
+    expect(onadvance).not.toHaveBeenCalled();
+  });
 });

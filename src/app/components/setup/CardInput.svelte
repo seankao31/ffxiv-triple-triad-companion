@@ -50,6 +50,13 @@
   }
 
   function handleKeyDown(index: number, e: KeyboardEvent) {
+    if (allowUnknown && e.key === ' ') {
+      e.preventDefault();
+      isUnknown = true;
+      onchange(null);
+      onadvance();
+      return;
+    }
     if (e.key === 'Backspace') {
       e.preventDefault();
       values[index] = null;
