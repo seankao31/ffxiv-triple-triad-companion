@@ -8,6 +8,7 @@ import {
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome } from '../../src/engine';
+import { lastWorkerInstance } from './setup';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -199,5 +200,52 @@ describe('async solver', () => {
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
     expect(get(rankedMoves)).toEqual([]);
+  });
+});
+
+describe('generation counter', () => {
+  function currentGeneration(): number {
+    return (lastWorkerInstance!.lastPostedMessage as { generation: number }).generation;
+  }
+
+  it('discards stale solver results', () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    oh.forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    const gen = currentGeneration();
+    const move = { card: ph[0]!, position: 0, outcome: Outcome.Win, robustness: 0 };
+    // simulate stale result (previous generation)
+    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen - 1, moves: [move] } } as MessageEvent);
+    expect(get(rankedMoves)).toEqual([]);
+    // simulate current generation arriving
+    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen, moves: [move] } } as MessageEvent);
+    expect(get(rankedMoves)).toHaveLength(1);
+  });
+
+  it('only the latest result is kept when two results arrive', () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    oh.forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    const gen1 = currentGeneration();
+
+    // Simulate playing a card by pushing a new fake state onto history.
+    // This changes currentState, triggering another solve (gen2).
+    const initial = get(currentState)!;
+    game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
+    const gen2 = currentGeneration();
+
+    const move1 = { card: ph[1]!, position: 0, outcome: Outcome.Win, robustness: 0 };
+    const move2 = { card: ph[2]!, position: 1, outcome: Outcome.Draw, robustness: 0 };
+    // stale result from gen1 arrives after gen2 was issued
+    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen1, moves: [move1] } } as MessageEvent);
+    expect(get(rankedMoves)).toEqual([]);
+    // current generation result arrives
+    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen2, moves: [move2] } } as MessageEvent);
+    expect(get(rankedMoves)).toHaveLength(1);
+    expect(get(rankedMoves)[0]!.outcome).toBe(Outcome.Draw);
   });
 });

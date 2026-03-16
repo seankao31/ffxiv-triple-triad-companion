@@ -41,8 +41,12 @@ const solverWorker = new Worker(
   { type: 'module' },
 );
 
+// Monotonically-increasing counter; each solve request gets a unique generation.
+// Responses with a different generation are stale and discarded.
+let solveGeneration = 0;
+
 solverWorker.onmessage = (e: MessageEvent) => {
-  if (e.data.type === 'result') {
+  if (e.data.type === 'result' && e.data.generation === solveGeneration) {
     rankedMoves.set(e.data.moves);
     solverLoading.set(false);
   }
@@ -54,8 +58,9 @@ solverWorker.onerror = (e) => {
 };
 
 function triggerSolve(state: GameState) {
+  solveGeneration++;
   solverLoading.set(true);
-  solverWorker.postMessage({ type: 'solve', state });
+  solverWorker.postMessage({ type: 'solve', state, generation: solveGeneration });
 }
 
 // Trigger solve when game state changes; clean up when returning to setup.

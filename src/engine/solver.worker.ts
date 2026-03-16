@@ -5,10 +5,10 @@ import type { GameState, RankedMove } from './types';
 
 type InMessage =
   | { type: 'newGame' }
-  | { type: 'solve'; state: GameState };
+  | { type: 'solve'; state: GameState; generation: number };
 
 type OutMessage =
-  | { type: 'result'; moves: RankedMove[] };
+  | { type: 'result'; moves: RankedMove[]; generation: number };
 
 const solver = createSolver();
 
@@ -18,6 +18,6 @@ self.onmessage = (e: MessageEvent<InMessage>) => {
     solver.reset();
   } else if (msg.type === 'solve') {
     const moves = solver.solve(msg.state);
-    self.postMessage({ type: 'result', moves } satisfies OutMessage);
+    self.postMessage({ type: 'result', moves, generation: msg.generation } satisfies OutMessage);
   }
 };
