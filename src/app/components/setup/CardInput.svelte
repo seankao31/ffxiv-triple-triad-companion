@@ -96,7 +96,6 @@
 
 <!-- Card-shaped container: fixed size, bordered, relative for type dropdown positioning -->
 <div
-  role="button"
   class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col
   {isUnknown ? 'opacity-60 border-dashed' : ''}"
   onclick={(e) => {
