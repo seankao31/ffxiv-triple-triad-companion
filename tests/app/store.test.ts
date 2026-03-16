@@ -8,7 +8,7 @@ import {
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, revealCard,
 } from '../../src/app/store';
-import { createCard, CardType, Owner, Outcome } from '../../src/engine';
+import { createCard, CardType, Owner, Outcome, resetCardIds } from '../../src/engine';
 import { lastWorkerInstance } from './setup';
 
 function makePlayerHand() {
@@ -20,6 +20,7 @@ function makeOpponentHand() {
 }
 
 beforeEach(() => {
+  resetCardIds();
   game.set({
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
@@ -307,6 +308,26 @@ describe('swap rule', () => {
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
     startGame();
     expect(get(game).phase).toBe('play');
+  });
+
+  it('handleSwap produces cards with IDs 0–9 even after extra createCard calls pollute the counter', () => {
+    const cards = makePlayerHand();
+    cards.forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+
+    // Simulate _nextCardId pollution (as if CardInput called createCard while user was typing)
+    createCard(1, 1, 1, 1);
+    createCard(1, 1, 1, 1);
+    createCard(1, 1, 1, 1);
+
+    const given = cards[2]!;
+    const received = createCard(7, 7, 7, 7);
+    handleSwap(given, received);
+
+    const state = get(game);
+    const allCards = [...state.playerHand.filter((c) => c !== null), ...state.opponentHand.filter((c) => c !== null)];
+    const ids = allCards.map((c) => c.id).sort((a, b) => a - b);
+    expect(ids).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 });
 
