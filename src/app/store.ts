@@ -7,11 +7,14 @@ import {
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
 
-export type Phase = 'setup' | 'play';
+export type Phase = 'setup' | 'swap' | 'play';
 
 export type AppState = {
   phase: Phase;
   ruleset: RuleSet;
+  // Swap is a pre-game format rule: after hand entry, one card from each side is exchanged.
+  // Tracked here (not in RuleSet) because it's a setup mechanic, not a capture rule.
+  swap: boolean;
   playerHand: (Card | null)[];
   opponentHand: (Card | null)[];
   firstTurn: Owner;
@@ -22,6 +25,7 @@ export type AppState = {
 const initialAppState: AppState = {
   phase: 'setup',
   ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+  swap: false,
   playerHand: [null, null, null, null, null],
   opponentHand: [null, null, null, null, null],
   firstTurn: Owner.Player,
@@ -97,23 +101,49 @@ export function updateFirstTurn(turn: Owner): void {
   game.update((s) => ({ ...s, firstTurn: turn }));
 }
 
+export function updateSwap(swap: boolean): void {
+  game.update((s) => ({ ...s, swap }));
+}
+
+export function handleSwap(given: Card, received: Card): void {
+  const s = get(game);
+  const playerHand = s.playerHand.map((c) => (c && c.id === given.id ? received : c));
+  // Send newGame before updating state so the Worker resets its TT before
+  // the solve request (triggered by the currentState subscription) arrives.
+  solverWorker.postMessage({ type: 'newGame' });
+  game.update((g) => {
+    const initial = createInitialState(
+      playerHand as Card[],
+      g.opponentHand as Card[],
+      g.firstTurn,
+      g.ruleset,
+    );
+    return { ...g, playerHand, phase: 'play', history: [initial] };
+  });
+}
+
 export function startGame(): void {
   resetCardIds();
   const s = get(game);
   if (s.playerHand.some((c) => c === null) || s.opponentHand.some((c) => c === null)) {
     throw new Error('All hand slots must be filled before starting the game.');
   }
+  // If Swap is enabled, go to the swap sub-phase instead of starting play immediately.
+  if (s.swap) {
+    game.update((g) => ({ ...g, phase: 'swap' }));
+    return;
+  }
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
   solverWorker.postMessage({ type: 'newGame' });
-  game.update((s) => {
+  game.update((g) => {
     const initial = createInitialState(
-      s.playerHand as Card[],
-      s.opponentHand as Card[],
-      s.firstTurn,
-      s.ruleset,
+      g.playerHand as Card[],
+      g.opponentHand as Card[],
+      g.firstTurn,
+      g.ruleset,
     );
-    return { ...s, phase: 'play', history: [initial] };
+    return { ...g, phase: 'play', history: [initial] };
   });
   // currentState subscription fires during game.update() → triggerSolve called automatically
 }

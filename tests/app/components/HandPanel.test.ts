@@ -21,6 +21,7 @@ beforeEach(() => {
   game.set({
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+    swap: false,
     playerHand: ph,
     opponentHand: oh,
     firstTurn: Owner.Player,

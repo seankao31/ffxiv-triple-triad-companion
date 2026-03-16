@@ -6,6 +6,7 @@ import {
   game, currentState, rankedMoves, solverLoading,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
+  updateSwap, handleSwap,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome } from '../../src/engine';
 import { lastWorkerInstance } from './setup';
@@ -22,6 +23,7 @@ beforeEach(() => {
   game.set({
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+    swap: false,
     playerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     firstTurn: Owner.Player,
@@ -247,5 +249,57 @@ describe('generation counter', () => {
     lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen2, moves: [move2] } } as MessageEvent);
     expect(get(rankedMoves)).toHaveLength(1);
     expect(get(rankedMoves)[0]!.outcome).toBe(Outcome.Draw);
+  });
+});
+
+describe('swap rule', () => {
+  it('updateSwap sets swap flag in store', () => {
+    updateSwap(true);
+    expect(get(game).swap).toBe(true);
+    updateSwap(false);
+    expect(get(game).swap).toBe(false);
+  });
+
+  it('handleSwap replaces given card with received card in playerHand', () => {
+    const cards = makePlayerHand();
+    cards.forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+
+    const given = cards[2]!;
+    const received = createCard(7, 7, 7, 7);
+    handleSwap(given, received);
+
+    const hand = get(game).playerHand;
+    expect(hand).not.toContain(given);
+    expect(hand).toContain(received);
+    expect(hand.filter((c) => c !== null)).toHaveLength(5);
+  });
+
+  it('handleSwap preserves hand order (replaced card stays at same index)', () => {
+    const cards = makePlayerHand();
+    cards.forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+
+    const given = cards[1]!;
+    const received = createCard(3, 3, 3, 3);
+    handleSwap(given, received);
+
+    expect(get(game).playerHand[1]).toBe(received);
+  });
+
+  it('phase transitions to swap when swap is enabled and Start Game is pressed', () => {
+    updateSwap(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    expect(get(game).phase).toBe('swap');
+  });
+
+  it('phase stays play when swap is disabled', () => {
+    updateSwap(false);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    expect(get(game).phase).toBe('play');
   });
 });
