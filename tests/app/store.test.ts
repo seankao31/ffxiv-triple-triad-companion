@@ -6,7 +6,7 @@ import {
   game, currentState, rankedMoves, solverLoading,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
-  updateSwap, handleSwap, updateThreeOpen,
+  updateSwap, handleSwap, updateThreeOpen, revealCard,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome } from '../../src/engine';
 import { lastWorkerInstance } from './setup';
@@ -338,5 +338,84 @@ describe('three open rule', () => {
     // leave some opponent slots null
     updateOpponentCard(0, createCard(5, 5, 5, 5));
     expect(() => startGame()).toThrow();
+  });
+
+  it('startGame fills null opponent slots with placeholder cards', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 are null
+    startGame();
+    const state = get(currentState)!;
+    expect(state.opponentHand).toHaveLength(5);
+    // All 5 slots are now filled
+    expect(state.opponentHand.every((c) => c !== null)).toBe(true);
+  });
+
+  it('startGame tracks placeholder card IDs in unknownCardIds', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 are null
+    startGame();
+    const unknownIds = get(game).unknownCardIds;
+    expect(unknownIds.size).toBe(2);
+    // Placeholder IDs should correspond to opponent hand positions 3 and 4
+    // (playerHandSize=5, so opponentSlot3=ID 8, opponentSlot4=ID 9)
+    const state = get(currentState)!;
+    const placeholders = state.opponentHand.filter((c) => unknownIds.has(c.id));
+    expect(placeholders).toHaveLength(2);
+  });
+});
+
+describe('revealCard', () => {
+  function setupThreeOpen() {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 remain null → placeholder IDs 8 and 9
+    startGame();
+  }
+
+  it('replaces placeholder stats in current state with real card stats', () => {
+    setupThreeOpen();
+    const state = get(currentState)!;
+    const unknownIds = get(game).unknownCardIds;
+    const placeholderId = [...unknownIds][0]!;
+    revealCard(placeholderId, { top: 7, right: 6, bottom: 5, left: 4 });
+    const updated = get(currentState)!;
+    const revealed = updated.opponentHand.find((c) => c.id === placeholderId)!;
+    expect(revealed.top).toBe(7);
+    expect(revealed.right).toBe(6);
+  });
+
+  it('removes revealed card ID from unknownCardIds', () => {
+    setupThreeOpen();
+    const unknownIds = get(game).unknownCardIds;
+    const placeholderId = [...unknownIds][0]!;
+    revealCard(placeholderId, { top: 7, right: 6, bottom: 5, left: 4 });
+    expect(get(game).unknownCardIds.has(placeholderId)).toBe(false);
+  });
+
+  it('replaces placeholder in all history entries', () => {
+    setupThreeOpen();
+    const unknownIds = get(game).unknownCardIds;
+    const placeholderId = [...unknownIds][0]!;
+    // Push a second fake history entry to simulate a move being played
+    const initial = get(currentState)!;
+    game.update((g) => ({ ...g, history: [...g.history, { ...initial }] }));
+    revealCard(placeholderId, { top: 9, right: 8, bottom: 7, left: 6 });
+    const { history } = get(game);
+    expect(history).toHaveLength(2);
+    for (const state of history) {
+      const card = state.opponentHand.find((c) => c.id === placeholderId)!;
+      expect(card.top).toBe(9);
+    }
   });
 });

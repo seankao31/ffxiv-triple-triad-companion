@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, selectCard, rankedMoves, currentState } from '../../../src/app/store';
+import { game, startGame, selectCard, rankedMoves, currentState, updateThreeOpen, revealCard } from '../../../src/app/store';
 import HandPanel from '../../../src/app/components/game/HandPanel.svelte';
 import { createCard, Owner, findBestMove } from '../../../src/engine';
 
@@ -22,11 +22,13 @@ beforeEach(() => {
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
     swap: false,
+    threeOpen: false,
     playerHand: ph,
     opponentHand: oh,
     firstTurn: Owner.Player,
     history: [],
     selectedCard: null,
+    unknownCardIds: new Set(),
   });
   startGame();
   // Worker is mocked — populate rankedMoves directly for component tests.
@@ -57,6 +59,14 @@ describe('HandPanel', () => {
       .getAllByRole('button')
       .filter((b) => b.classList.contains('ring-2'));
     expect(highlighted.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows "?" placeholder for cards in unknownCardIds', () => {
+    const state = get(currentState)!;
+    const unknownId = state.opponentHand[0]!.id;
+    game.update((g) => ({ ...g, unknownCardIds: new Set([unknownId]) }));
+    render(HandPanel, { props: { owner: Owner.Opponent } });
+    expect(screen.getByText('?')).toBeInTheDocument();
   });
 
   it('highlights the best-move card when moves come from a deserialized source (Worker)', () => {

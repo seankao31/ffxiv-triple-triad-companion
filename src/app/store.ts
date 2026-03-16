@@ -195,3 +195,21 @@ export function undoMove(): void {
     return { ...s, history, phase };
   });
 }
+
+export function revealCard(
+  placeholderId: number,
+  stats: { top: number; right: number; bottom: number; left: number },
+): void {
+  game.update((g) => {
+    // Replace placeholder card with real stats across every history entry.
+    const history = g.history.map((state) => ({
+      ...state,
+      opponentHand: state.opponentHand.map((c) =>
+        c.id === placeholderId ? { ...c, ...stats } : c,
+      ),
+    }));
+    const unknownCardIds = new Set(g.unknownCardIds);
+    unknownCardIds.delete(placeholderId);
+    return { ...g, history, unknownCardIds };
+  });
+}

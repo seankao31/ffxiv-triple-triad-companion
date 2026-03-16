@@ -29,6 +29,7 @@
     {/if}
   </h3>
   {#each hand as card}
+    {@const isUnknown = $game.unknownCardIds.has(card.id)}
     <button
       onclick={() => handleClick(card)}
       class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
@@ -36,15 +37,19 @@
         {card === $game.selectedCard ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}
         {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}"
     >
-      <div></div>
-      <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
-      <div></div>
+      {#if isUnknown}
+        <div class="col-span-3 row-span-3 flex items-center justify-center text-lg text-surface-400">?</div>
+      {:else}
+        <div></div>
+        <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
+        <div></div>
+        <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
+        <div></div>
+        <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
+        <div></div>
+        <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
+        <div></div>
+      {/if}
     </button>
   {/each}
 </div>
