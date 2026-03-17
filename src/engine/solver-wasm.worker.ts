@@ -9,13 +9,14 @@ type InMessage =
 type OutMessage =
   | { type: 'result'; moves: RankedMove[]; generation: number };
 
-let initialized = false;
+let initPromise: Promise<void> | null = null;
 
+// Store the in-flight Promise so concurrent callers all await the same one.
 async function ensureInit(): Promise<void> {
-  if (!initialized) {
-    await init();
-    initialized = true;
+  if (!initPromise) {
+    initPromise = init().then(() => undefined);
   }
+  await initPromise;
 }
 
 self.onmessage = async (e: MessageEvent<InMessage>) => {
