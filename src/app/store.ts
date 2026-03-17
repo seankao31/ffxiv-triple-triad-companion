@@ -52,7 +52,7 @@ export const pimcProgress = writable<{ current: number; total: number } | null>(
 const PIMC_ITERATIONS = 50;
 
 const solverWorker = new Worker(
-  new URL('../engine/solver.worker.ts', import.meta.url),
+  new URL('../engine/solver-wasm.worker.ts', import.meta.url),
   { type: 'module' },
 );
 
@@ -115,7 +115,7 @@ const pimcWorkerPool: Worker[] = Array.from(
   { length: Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : null) ?? 4) },
   () => {
     const w = new Worker(
-      new URL('../engine/solver.worker.ts', import.meta.url),
+      new URL('../engine/solver-wasm.worker.ts', import.meta.url),
       { type: 'module' },
     );
     w.onmessage = handlePoolMessage;
