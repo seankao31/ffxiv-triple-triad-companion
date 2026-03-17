@@ -99,8 +99,6 @@ pub struct Neighbor {
     pub defending_edge: Edge,
 }
 
-// STUBS — tests will fail until these are properly implemented
-
 pub fn create_card(top: u8, right: u8, bottom: u8, left: u8, card_type: CardType) -> Card {
     let id = NEXT_CARD_ID.with(|c| {
         let current = c.get();

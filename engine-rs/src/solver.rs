@@ -518,16 +518,16 @@ mod tests {
 
         let t0 = std::time::Instant::now();
         solver.solve(&state);
-        let first_ms = t0.elapsed().as_millis();
+        let first_us = t0.elapsed().as_micros();
 
         let t1 = std::time::Instant::now();
         solver.solve(&state);
-        let second_ms = t1.elapsed().as_millis();
+        let second_us = t1.elapsed().as_micros();
 
         // Second call should be dramatically faster (all TT hits)
         assert!(
-            second_ms * 10 < first_ms + 1,
-            "TT not helping: first={first_ms}ms second={second_ms}ms"
+            second_us * 10 < first_us + 1,
+            "TT not helping: first={first_us}µs second={second_us}µs"
         );
     }
 
