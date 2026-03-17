@@ -1,7 +1,7 @@
 // ABOUTME: Minimax solver with alpha-beta pruning and transposition table.
 // ABOUTME: Returns moves ranked by outcome (Win > Draw > Loss) from the current player's perspective.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use crate::board::{place_card_mut, undo_place};
 use crate::types::{Card, CardType, GameState, Outcome, Owner, RankedMove};
 
@@ -53,6 +53,9 @@ fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
     }
 }
 
+const TT_SIZE: usize = 1 << 22;
+const EMPTY_KEY: u64 = u64::MAX;
+
 #[derive(Clone, Copy)]
 enum TTFlag {
     Exact,
@@ -66,13 +69,22 @@ struct TTEntry {
     flag: TTFlag,
 }
 
+// Flat array slot for the transposition table. key == EMPTY_KEY means unoccupied.
+#[derive(Clone, Copy)]
+struct TTSlot {
+    key: u64,
+    value: i32,
+    flag: TTFlag,
+}
+
 // Returns 1 for win, 0 for draw, -1 for loss from evaluating_for's perspective.
 fn minimax(
     state: &mut GameState,
     evaluating_for: Owner,
     mut alpha: i32,
     mut beta: i32,
-    tt: &mut HashMap<u64, TTEntry>,
+    tt: &mut Vec<TTSlot>,
+    occupied: &mut usize,
 ) -> i32 {
     let hand_len = if state.current_turn == Owner::Player {
         state.player_hand.len()
@@ -85,8 +97,15 @@ fn minimax(
     }
 
     let key = hash_state(state);
-    // Copy the cached entry before any mutation to avoid holding a HashMap borrow.
-    let cached = tt.get(&key).copied();
+    // Apply Fibonacci mixing before masking to distribute the polynomial hash uniformly.
+    // hash_state uses base-32 encoding so low 22 bits alone would cluster mid-game positions.
+    let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - 22)) as usize;
+    let cached_slot = tt[tt_idx];
+    let cached = if cached_slot.key == key {
+        Some(TTEntry { value: cached_slot.value, flag: cached_slot.flag })
+    } else {
+        None
+    };
     if let Some(entry) = cached {
         match entry.flag {
             TTFlag::Exact => return entry.value,
@@ -124,7 +143,7 @@ fn minimax(
             if state.board[i].is_some() { continue; }
 
             let undo = place_card_mut(state, *card, i);
-            let value = minimax(state, evaluating_for, alpha, beta, tt);
+            let value = minimax(state, evaluating_for, alpha, beta, tt, occupied);
             undo_place(state, undo);
 
             if is_maximizing {
@@ -149,11 +168,14 @@ fn minimax(
         else                        { TTFlag::Exact }
     };
 
-    tt.insert(key, TTEntry { value: best_value, flag });
+    if key != EMPTY_KEY {
+        if tt[tt_idx].key == EMPTY_KEY { *occupied += 1; }
+        tt[tt_idx] = TTSlot { key, value: best_value, flag };
+    }
     best_value
 }
 
-fn find_best_move_with(state: &mut GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec<RankedMove> {
+fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &mut usize) -> Vec<RankedMove> {
     let hand_len = if state.current_turn == Owner::Player {
         state.player_hand.len()
     } else {
@@ -188,7 +210,7 @@ fn find_best_move_with(state: &mut GameState, tt: &mut HashMap<u64, TTEntry>) ->
         for i in 0..9usize {
             if state.board[i].is_some() { continue; }
             let undo = place_card_mut(state, *card, i);
-            let value = minimax(state, Owner::Player, i32::MIN, i32::MAX, tt);
+            let value = minimax(state, Owner::Player, i32::MIN, i32::MAX, tt, occupied);
             undo_place(state, undo);
             evaluated.push((*card, i, value));
         }
@@ -217,7 +239,7 @@ fn find_best_move_with(state: &mut GameState, tt: &mut HashMap<u64, TTEntry>) ->
                     total_responses += 1;
                     let inner_undo = place_card_mut(state, *opp_card, i);
                     let response_value =
-                        minimax(state, Owner::Player, i32::MIN, i32::MAX, tt);
+                        minimax(state, Owner::Player, i32::MIN, i32::MAX, tt, occupied);
                     undo_place(state, inner_undo);
                     // "Better" means: better for the current player (original state.current_turn).
                     // Values are from Player's perspective: higher = better for Player.
@@ -267,31 +289,37 @@ fn find_best_move_with(state: &mut GameState, tt: &mut HashMap<u64, TTEntry>) ->
 }
 
 pub fn find_best_move(state: &GameState) -> Vec<RankedMove> {
-    let mut tt = HashMap::new();
+    let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; TT_SIZE];
+    let mut occupied = 0;
     let mut state = state.clone();
-    find_best_move_with(&mut state, &mut tt)
+    find_best_move_with(&mut state, &mut tt, &mut occupied)
 }
 
 pub struct Solver {
-    tt: HashMap<u64, TTEntry>,
+    tt: Vec<TTSlot>,
+    tt_occupied: usize,
 }
 
 impl Solver {
     pub fn new() -> Self {
-        Solver { tt: HashMap::new() }
+        Solver {
+            tt: vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; TT_SIZE],
+            tt_occupied: 0,
+        }
     }
 
     pub fn reset(&mut self) {
-        self.tt = HashMap::new();
+        self.tt.fill(TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact });
+        self.tt_occupied = 0;
     }
 
     pub fn solve(&mut self, state: &GameState) -> Vec<RankedMove> {
         let mut state = state.clone();
-        find_best_move_with(&mut state, &mut self.tt)
+        find_best_move_with(&mut state, &mut self.tt, &mut self.tt_occupied)
     }
 
     pub fn tt_size(&self) -> usize {
-        self.tt.len()
+        self.tt_occupied
     }
 
     pub fn hash_for(&self, state: &GameState) -> u64 {
@@ -647,6 +675,84 @@ mod tests {
 
         let solver = Solver::new();
         assert_ne!(solver.hash_for(&pos_a), solver.hash_for(&pos_b));
+    }
+
+    #[test]
+    fn flat_tt_lookup_hit_and_miss() {
+        // Directly test TTSlot lookup semantics
+        let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; 8]; // size=8, mask=7
+        let mask: u64 = 7;
+        let key: u64 = 42;
+        let idx = (key & mask) as usize; // = 42 & 7 = 2
+
+        // Initially: miss
+        assert_eq!(tt[idx].key, EMPTY_KEY);
+
+        // Insert
+        tt[idx] = TTSlot { key, value: 1, flag: TTFlag::Exact };
+
+        // Hit
+        assert_eq!(tt[idx].key, key);
+        assert_eq!(tt[idx].value, 1);
+
+        // Different key at same index: collision = miss
+        let key2: u64 = 42 + 8; // same index (50 & 7 = 2), different key
+        assert_ne!(tt[idx].key, key2);
+    }
+
+    #[test]
+    fn flat_tt_solver_correctness_unchanged() {
+        // After switching to flat-array TT, solver must still return same results as before.
+        // Verify with the known "late game win" scenario.
+        reset_card_ids();
+        let p = vec![
+            create_card(10,10,10,10,CardType::None), create_card(1,1,1,1,CardType::None),
+            create_card(2,2,2,2,CardType::None),     create_card(3,3,3,3,CardType::None),
+            create_card(4,4,4,4,CardType::None),
+        ];
+        let o = vec![
+            create_card(1,1,1,1,CardType::None), create_card(5,5,5,5,CardType::None),
+            create_card(6,6,6,6,CardType::None), create_card(7,7,7,7,CardType::None),
+            create_card(8,8,8,8,CardType::None),
+        ];
+        use crate::board::place_card;
+        let mut state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        state = place_card(&state, p[1], 0);
+        state = place_card(&state, o[0], 1);
+        state = place_card(&state, p[2], 2);
+        state = place_card(&state, o[1], 3);
+        state = place_card(&state, p[3], 5);
+        state = place_card(&state, o[2], 6);
+        state = place_card(&state, p[4], 7);
+        state = place_card(&state, o[3], 8);
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].position, 4);
+        assert_eq!(moves[0].card.id, p[0].id);
+        assert_eq!(moves[0].outcome, Outcome::Win);
+    }
+
+    #[test]
+    fn benchmark_flat_array_tt() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+
+        let t0 = std::time::Instant::now();
+        let moves = find_best_move(&state);
+        let elapsed_us = t0.elapsed().as_micros();
+
+        assert!(!moves.is_empty());
+        println!("Flat-array TT solve: {elapsed_us}µs ({} moves)", moves.len());
     }
 
     #[test]
