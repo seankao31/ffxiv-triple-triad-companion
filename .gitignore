@@ -2,3 +2,5 @@
 node_modules/
 dist/
 .claude/
+engine-rs/target/
+engine-rs/Cargo.lock

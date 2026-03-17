@@ -2,3 +2,4 @@
 // ABOUTME: Re-exports core types and functions for WASM and native targets.
 
 pub mod types;
+pub mod board;
