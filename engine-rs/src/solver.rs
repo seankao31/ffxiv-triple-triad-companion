@@ -2,7 +2,7 @@
 // ABOUTME: Returns moves ranked by outcome (Win > Draw > Loss) from the current player's perspective.
 
 use std::collections::{HashMap, HashSet};
-use crate::board::place_card;
+use crate::board::{place_card_mut, undo_place};
 use crate::types::{Card, CardType, GameState, Outcome, Owner, RankedMove};
 
 // Assigns a unique integer to each card based on its values and type for within-hand deduplication.
@@ -68,19 +68,19 @@ struct TTEntry {
 
 // Returns 1 for win, 0 for draw, -1 for loss from evaluating_for's perspective.
 fn minimax(
-    state: &GameState,
+    state: &mut GameState,
     evaluating_for: Owner,
     mut alpha: i32,
     mut beta: i32,
     tt: &mut HashMap<u64, TTEntry>,
 ) -> i32 {
-    let hand = if state.current_turn == Owner::Player {
-        &state.player_hand
+    let hand_len = if state.current_turn == Owner::Player {
+        state.player_hand.len()
     } else {
-        &state.opponent_hand
+        state.opponent_hand.len()
     };
 
-    if hand.is_empty() || board_full(state) {
+    if hand_len == 0 || board_full(state) {
         return terminal_value(state, evaluating_for);
     }
 
@@ -107,17 +107,25 @@ fn minimax(
     let orig_beta = beta;
     let mut best_value = if is_maximizing { i32::MIN } else { i32::MAX };
 
+    // Clone hand to avoid borrow conflicts during mutation
+    let hand_cards: Vec<Card> = if state.current_turn == Owner::Player {
+        state.player_hand.clone()
+    } else {
+        state.opponent_hand.clone()
+    };
+
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
-    'outer: for card in hand.iter() {
+    'outer: for card in hand_cards.iter() {
         let ck = stats_key(card);
         if !seen_cards.insert(ck) { continue; }
 
         for i in 0..9usize {
             if state.board[i].is_some() { continue; }
 
-            let next_state = place_card(state, *card, i);
-            let value = minimax(&next_state, evaluating_for, alpha, beta, tt);
+            let undo = place_card_mut(state, *card, i);
+            let value = minimax(state, evaluating_for, alpha, beta, tt);
+            undo_place(state, undo);
 
             if is_maximizing {
                 if value > best_value { best_value = value; }
@@ -145,14 +153,14 @@ fn minimax(
     best_value
 }
 
-fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec<RankedMove> {
-    let hand = if state.current_turn == Owner::Player {
-        &state.player_hand
+fn find_best_move_with(state: &mut GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec<RankedMove> {
+    let hand_len = if state.current_turn == Owner::Player {
+        state.player_hand.len()
     } else {
-        &state.opponent_hand
+        state.opponent_hand.len()
     };
 
-    if hand.is_empty() || board_full(state) {
+    if hand_len == 0 || board_full(state) {
         return vec![];
     }
 
@@ -162,31 +170,42 @@ fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec
     // never change meaning).
     let current_is_player = state.current_turn == Owner::Player;
 
+    // Clone hand before first pass to avoid borrow conflicts during mutation
+    let hand_cards: Vec<Card> = if state.current_turn == Owner::Player {
+        state.player_hand.clone()
+    } else {
+        state.opponent_hand.clone()
+    };
+
     // First pass: evaluate all moves with minimax
-    let mut evaluated: Vec<(Card, usize, i32, GameState)> = Vec::new();
+    let mut evaluated: Vec<(Card, usize, i32)> = Vec::new();
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
-    for card in hand.iter() {
+    for card in hand_cards.iter() {
         let ck = stats_key(card);
         if !seen_cards.insert(ck) { continue; }
 
         for i in 0..9usize {
             if state.board[i].is_some() { continue; }
-            let next_state = place_card(state, *card, i);
-            let value = minimax(&next_state, Owner::Player, i32::MIN, i32::MAX, tt);
-            evaluated.push((*card, i, value, next_state));
+            let undo = place_card_mut(state, *card, i);
+            let value = minimax(state, Owner::Player, i32::MIN, i32::MAX, tt);
+            undo_place(state, undo);
+            evaluated.push((*card, i, value));
         }
     }
 
     // Second pass: calculate robustness for tie-breaking.
-    // For each move, count what fraction of opponent responses improve the current player's outcome.
+    // For each move, re-apply it, enumerate opponent responses, then undo.
     let mut moves: Vec<RankedMove> = evaluated
         .into_iter()
-        .map(|(card, position, value, next_state)| {
-            let opp_hand = if next_state.current_turn == Owner::Player {
-                &next_state.player_hand
+        .map(|(card, position, value)| {
+            let undo = place_card_mut(state, card, position);
+
+            // Clone opponent hand before inner loop to avoid borrow conflicts
+            let opp_hand: Vec<Card> = if state.current_turn == Owner::Player {
+                state.player_hand.clone()
             } else {
-                &next_state.opponent_hand
+                state.opponent_hand.clone()
             };
 
             let mut total_responses: u32 = 0;
@@ -194,12 +213,13 @@ fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec
 
             for opp_card in opp_hand.iter() {
                 for i in 0..9usize {
-                    if next_state.board[i].is_some() { continue; }
+                    if state.board[i].is_some() { continue; }
                     total_responses += 1;
-                    let response_state = place_card(&next_state, *opp_card, i);
+                    let inner_undo = place_card_mut(state, *opp_card, i);
                     let response_value =
-                        minimax(&response_state, Owner::Player, i32::MIN, i32::MAX, tt);
-                    // "Better" means: better for the current player (state.current_turn).
+                        minimax(state, Owner::Player, i32::MIN, i32::MAX, tt);
+                    undo_place(state, inner_undo);
+                    // "Better" means: better for the current player (original state.current_turn).
                     // Values are from Player's perspective: higher = better for Player.
                     if current_is_player {
                         if response_value > value { better_outcome_count += 1; }
@@ -208,6 +228,8 @@ fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec
                     }
                 }
             }
+
+            undo_place(state, undo);
 
             // value is from Player's perspective; flip sign when it's Opponent's turn.
             let effective_value = if current_is_player { value } else { -value };
@@ -246,7 +268,8 @@ fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec
 
 pub fn find_best_move(state: &GameState) -> Vec<RankedMove> {
     let mut tt = HashMap::new();
-    find_best_move_with(state, &mut tt)
+    let mut state = state.clone();
+    find_best_move_with(&mut state, &mut tt)
 }
 
 pub struct Solver {
@@ -263,7 +286,8 @@ impl Solver {
     }
 
     pub fn solve(&mut self, state: &GameState) -> Vec<RankedMove> {
-        find_best_move_with(state, &mut self.tt)
+        let mut state = state.clone();
+        find_best_move_with(&mut state, &mut self.tt)
     }
 
     pub fn tt_size(&self) -> usize {
@@ -623,5 +647,29 @@ mod tests {
 
         let solver = Solver::new();
         assert_ne!(solver.hash_for(&pos_a), solver.hash_for(&pos_b));
+    }
+
+    #[test]
+    fn benchmark_mutation_speedup() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+
+        let t0 = std::time::Instant::now();
+        let moves = find_best_move(&state);
+        let elapsed_us = t0.elapsed().as_micros();
+
+        assert!(!moves.is_empty(), "Solver returned no moves");
+        println!("Step 5 in-place mutation: solve took {elapsed_us}µs ({} moves)", moves.len());
+        // No upper-bound assertion — this is a recording checkpoint, not a speed gate
     }
 }

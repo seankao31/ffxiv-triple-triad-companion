@@ -299,6 +299,199 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
     }
 }
 
+// Records all state changes made by place_card_mut so they can be reversed.
+pub struct UndoRecord {
+    card: Card,
+    position: usize,
+    card_hand_index: usize,
+    prev_turn: Owner,
+    flipped: Vec<(usize, Owner)>,
+}
+
+// BFS combo cascade that records every ownership change, for use with undo.
+fn resolve_combo_tracked(
+    board: &mut Board,
+    current_turn: Owner,
+    initial_flips: Vec<usize>,
+    rules: RuleSet,
+    asc_count: u8,
+    desc_count: u8,
+) -> Vec<(usize, Owner)> {
+    let mut queue: VecDeque<usize> = initial_flips.into_iter().collect();
+    let mut processed: HashSet<usize> = HashSet::new();
+    let mut all_flipped: Vec<(usize, Owner)> = Vec::new();
+
+    while let Some(pos) = queue.pop_front() {
+        if processed.contains(&pos) {
+            continue;
+        }
+        processed.insert(pos);
+
+        let cell = board[pos].unwrap();
+        for neighbor in ADJACENCY[pos] {
+            let neighbor_pos = neighbor.position as usize;
+            if let Some(neighbor_cell) = board[neighbor_pos] {
+                if neighbor_cell.owner != current_turn {
+                    let attack_val = apply_stat_mod(
+                        card_edge_value(&cell.card, neighbor.attacking_edge),
+                        cell.card.card_type,
+                        rules,
+                        asc_count,
+                        desc_count,
+                    );
+                    let defend_val = apply_stat_mod(
+                        card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
+                        neighbor_cell.card.card_type,
+                        rules,
+                        asc_count,
+                        desc_count,
+                    );
+                    if captures(attack_val, defend_val, rules) {
+                        all_flipped.push((neighbor_pos, neighbor_cell.owner));
+                        board[neighbor_pos] =
+                            Some(PlacedCard { card: neighbor_cell.card, owner: current_turn });
+                        queue.push_back(neighbor_pos);
+                    }
+                }
+            }
+        }
+    }
+
+    all_flipped
+}
+
+/// Places a card in-place and returns an UndoRecord. Mirrors place_card exactly.
+pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> UndoRecord {
+    assert!(position <= 8, "Invalid position: {}", position);
+    assert!(state.board[position].is_none(), "Cell {} is already occupied", position);
+
+    let hand = match state.current_turn {
+        Owner::Player => &state.player_hand,
+        Owner::Opponent => &state.opponent_hand,
+    };
+
+    let card_hand_index = hand
+        .iter()
+        .position(|c| c.id == card.id)
+        .expect("Card is not in the current player's hand");
+
+    // Snapshot Ascension/Descension counts BEFORE placing the card.
+    // The placed card must not count toward its own resolution.
+    let mut asc_count: u8 = 0;
+    let mut desc_count: u8 = 0;
+    for placed in state.board.iter().flatten() {
+        if state.rules.ascension && placed.card.card_type == CardType::Primal {
+            asc_count += 1;
+        }
+        if state.rules.descension && placed.card.card_type == CardType::Scion {
+            desc_count += 1;
+        }
+    }
+
+    let prev_turn = state.current_turn;
+    let mut flipped: Vec<(usize, Owner)> = Vec::new();
+
+    state.board[position] = Some(PlacedCard { card, owner: state.current_turn });
+
+    // Plus rule
+    let plus_flips = if state.rules.plus {
+        let positions = resolve_plus(&mut state.board, &card, position, state.current_turn, state.rules, asc_count, desc_count);
+        for &pos in &positions {
+            // resolve_plus already flipped owner to current_turn; record the old owner (opponent)
+            let old_owner = match state.current_turn {
+                Owner::Player => Owner::Opponent,
+                Owner::Opponent => Owner::Player,
+            };
+            flipped.push((pos, old_owner));
+        }
+        positions
+    } else {
+        Vec::new()
+    };
+
+    // Same rule
+    let same_flips = if state.rules.same {
+        let positions = resolve_same(&mut state.board, &card, position, state.current_turn, state.rules, asc_count, desc_count);
+        for &pos in &positions {
+            let old_owner = match state.current_turn {
+                Owner::Player => Owner::Opponent,
+                Owner::Opponent => Owner::Player,
+            };
+            flipped.push((pos, old_owner));
+        }
+        positions
+    } else {
+        Vec::new()
+    };
+
+    // Combo cascade — track all ownership changes
+    let combo_seeds: Vec<usize> = plus_flips.into_iter().chain(same_flips).collect();
+    let combo_flips = resolve_combo_tracked(&mut state.board, state.current_turn, combo_seeds, state.rules, asc_count, desc_count);
+    flipped.extend(combo_flips);
+
+    // Standard capture: flip adjacent opponent cards based on active capture rules
+    for neighbor in ADJACENCY[position] {
+        let neighbor_pos = neighbor.position as usize;
+        if let Some(neighbor_cell) = state.board[neighbor_pos] {
+            if neighbor_cell.owner != state.current_turn {
+                let attack_val = apply_stat_mod(
+                    card_edge_value(&card, neighbor.attacking_edge),
+                    card.card_type,
+                    state.rules,
+                    asc_count,
+                    desc_count,
+                );
+                let defend_val = apply_stat_mod(
+                    card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
+                    neighbor_cell.card.card_type,
+                    state.rules,
+                    asc_count,
+                    desc_count,
+                );
+                if captures(attack_val, defend_val, state.rules) {
+                    flipped.push((neighbor_pos, neighbor_cell.owner));
+                    state.board[neighbor_pos] =
+                        Some(PlacedCard { card: neighbor_cell.card, owner: state.current_turn });
+                }
+            }
+        }
+    }
+
+    // Remove card from hand
+    match state.current_turn {
+        Owner::Player => state.player_hand.remove(card_hand_index),
+        Owner::Opponent => state.opponent_hand.remove(card_hand_index),
+    };
+
+    // Flip turn
+    state.current_turn = match state.current_turn {
+        Owner::Player => Owner::Opponent,
+        Owner::Opponent => Owner::Player,
+    };
+
+    UndoRecord { card, position, card_hand_index, prev_turn, flipped }
+}
+
+/// Reverts all changes made by place_card_mut using the provided UndoRecord.
+pub fn undo_place(state: &mut GameState, undo: UndoRecord) {
+    // Restore turn
+    state.current_turn = undo.prev_turn;
+
+    // Remove the placed card from the board
+    state.board[undo.position] = None;
+
+    // Restore ownership of all flipped cards in reverse order
+    for &(pos, old_owner) in undo.flipped.iter().rev() {
+        state.board[pos].as_mut().unwrap().owner = old_owner;
+    }
+
+    // Reinsert card back into the hand
+    match undo.prev_turn {
+        Owner::Player => state.player_hand.insert(undo.card_hand_index, undo.card),
+        Owner::Opponent => state.opponent_hand.insert(undo.card_hand_index, undo.card),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1314,5 +1507,82 @@ mod tests {
         let s = place_card(&state, p_none, 4);
 
         assert_eq!(s.board[1].unwrap().owner, Owner::Player); // 5>4 → capture
+    }
+
+    // ── place_card_mut / undo_place ──────────────────────────────────────────
+
+    #[test]
+    fn place_card_mut_and_undo_restores_state() {
+        // Case 1: simple placement (no capture)
+        reset_card_ids();
+        let p_card = create_card(5, 5, 5, 5, CardType::None);
+        let o_card = create_card(3, 3, 3, 3, CardType::None);
+        let state = create_initial_state(vec![p_card], vec![o_card], Owner::Player, no_rules());
+        let original = state.clone();
+        let mut state_mut = state.clone();
+        let undo = place_card_mut(&mut state_mut, p_card, 4);
+        undo_place(&mut state_mut, undo);
+        assert_eq!(state_mut, original, "Case 1: simple placement undo failed");
+
+        // Case 2: placement with a standard capture
+        reset_card_ids();
+        let strong = create_card(10, 10, 10, 10, CardType::None);
+        let weak = create_card(1, 1, 1, 1, CardType::None);
+        let filler = create_card(5, 5, 5, 5, CardType::None);
+        let mut state2 = create_initial_state(
+            vec![strong, filler, filler, filler, filler],
+            vec![weak, filler, filler, filler, filler],
+            Owner::Player,
+            no_rules(),
+        );
+        // Place weak opponent card at pos 1 first
+        state2 = place_card(&state2, filler, 8);
+        state2 = place_card(&state2, weak, 1);
+        state2 = place_card(&state2, filler, 6);
+        state2 = place_card(&state2, filler, 7);
+        // state2 is now Player's turn; place strong card at pos 0 (right=10 beats weak at pos 1 left=1)
+        // Verify immutable place_card captures
+        let after_immutable = place_card(&state2, strong, 0);
+        assert_eq!(after_immutable.board[1].unwrap().owner, Owner::Player, "Setup: capture should happen");
+        // Now verify mut + undo restores state2
+        let original2 = state2.clone();
+        let mut state2_mut = state2.clone();
+        let undo2 = place_card_mut(&mut state2_mut, strong, 0);
+        // Verify the mutable version matches the immutable version
+        assert_eq!(state2_mut.board, after_immutable.board, "Case 2: mut result should match immutable");
+        assert_eq!(state2_mut.player_hand, after_immutable.player_hand, "Case 2: hands should match");
+        // Undo and verify restoration
+        undo_place(&mut state2_mut, undo2);
+        assert_eq!(state2_mut, original2, "Case 2: capture undo failed");
+
+        // Case 3: placement with Same rule triggering flip + undo
+        // p_same2 at pos 4: top=5 matches o_above.bottom=5 (at pos1), left=3 matches o_left.right=3 (at pos3)
+        // Two pairs with equal touching values → Same fires, both flip to Player
+        reset_card_ids();
+        let p_same2 = create_card(5, 3, 3, 3, CardType::None);
+        let o_above = create_card(3, 3, 5, 3, CardType::None); // bottom=5 faces p_same2 top=5
+        let o_left  = create_card(3, 3, 3, 3, CardType::None); // right=3 faces p_same2 left=3
+        let state3 = GameState {
+            board: {
+                let mut b = [None; 9];
+                b[1] = Some(PlacedCard { card: o_above, owner: Owner::Opponent });
+                b[3] = Some(PlacedCard { card: o_left,  owner: Owner::Opponent });
+                b
+            },
+            player_hand: vec![p_same2],
+            opponent_hand: vec![],
+            current_turn: Owner::Player,
+            rules: RuleSet { same: true, ..RuleSet::default() },
+        };
+        let after_same_immutable = place_card(&state3, p_same2, 4);
+        // Both o_above and o_left should be captured via Same
+        assert_eq!(after_same_immutable.board[1].unwrap().owner, Owner::Player, "Case 3 setup: Same flip at pos1");
+        assert_eq!(after_same_immutable.board[3].unwrap().owner, Owner::Player, "Case 3 setup: Same flip at pos3");
+        let original3 = state3.clone();
+        let mut state3_mut = state3.clone();
+        let undo3 = place_card_mut(&mut state3_mut, p_same2, 4);
+        assert_eq!(state3_mut.board, after_same_immutable.board, "Case 3: mut result should match immutable");
+        undo_place(&mut state3_mut, undo3);
+        assert_eq!(state3_mut, original3, "Case 3: Same rule undo failed");
     }
 }
