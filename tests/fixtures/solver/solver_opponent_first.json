@@ -1,0 +1,165 @@
+{
+  "name": "solver_opponent_first",
+  "state": {
+    "board": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "playerHand": [
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 1,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 2,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 3,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 4,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 5,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      },
+      {
+        "id": 6,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      },
+      {
+        "id": 7,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      },
+      {
+        "id": 8,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      },
+      {
+        "id": 9,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "opponent",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": false
+    }
+  },
+  "expected": [
+    {
+      "cardId": 5,
+      "position": 0,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 1,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 2,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 3,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 4,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 5,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 6,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 7,
+      "outcome": "win",
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 8,
+      "outcome": "win",
+      "robustness": 0
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "name": "solver_late_game_win",
+  "state": {
+    "board": [
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 5,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 2,
+          "right": 2,
+          "bottom": 2,
+          "left": 2,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 6,
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      null,
+      {
+        "card": {
+          "id": 3,
+          "top": 3,
+          "right": 3,
+          "bottom": 3,
+          "left": 3,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 7,
+          "top": 6,
+          "right": 6,
+          "bottom": 6,
+          "left": 6,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 4,
+          "top": 4,
+          "right": 4,
+          "bottom": 4,
+          "left": 4,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 8,
+          "top": 7,
+          "right": 7,
+          "bottom": 7,
+          "left": 7,
+          "type": "none"
+        },
+        "owner": "opponent"
+      }
+    ],
+    "playerHand": [
+      {
+        "id": 0,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 9,
+        "top": 8,
+        "right": 8,
+        "bottom": 8,
+        "left": 8,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "player",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": false
+    }
+  },
+  "expected": [
+    {
+      "cardId": 0,
+      "position": 4,
+      "outcome": "win",
+      "robustness": 0
+    }
+  ]
+}

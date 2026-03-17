@@ -1,0 +1,127 @@
+{
+  "name": "solver_full_board",
+  "state": {
+    "board": [
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 7,
+          "top": 8,
+          "right": 8,
+          "bottom": 8,
+          "left": 8,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 5,
+          "top": 6,
+          "right": 6,
+          "bottom": 6,
+          "left": 6,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 3,
+          "top": 4,
+          "right": 4,
+          "bottom": 4,
+          "left": 4,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 3,
+          "right": 3,
+          "bottom": 3,
+          "left": 3,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 4,
+          "top": 5,
+          "right": 5,
+          "bottom": 5,
+          "left": 5,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 1,
+          "top": 2,
+          "right": 2,
+          "bottom": 2,
+          "left": 2,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 8,
+          "top": 9,
+          "right": 9,
+          "bottom": 9,
+          "left": 9,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 6,
+          "top": 7,
+          "right": 7,
+          "bottom": 7,
+          "left": 7,
+          "type": "none"
+        },
+        "owner": "opponent"
+      }
+    ],
+    "playerHand": [],
+    "opponentHand": [
+      {
+        "id": 9,
+        "top": 10,
+        "right": 10,
+        "bottom": 10,
+        "left": 10,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "opponent",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": false
+    }
+  },
+  "expected": []
+}

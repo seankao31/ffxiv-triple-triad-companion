@@ -1,0 +1,627 @@
+// ABOUTME: Minimax solver with alpha-beta pruning and transposition table.
+// ABOUTME: Returns moves ranked by outcome (Win > Draw > Loss) from the current player's perspective.
+
+use std::collections::{HashMap, HashSet};
+use crate::board::place_card;
+use crate::types::{Card, CardType, GameState, Outcome, Owner, RankedMove};
+
+// Assigns a unique integer to each card based on its values and type for within-hand deduplication.
+fn stats_key(c: &Card) -> u32 {
+    let type_idx: u32 = match c.card_type {
+        CardType::None    => 0,
+        CardType::Primal  => 1,
+        CardType::Scion   => 2,
+        CardType::Society => 3,
+        CardType::Garlean => 4,
+    };
+    c.top as u32 * 5000 + c.right as u32 * 500 + c.bottom as u32 * 50 + c.left as u32 * 5 + type_idx
+}
+
+// Encodes board + turn as a single u64 for use as a HashMap key.
+// Each cell: 0 = empty, 2*idx-1 = card idx owned by player, 2*idx = card idx owned by opponent.
+// Turn bit occupies bit 0 (0=player, 1=opponent). Cells packed starting at bit 1 (shift=2),
+// 5 bits each (max cell value = (card.id+1)*2, must be < 32 — requires card.id < 15).
+// In practice card.id is 0–9 per game (guaranteed by reset_card_ids() at game start).
+// Total: 1 + 9*5 = 46 bits (safe integer).
+fn hash_state(state: &GameState) -> u64 {
+    let mut h: u64 = if state.current_turn == Owner::Player { 0 } else { 1 };
+    let mut shift: u64 = 2;
+    for cell in state.board.iter() {
+        if let Some(placed) = cell {
+            assert!(placed.card.id < 15, "card.id {} exceeds hash encoding limit", placed.card.id);
+            let idx = placed.card.id as u64 + 1;
+            h += (if placed.owner == Owner::Player { idx * 2 - 1 } else { idx * 2 }) * shift;
+        }
+        shift *= 32;
+    }
+    h
+}
+
+fn board_full(state: &GameState) -> bool {
+    state.board.iter().all(|cell| cell.is_some())
+}
+
+// Evaluates terminal state score. Returns 1 for evaluating_for wins, -1 for loss, 0 for draw.
+fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
+    let (player, opponent) = crate::types::get_score(state);
+    if player > opponent {
+        if evaluating_for == Owner::Player { 1 } else { -1 }
+    } else if player < opponent {
+        if evaluating_for == Owner::Player { -1 } else { 1 }
+    } else {
+        0
+    }
+}
+
+#[derive(Clone, Copy)]
+enum TTFlag {
+    Exact,
+    LowerBound,
+    UpperBound,
+}
+
+#[derive(Clone, Copy)]
+struct TTEntry {
+    value: i32,
+    flag: TTFlag,
+}
+
+// Returns 1 for win, 0 for draw, -1 for loss from evaluating_for's perspective.
+fn minimax(
+    state: &GameState,
+    evaluating_for: Owner,
+    mut alpha: i32,
+    mut beta: i32,
+    tt: &mut HashMap<u64, TTEntry>,
+) -> i32 {
+    let hand = if state.current_turn == Owner::Player {
+        &state.player_hand
+    } else {
+        &state.opponent_hand
+    };
+
+    if hand.is_empty() || board_full(state) {
+        return terminal_value(state, evaluating_for);
+    }
+
+    let key = hash_state(state);
+    // Copy the cached entry before any mutation to avoid holding a HashMap borrow.
+    let cached = tt.get(&key).copied();
+    if let Some(entry) = cached {
+        match entry.flag {
+            TTFlag::Exact => return entry.value,
+            TTFlag::LowerBound => {
+                if entry.value >= beta { return entry.value; }
+                if entry.value > alpha { alpha = entry.value; }
+            }
+            TTFlag::UpperBound => {
+                if entry.value <= alpha { return entry.value; }
+                if entry.value < beta { beta = entry.value; }
+            }
+        }
+        if alpha >= beta { return entry.value; }
+    }
+
+    let is_maximizing = state.current_turn == evaluating_for;
+    let orig_alpha = alpha;
+    let orig_beta = beta;
+    let mut best_value = if is_maximizing { i32::MIN } else { i32::MAX };
+
+    let mut seen_cards: HashSet<u32> = HashSet::new();
+
+    'outer: for card in hand.iter() {
+        let ck = stats_key(card);
+        if !seen_cards.insert(ck) { continue; }
+
+        for i in 0..9usize {
+            if state.board[i].is_some() { continue; }
+
+            let next_state = place_card(state, *card, i);
+            let value = minimax(&next_state, evaluating_for, alpha, beta, tt);
+
+            if is_maximizing {
+                if value > best_value { best_value = value; }
+                if value > alpha { alpha = value; }
+            } else {
+                if value < best_value { best_value = value; }
+                if value < beta { beta = value; }
+            }
+            if alpha >= beta { break 'outer; }
+        }
+    }
+
+    // Determine bound type based on whether alpha-beta narrowed the window
+    let flag = if is_maximizing {
+        if best_value <= orig_alpha { TTFlag::UpperBound }
+        else if best_value >= beta  { TTFlag::LowerBound }
+        else                        { TTFlag::Exact }
+    } else {
+        if best_value >= orig_beta  { TTFlag::LowerBound }
+        else if best_value <= alpha { TTFlag::UpperBound }
+        else                        { TTFlag::Exact }
+    };
+
+    tt.insert(key, TTEntry { value: best_value, flag });
+    best_value
+}
+
+fn find_best_move_with(state: &GameState, tt: &mut HashMap<u64, TTEntry>) -> Vec<RankedMove> {
+    let hand = if state.current_turn == Owner::Player {
+        &state.player_hand
+    } else {
+        &state.opponent_hand
+    };
+
+    if hand.is_empty() || board_full(state) {
+        return vec![];
+    }
+
+    // All minimax calls use Owner::Player as evaluating_for so TT values are always from
+    // Player's perspective. This makes TT entries safe to reuse across turns even when
+    // the persistent solver is in use (current_turn flips each turn, but stored values
+    // never change meaning).
+    let current_is_player = state.current_turn == Owner::Player;
+
+    // First pass: evaluate all moves with minimax
+    let mut evaluated: Vec<(Card, usize, i32, GameState)> = Vec::new();
+    let mut seen_cards: HashSet<u32> = HashSet::new();
+
+    for card in hand.iter() {
+        let ck = stats_key(card);
+        if !seen_cards.insert(ck) { continue; }
+
+        for i in 0..9usize {
+            if state.board[i].is_some() { continue; }
+            let next_state = place_card(state, *card, i);
+            let value = minimax(&next_state, Owner::Player, i32::MIN, i32::MAX, tt);
+            evaluated.push((*card, i, value, next_state));
+        }
+    }
+
+    // Second pass: calculate robustness for tie-breaking.
+    // For each move, count what fraction of opponent responses improve the current player's outcome.
+    let mut moves: Vec<RankedMove> = evaluated
+        .into_iter()
+        .map(|(card, position, value, next_state)| {
+            let opp_hand = if next_state.current_turn == Owner::Player {
+                &next_state.player_hand
+            } else {
+                &next_state.opponent_hand
+            };
+
+            let mut total_responses: u32 = 0;
+            let mut better_outcome_count: u32 = 0;
+
+            for opp_card in opp_hand.iter() {
+                for i in 0..9usize {
+                    if next_state.board[i].is_some() { continue; }
+                    total_responses += 1;
+                    let response_state = place_card(&next_state, *opp_card, i);
+                    let response_value =
+                        minimax(&response_state, Owner::Player, i32::MIN, i32::MAX, tt);
+                    // "Better" means: better for the current player (state.current_turn).
+                    // Values are from Player's perspective: higher = better for Player.
+                    if current_is_player {
+                        if response_value > value { better_outcome_count += 1; }
+                    } else {
+                        if response_value < value { better_outcome_count += 1; }
+                    }
+                }
+            }
+
+            // value is from Player's perspective; flip sign when it's Opponent's turn.
+            let effective_value = if current_is_player { value } else { -value };
+            let outcome = match effective_value {
+                1  => Outcome::Win,
+                -1 => Outcome::Loss,
+                _  => Outcome::Draw,
+            };
+            let robustness = if total_responses > 0 {
+                better_outcome_count as f64 / total_responses as f64
+            } else {
+                0.0
+            };
+
+            RankedMove { card, position: position as u8, outcome, robustness, confidence: None }
+        })
+        .collect();
+
+    // Sort: wins first, then draws, then losses; within same outcome, higher robustness first
+    moves.sort_by(|a, b| {
+        let order = |o: Outcome| match o {
+            Outcome::Win  => 0,
+            Outcome::Draw => 1,
+            Outcome::Loss => 2,
+        };
+        let od = order(a.outcome).cmp(&order(b.outcome));
+        if od != std::cmp::Ordering::Equal {
+            od
+        } else {
+            b.robustness.partial_cmp(&a.robustness).unwrap_or(std::cmp::Ordering::Equal)
+        }
+    });
+
+    moves
+}
+
+pub fn find_best_move(state: &GameState) -> Vec<RankedMove> {
+    let mut tt = HashMap::new();
+    find_best_move_with(state, &mut tt)
+}
+
+pub struct Solver {
+    tt: HashMap<u64, TTEntry>,
+}
+
+impl Solver {
+    pub fn new() -> Self {
+        Solver { tt: HashMap::new() }
+    }
+
+    pub fn reset(&mut self) {
+        self.tt = HashMap::new();
+    }
+
+    pub fn solve(&mut self, state: &GameState) -> Vec<RankedMove> {
+        find_best_move_with(state, &mut self.tt)
+    }
+
+    pub fn tt_size(&self) -> usize {
+        self.tt.len()
+    }
+
+    pub fn hash_for(&self, state: &GameState) -> u64 {
+        hash_state(state)
+    }
+}
+
+impl Default for Solver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::place_card;
+    use crate::types::{
+        create_card, create_initial_state, reset_card_ids, Board, CardType, Owner, Outcome,
+        PlacedCard, RuleSet,
+    };
+
+    fn no_rules() -> RuleSet {
+        RuleSet::default()
+    }
+
+    // ---- findBestMove ----
+
+    #[test]
+    fn returns_no_moves_for_full_board() {
+        reset_card_ids();
+        let p = vec![
+            create_card(1,1,1,1,CardType::None), create_card(2,2,2,2,CardType::None),
+            create_card(3,3,3,3,CardType::None), create_card(4,4,4,4,CardType::None),
+            create_card(5,5,5,5,CardType::None),
+        ];
+        let o = vec![
+            create_card(6,6,6,6,CardType::None),   create_card(7,7,7,7,CardType::None),
+            create_card(8,8,8,8,CardType::None),   create_card(9,9,9,9,CardType::None),
+            create_card(10,10,10,10,CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        state = place_card(&state, p[0], 0);
+        state = place_card(&state, o[0], 2);
+        state = place_card(&state, p[1], 6);
+        state = place_card(&state, o[1], 8);
+        state = place_card(&state, p[2], 4);
+        state = place_card(&state, o[2], 1);
+        state = place_card(&state, p[3], 3);
+        state = place_card(&state, o[3], 7);
+        state = place_card(&state, p[4], 5);
+        assert_eq!(find_best_move(&state).len(), 0);
+    }
+
+    #[test]
+    fn finds_only_winning_move_in_late_game() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,10,10,10,CardType::None), create_card(1,1,1,1,CardType::None),
+            create_card(2,2,2,2,CardType::None),     create_card(3,3,3,3,CardType::None),
+            create_card(4,4,4,4,CardType::None),
+        ];
+        let o = vec![
+            create_card(1,1,1,1,CardType::None), create_card(5,5,5,5,CardType::None),
+            create_card(6,6,6,6,CardType::None), create_card(7,7,7,7,CardType::None),
+            create_card(8,8,8,8,CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        state = place_card(&state, p[1], 0);
+        state = place_card(&state, o[0], 1);
+        state = place_card(&state, p[2], 2);
+        state = place_card(&state, o[1], 3);
+        state = place_card(&state, p[3], 5);
+        state = place_card(&state, o[2], 6);
+        state = place_card(&state, p[4], 7);
+        state = place_card(&state, o[3], 8);
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].position, 4);
+        assert_eq!(moves[0].card.id, p[0].id);
+    }
+
+    #[test]
+    fn ranks_winning_above_drawing_above_losing() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,10,10,10,CardType::None), create_card(9,9,9,9,CardType::None),
+            create_card(1,1,1,1,CardType::None),     create_card(2,2,2,2,CardType::None),
+            create_card(3,3,3,3,CardType::None),
+        ];
+        let o = vec![
+            create_card(5,5,5,5,CardType::None), create_card(6,6,6,6,CardType::None),
+            create_card(7,7,7,7,CardType::None), create_card(8,8,8,8,CardType::None),
+            create_card(4,4,4,4,CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        state = place_card(&state, p[2], 0);
+        state = place_card(&state, o[0], 1);
+        state = place_card(&state, p[3], 2);
+        state = place_card(&state, o[1], 3);
+        state = place_card(&state, p[4], 4);
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 12);
+        let order = |o: Outcome| match o { Outcome::Win => 0, Outcome::Draw => 1, Outcome::Loss => 2 };
+        for i in 1..moves.len() {
+            assert!(order(moves[i].outcome) >= order(moves[i - 1].outcome));
+        }
+    }
+
+    // ---- tie-breaking ----
+
+    #[test]
+    fn prefers_draw_move_with_more_opponent_mistakes() {
+        reset_card_ids();
+        let filler    = create_card(1,  1,  1, 1, CardType::None);
+        let pos4_card = create_card(1,  1, 10, 1, CardType::None);
+        let p_card    = create_card(10, 10, 1, 10, CardType::None);
+        let o1        = create_card(1,  1,  1, 1, CardType::None);
+        let o2        = create_card(10, 10, 10, 10, CardType::None);
+
+        let board: Board = [
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            Some(PlacedCard { card: pos4_card, owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            None,
+            None,
+        ];
+
+        let state = GameState {
+            board,
+            player_hand: vec![p_card],
+            opponent_hand: vec![o1, o2],
+            current_turn: Owner::Player,
+            rules: no_rules(),
+        };
+
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 2);
+        assert!(moves.iter().all(|m| m.outcome == Outcome::Draw));
+        assert_eq!(moves[0].position, 7);
+        assert_eq!(moves[1].position, 8);
+    }
+
+    #[test]
+    fn prefers_moves_with_higher_robustness() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5u8).map(|v| create_card(10 - v, 10 - v, 10 - v, 10 - v, CardType::None)).collect();
+        let o: Vec<Card> = (0..5u8).map(|v| create_card(v + 1, v + 1, v + 1, v + 1, CardType::None)).collect();
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let moves = find_best_move(&state);
+        let win_moves: Vec<_> = moves.iter().filter(|m| m.outcome == Outcome::Win).collect();
+        assert!(win_moves.len() > 1);
+        // Winning moves always have robustness=0 (nothing beats a win)
+        for m in &win_moves {
+            assert_eq!(m.robustness, 0.0);
+        }
+    }
+
+    // ---- additional scenarios ----
+
+    #[test]
+    fn evaluates_from_current_players_perspective_when_opponent_goes_first() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(1,1,1,1,CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(10,10,10,10,CardType::None)).collect();
+        let state = create_initial_state(p, o, Owner::Opponent, no_rules());
+        let moves = find_best_move(&state);
+        assert!(!moves.is_empty());
+        assert!(moves.iter().all(|m| m.outcome == Outcome::Win));
+    }
+
+    #[test]
+    fn returns_ranked_moves_when_all_outcomes_are_losses() {
+        reset_card_ids();
+        let weak   = create_card(1,1,1,1,CardType::None);
+        let strong = create_card(10,10,10,10,CardType::None);
+
+        let board: Board = [
+            Some(PlacedCard { card: weak, owner: Owner::Player   }),
+            Some(PlacedCard { card: weak, owner: Owner::Player   }),
+            Some(PlacedCard { card: weak, owner: Owner::Opponent }),
+            Some(PlacedCard { card: weak, owner: Owner::Opponent }),
+            Some(PlacedCard { card: weak, owner: Owner::Opponent }),
+            Some(PlacedCard { card: weak, owner: Owner::Opponent }),
+            None, None, None,
+        ];
+
+        let state = GameState {
+            board,
+            player_hand: vec![weak],
+            opponent_hand: vec![strong, strong],
+            current_turn: Owner::Player,
+            rules: no_rules(),
+        };
+
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 3);
+        assert!(moves.iter().all(|m| m.outcome == Outcome::Loss));
+        for i in 1..moves.len() {
+            assert!(moves[i].robustness <= moves[i - 1].robustness);
+        }
+    }
+
+    // ---- Solver struct ----
+
+    #[test]
+    fn solver_solve_matches_find_best_move() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(10,10,10,10,CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1,1,1,1,CardType::None)).collect();
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+        solver.reset();
+        let solver_moves = solver.solve(&state);
+        let direct_moves = find_best_move(&state);
+        let s_out: Vec<Outcome> = solver_moves.iter().map(|m| m.outcome).collect();
+        let d_out: Vec<Outcome> = direct_moves.iter().map(|m| m.outcome).collect();
+        assert_eq!(s_out, d_out);
+        let s_pos: Vec<u8> = solver_moves.iter().map(|m| m.position).collect();
+        let d_pos: Vec<u8> = direct_moves.iter().map(|m| m.position).collect();
+        assert_eq!(s_pos, d_pos);
+    }
+
+    #[test]
+    fn solver_reuses_tt_across_calls() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        state = place_card(&state, p[2], 0);
+        state = place_card(&state, o[0], 1);
+        state = place_card(&state, p[3], 2);
+
+        let mut solver = Solver::new();
+        solver.reset();
+
+        let t0 = std::time::Instant::now();
+        solver.solve(&state);
+        let first_ms = t0.elapsed().as_millis();
+
+        let t1 = std::time::Instant::now();
+        solver.solve(&state);
+        let second_ms = t1.elapsed().as_millis();
+
+        // Second call should be dramatically faster (all TT hits)
+        assert!(
+            second_ms * 10 < first_ms + 1,
+            "TT not helping: first={first_ms}ms second={second_ms}ms"
+        );
+    }
+
+    // ---- TT persistence ----
+
+    #[test]
+    fn tt_empty_after_reset() {
+        let mut solver = Solver::new();
+        solver.reset();
+        assert_eq!(solver.tt_size(), 0);
+    }
+
+    #[test]
+    fn tt_populated_after_solve() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(10,10,10,10,CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1,1,1,1,CardType::None)).collect();
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+        solver.reset();
+        solver.solve(&state);
+        assert!(solver.tt_size() > 0);
+    }
+
+    #[test]
+    fn tt_size_unchanged_solving_same_state_twice() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(10,10,10,10,CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1,1,1,1,CardType::None)).collect();
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+        solver.reset();
+        solver.solve(&state);
+        let size_after_first = solver.tt_size();
+        solver.solve(&state);
+        assert_eq!(solver.tt_size(), size_after_first);
+    }
+
+    #[test]
+    fn cross_turn_predictions_consistent() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(10,10,10,10,CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1,1,1,1,CardType::None)).collect();
+        let opening = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+        solver.reset();
+
+        let opening_moves = solver.solve(&opening);
+        let opening_outcome = opening_moves[0].outcome;
+
+        let state_after_1 = place_card(&opening, opening_moves[0].card, opening_moves[0].position as usize);
+        let moves_after_1 = solver.solve(&state_after_1);
+        let outcome_after_1 = moves_after_1[0].outcome;
+
+        let mirror = |o: Outcome| match o {
+            Outcome::Win  => Outcome::Loss,
+            Outcome::Loss => Outcome::Win,
+            Outcome::Draw => Outcome::Draw,
+        };
+        assert_eq!(outcome_after_1, mirror(opening_outcome));
+    }
+
+    // ---- TT hash collision regression ----
+
+    #[test]
+    fn distinct_hashes_for_same_stats_different_ids() {
+        reset_card_ids();
+        let p_strong = create_card(8,8,8,8,CardType::None);
+        let o_strong = create_card(8,8,8,8,CardType::None);
+        let weak     = create_card(1,1,1,1,CardType::None);
+
+        let pos_a = GameState {
+            board: [
+                Some(PlacedCard { card: p_strong, owner: Owner::Player }),
+                None, None, None, None, None, None, None, None,
+            ],
+            player_hand:   vec![weak, weak, weak, weak],
+            opponent_hand: vec![o_strong, weak, weak, weak, weak],
+            current_turn: Owner::Opponent,
+            rules: no_rules(),
+        };
+
+        let pos_b = GameState {
+            board: [
+                Some(PlacedCard { card: o_strong, owner: Owner::Player }),
+                None, None, None, None, None, None, None, None,
+            ],
+            player_hand:   vec![p_strong, weak, weak, weak, weak],
+            opponent_hand: vec![weak, weak, weak, weak],
+            current_turn: Owner::Opponent,
+            rules: no_rules(),
+        };
+
+        let solver = Solver::new();
+        assert_ne!(solver.hash_for(&pos_a), solver.hash_for(&pos_b));
+    }
+}
