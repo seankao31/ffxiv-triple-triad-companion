@@ -83,7 +83,7 @@ fn resolve_plus(
     }
 
     let mut flipped = Vec::new();
-    for (_sum, positions) in &sum_groups {
+    for positions in sum_groups.values() {
         if positions.len() < 2 {
             continue;
         }
@@ -216,14 +216,12 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
     // The placed card must not count toward its own resolution.
     let mut asc_count: u8 = 0;
     let mut desc_count: u8 = 0;
-    for cell in &state.board {
-        if let Some(placed) = cell {
-            if state.rules.ascension && placed.card.card_type == CardType::Primal {
-                asc_count += 1;
-            }
-            if state.rules.descension && placed.card.card_type == CardType::Scion {
-                desc_count += 1;
-            }
+    for placed in state.board.iter().flatten() {
+        if state.rules.ascension && placed.card.card_type == CardType::Primal {
+            asc_count += 1;
+        }
+        if state.rules.descension && placed.card.card_type == CardType::Scion {
+            desc_count += 1;
         }
     }
 
@@ -320,7 +318,7 @@ mod tests {
         RuleSet { plus: true, ..RuleSet::default() }
     }
 
-    // ── existing 8 tests ─────────────────────────────────────────────────────
+    // ── placement validation and standard capture ────────────────────────────
 
     #[test]
     fn test_place_card_on_empty_cell() {

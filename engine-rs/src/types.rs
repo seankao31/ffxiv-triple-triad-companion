@@ -41,7 +41,7 @@ pub struct PlacedCard {
 // 3x3 board, row-major: [0,1,2] = top row, [3,4,5] = middle, [6,7,8] = bottom
 pub type Board = [Option<PlacedCard>; 9];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RuleSet {
     pub plus: bool,
     pub same: bool,
@@ -49,19 +49,6 @@ pub struct RuleSet {
     pub fallen_ace: bool,
     pub ascension: bool,
     pub descension: bool,
-}
-
-impl Default for RuleSet {
-    fn default() -> Self {
-        RuleSet {
-            plus: false,
-            same: false,
-            reverse: false,
-            fallen_ace: false,
-            ascension: false,
-            descension: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,12 +124,10 @@ pub fn create_initial_state(
 pub fn get_score(state: &GameState) -> (usize, usize) {
     let mut player = state.player_hand.len();
     let mut opponent = state.opponent_hand.len();
-    for cell in &state.board {
-        if let Some(placed) = cell {
-            match placed.owner {
-                Owner::Player => player += 1,
-                Owner::Opponent => opponent += 1,
-            }
+    for placed in state.board.iter().flatten() {
+        match placed.owner {
+            Owner::Player => player += 1,
+            Owner::Opponent => opponent += 1,
         }
     }
     (player, opponent)
