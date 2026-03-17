@@ -1,0 +1,67 @@
+// ABOUTME: Verifies the WASM solver produces correct output matching the solver JSON fixtures.
+// ABOUTME: Requires the WASM build to be present at engine-rs/pkg/ (run wasm-pack build first).
+
+import { describe, expect, it, beforeAll } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const PKG_DIR = join(import.meta.dir, '../../engine-rs/pkg');
+const FIXTURES_DIR = join(import.meta.dir, '../../tests/fixtures/solver');
+
+interface ExpectedMove {
+  cardId: number;
+  position: number;
+  outcome: string;
+  robustness: number;
+}
+
+interface Fixture {
+  name: string;
+  state: unknown;
+  expected: ExpectedMove[];
+}
+
+let wasm_solve: (state_json: string) => string;
+
+describe('WASM solver', () => {
+  beforeAll(async () => {
+    // Load the wasm-bindgen bg.js module, then instantiate the WASM binary manually.
+    // This is necessary in Bun because the bundler-target engine_rs.js uses a static
+    // WASM import that only works inside a bundler (e.g. Vite), not in a Node-style runtime.
+    const bgModule = await import(`file://${join(PKG_DIR, 'engine_rs_bg.js')}`);
+    const wasmBytes = readFileSync(join(PKG_DIR, 'engine_rs_bg.wasm'));
+    const wasmResult = await WebAssembly.instantiate(wasmBytes, {
+      './engine_rs_bg.js': bgModule,
+    });
+    const wasmInstance = wasmResult.instance;
+    bgModule.__wbg_set_wasm(wasmInstance.exports);
+    const exports = wasmInstance.exports as Record<string, unknown>;
+    if (typeof exports['__wbindgen_start'] === 'function') {
+      (exports['__wbindgen_start'] as () => void)();
+    }
+    wasm_solve = bgModule.wasm_solve;
+  });
+
+  const files = readdirSync(FIXTURES_DIR)
+    .filter((f: string) => f.endsWith('.json'))
+    .sort();
+
+  for (const file of files) {
+    it(file.replace('.json', ''), () => {
+      const fixture: Fixture = JSON.parse(readFileSync(join(FIXTURES_DIR, file), 'utf-8'));
+      const resultJson = wasm_solve(JSON.stringify(fixture.state));
+      const result: Array<{ card: { id: number }; position: number; outcome: string; robustness: number }> = JSON.parse(resultJson);
+
+      expect(result.length).toBe(fixture.expected.length);
+      for (let i = 0; i < fixture.expected.length; i++) {
+        const got = result[i]!;
+        const exp = fixture.expected[i]!;
+        expect(got.card.id).toBe(exp.cardId);
+        expect(got.position).toBe(exp.position);
+        expect(got.outcome).toBe(exp.outcome);
+        expect(Math.abs(got.robustness - exp.robustness)).toBeLessThan(1e-9);
+      }
+    });
+  }
+});
