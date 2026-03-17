@@ -1,6 +1,7 @@
 <!-- ABOUTME: Displays one player's remaining hand cards during gameplay. -->
 <!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
   import { Owner, type Card } from '../../../engine';
   import CardInput from '../setup/CardInput.svelte';
@@ -18,11 +19,14 @@
 
   // ID of the unknown card currently being revealed; null when no reveal form is open.
   let revealingCardId: number | null = $state(null);
+  let revealCardInput: { focusFirst: () => void } | null = $state(null);
 
-  function handleClick(card: Card) {
+  async function handleClick(card: Card) {
     if (!isActive) return;
     if ($game.unknownCardIds.has(card.id)) {
       revealingCardId = card.id;
+      await tick();
+      revealCardInput?.focusFirst();
       return;
     }
     selectCard(card);
@@ -48,7 +52,7 @@
     {@const isUnknown = $game.unknownCardIds.has(card.id)}
     {@const isRevealing = revealingCardId === card.id}
     {#if isRevealing}
-      <CardInput onchange={handleReveal} />
+      <CardInput onchange={handleReveal} bind:this={revealCardInput} />
     {:else}
       <button
         onclick={() => handleClick(card)}

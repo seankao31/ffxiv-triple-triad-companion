@@ -64,6 +64,13 @@ describe('unknown card reveal', () => {
     expect(screen.getByLabelText('Top')).toBeInTheDocument();
   });
 
+  it('reveal form auto-focuses the Top field after opening', async () => {
+    setupWithUnknown();
+    render(HandPanel, { props: { owner: Owner.Opponent } });
+    await fireEvent.click(screen.getByText('?').closest('button')!);
+    expect(document.activeElement).toBe(screen.getByLabelText('Top'));
+  });
+
   it('completing CardInput calls revealCard and closes the form', async () => {
     setupWithUnknown();
     render(HandPanel, { props: { owner: Owner.Opponent } });
