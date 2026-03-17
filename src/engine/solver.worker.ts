@@ -1,7 +1,7 @@
 // ABOUTME: Web Worker entry point for the minimax solver.
 // ABOUTME: Maintains a persistent solver instance across turns of a single game.
 import { createSolver } from './solver';
-import { weightedSample, buildCandidatePool, type PIMCCard } from './pimc';
+import { weightedSample, buildCandidatePool, computeStarBudgets, weightedSampleConstrained, type PIMCCard } from './pimc';
 import { CardType, Owner, type Card, type GameState, type RankedMove } from './types';
 import cardsJson from '../data/cards.json';
 
@@ -52,8 +52,13 @@ self.onmessage = (e: MessageEvent<InMessage>) => {
       return;
     }
 
-    // Sample unknown cards and build the simulated state.
-    const sampled = weightedSample(pool, unknownCount);
+    // Compute star budget from known (non-unknown) opponent cards.
+    const knownOpponentCards = (state.opponentHand as Card[]).filter((c) => !unknownCardIds.has(c.id));
+    const { maxFiveStars, maxFourStars } = computeStarBudgets(knownOpponentCards, allCards);
+
+    // Sample unknown cards respecting star budget; fall back to unconstrained if constraints can't be met.
+    const sampled = weightedSampleConstrained(pool, unknownCount, maxFiveStars, maxFourStars)
+      ?? weightedSample(pool, unknownCount);
     const unknownToSampled = new Map<number, PIMCCard>();
     let si = 0;
     for (const uid of unknownCardIds) unknownToSampled.set(uid, sampled[si++]!);

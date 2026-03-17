@@ -1,8 +1,8 @@
 // ABOUTME: Tests for the PIMC solver — weighted candidate sampling, pool construction, and simulation.
 // ABOUTME: Covers weightedSample, buildCandidatePool, and runPIMC integration.
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { weightedSample, buildCandidatePool, runPIMC, type PIMCCard } from '../../src/engine/pimc';
-import { createCard, createInitialState, Owner, Outcome, resetCardIds } from '../../src/engine';
+import { weightedSample, buildCandidatePool, runPIMC, computeStarBudgets, weightedSampleConstrained, type PIMCCard } from '../../src/engine/pimc';
+import { createCard, createInitialState, Owner, Outcome, resetCardIds, type Card } from '../../src/engine';
 import { createPlaceholderCard } from '../../src/engine/types';
 
 function makePIMCCard(top: number, right: number, bottom: number, left: number, owned = 1, stars = 3): PIMCCard {
@@ -71,6 +71,109 @@ describe('buildCandidatePool', () => {
     const pool = buildCandidatePool(all, new Set());
     expect(pool).toHaveLength(1);
     expect(pool[0]!.id).toBe(200);
+  });
+});
+
+describe('computeStarBudgets', () => {
+  const allCards: PIMCCard[] = [
+    { ...makePIMCCard(5, 5, 5, 5), id: 100, stars: 5 },
+    { ...makePIMCCard(4, 4, 4, 4), id: 101, stars: 4 },
+    { ...makePIMCCard(3, 3, 3, 3), id: 102, stars: 3 },
+  ];
+
+  beforeEach(() => { resetCardIds(); });
+
+  it('with no known cards, budget is max (1 five-star, 2 four-stars)', () => {
+    const budget = computeStarBudgets([], allCards);
+    expect(budget.maxFiveStars).toBe(1);
+    expect(budget.maxFourStars).toBe(2);
+  });
+
+  it('with 1 known 5-star, budget is (0 five-stars, 1 four-star)', () => {
+    const card = createCard(5, 5, 5, 5);
+    const budget = computeStarBudgets([card], allCards);
+    expect(budget.maxFiveStars).toBe(0);
+    expect(budget.maxFourStars).toBe(1);
+  });
+
+  it('with 1 known 4-star, budget is (1 five-star, 1 four-star)', () => {
+    const card = createCard(4, 4, 4, 4);
+    const budget = computeStarBudgets([card], allCards);
+    expect(budget.maxFiveStars).toBe(1);
+    expect(budget.maxFourStars).toBe(1);
+  });
+
+  it('with 2 known 4-stars, budget is (1 five-star, 0 four-stars)', () => {
+    const cards = [createCard(4, 4, 4, 4), createCard(4, 4, 4, 4)];
+    const budget = computeStarBudgets(cards, allCards);
+    expect(budget.maxFiveStars).toBe(1);
+    expect(budget.maxFourStars).toBe(0);
+  });
+
+  it('with 1 five-star and 1 four-star, budget is (0, 0)', () => {
+    const cards = [createCard(5, 5, 5, 5), createCard(4, 4, 4, 4)];
+    const budget = computeStarBudgets(cards, allCards);
+    expect(budget.maxFiveStars).toBe(0);
+    expect(budget.maxFourStars).toBe(0);
+  });
+
+  it('with unrecognized card stats, treats card as below 4-star (no budget reduction)', () => {
+    const card = createCard(9, 8, 7, 6);
+    const budget = computeStarBudgets([card], allCards);
+    expect(budget.maxFiveStars).toBe(1);
+    expect(budget.maxFourStars).toBe(2);
+  });
+});
+
+describe('weightedSampleConstrained', () => {
+  const pool: PIMCCard[] = [
+    makePIMCCard(9, 9, 9, 9, 1, 5),
+    makePIMCCard(8, 8, 8, 8, 1, 5),
+    makePIMCCard(7, 7, 7, 7, 1, 4),
+    makePIMCCard(6, 6, 6, 6, 1, 4),
+    makePIMCCard(5, 5, 5, 5, 1, 3),
+    makePIMCCard(4, 4, 4, 4, 1, 3),
+    makePIMCCard(3, 3, 3, 3, 1, 2),
+  ];
+
+  it('returns exactly count items', () => {
+    const result = weightedSampleConstrained(pool, 3, 1, 1);
+    expect(result).not.toBeNull();
+    expect(result!).toHaveLength(3);
+  });
+
+  it('respects maxFiveStars=0 by excluding all 5-star cards', () => {
+    for (let i = 0; i < 20; i++) {
+      const result = weightedSampleConstrained(pool, 3, 0, 2)!;
+      expect(result.every((c) => c.stars !== 5)).toBe(true);
+    }
+  });
+
+  it('respects maxFourStars=0 by excluding all 4-star cards', () => {
+    for (let i = 0; i < 20; i++) {
+      const result = weightedSampleConstrained(pool, 3, 1, 0)!;
+      expect(result.every((c) => c.stars !== 4)).toBe(true);
+    }
+  });
+
+  it('never includes more than maxFiveStars five-star cards', () => {
+    for (let i = 0; i < 30; i++) {
+      const result = weightedSampleConstrained(pool, 4, 1, 1)!;
+      const fiveCount = result.filter((c) => c.stars === 5).length;
+      expect(fiveCount).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('returns null when constraints cannot be satisfied', () => {
+    // pool has only 3 cards below 4-star; requesting 4 with maxFiveStars=0 and maxFourStars=0
+    const result = weightedSampleConstrained(pool, 4, 0, 0);
+    expect(result).toBeNull();
+  });
+
+  it('returns items without replacement', () => {
+    const result = weightedSampleConstrained(pool, 5, 1, 2)!;
+    const tops = result!.map((c) => c.top);
+    expect(new Set(tops).size).toBe(5);
   });
 });
 
