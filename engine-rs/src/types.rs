@@ -1,13 +1,15 @@
 // ABOUTME: Core data types for the Triple Triad game engine.
 // ABOUTME: Defines Card, GameState, Owner, and related types ported from types.ts.
 
+use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 
 thread_local! {
     static NEXT_CARD_ID: Cell<u8> = const { Cell::new(0) };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CardType {
     None,
     Primal,
@@ -16,23 +18,25 @@ pub enum CardType {
     Garlean,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Owner {
     Player,
     Opponent,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
     pub id: u8,
     pub top: u8,
     pub right: u8,
     pub bottom: u8,
     pub left: u8,
+    #[serde(rename = "type")]
     pub card_type: CardType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlacedCard {
     pub card: Card,
     pub owner: Owner,
@@ -41,7 +45,8 @@ pub struct PlacedCard {
 // 3x3 board, row-major: [0,1,2] = top row, [3,4,5] = middle, [6,7,8] = bottom
 pub type Board = [Option<PlacedCard>; 9];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RuleSet {
     pub plus: bool,
     pub same: bool,
@@ -51,7 +56,8 @@ pub struct RuleSet {
     pub descension: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameState {
     pub board: Board,
     pub player_hand: Vec<Card>,

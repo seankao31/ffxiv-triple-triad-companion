@@ -1,0 +1,243 @@
+{
+  "name": "combo_same_triggers_standard_capture",
+  "state": {
+    "board": [
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 1,
+          "right": 1,
+          "bottom": 7,
+          "left": 9,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 3,
+          "top": 1,
+          "right": 3,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      null,
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      }
+    ],
+    "playerHand": [
+      {
+        "id": 4,
+        "top": 7,
+        "right": 1,
+        "bottom": 1,
+        "left": 3,
+        "type": "none"
+      },
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "player",
+    "rules": {
+      "plus": false,
+      "same": true,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": false
+    }
+  },
+  "cardId": 4,
+  "position": 4,
+  "expected": {
+    "board": [
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 1,
+          "right": 1,
+          "bottom": 7,
+          "left": 9,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 3,
+          "top": 1,
+          "right": 3,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 4,
+          "top": 7,
+          "right": 1,
+          "bottom": 1,
+          "left": 3,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      }
+    ],
+    "playerHand": [
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 0,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "opponent",
+    "rules": {
+      "plus": false,
+      "same": true,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": false
+    }
+  }
+}

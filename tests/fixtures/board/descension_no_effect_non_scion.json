@@ -1,0 +1,231 @@
+{
+  "name": "descension_no_effect_non_scion",
+  "state": {
+    "board": [
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 4,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "opponent"
+      },
+      null,
+      null,
+      null,
+      null,
+      {
+        "card": {
+          "id": 5,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      null,
+      null
+    ],
+    "playerHand": [
+      {
+        "id": 6,
+        "top": 5,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 7,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 8,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 9,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 2,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 3,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 4,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "player",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": true
+    }
+  },
+  "cardId": 6,
+  "position": 4,
+  "expected": {
+    "board": [
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 4,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      null,
+      null,
+      {
+        "card": {
+          "id": 6,
+          "top": 5,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      null,
+      {
+        "card": {
+          "id": 5,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "none"
+        },
+        "owner": "player"
+      },
+      null,
+      null
+    ],
+    "playerHand": [
+      {
+        "id": 7,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 8,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 9,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 2,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 3,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      },
+      {
+        "id": 4,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "opponent",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": false,
+      "descension": true
+    }
+  }
+}
