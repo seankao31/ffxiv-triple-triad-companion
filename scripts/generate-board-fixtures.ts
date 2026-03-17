@@ -29,7 +29,8 @@ function writeFixture(
     state.currentTurn === Owner.Player
       ? state.playerHand
       : state.opponentHand;
-  const card = hand.find((c) => c != null && c.id === cardId)!;
+  const card = hand.find((c) => c != null && c.id === cardId);
+  if (!card) throw new Error(`Card id ${cardId} not found in hand for fixture '${name}'`);
   const expected = placeCard(state, card, position);
   const fixture = { name, state, cardId, position, expected };
   writeFileSync(join(OUT_DIR, `${name}.json`), JSON.stringify(fixture, null, 2));
@@ -43,7 +44,8 @@ function setup(initialState: GameState, moves: [Card, number][]): GameState {
       state.currentTurn === Owner.Player
         ? state.playerHand
         : state.opponentHand;
-    const c = hand.find((h) => h != null && h.id === card.id)!;
+    const c = hand.find((h) => h != null && h.id === card.id);
+    if (!c) throw new Error(`Card id ${card.id} not found in hand during setup`);
     state = placeCard(state, c, pos);
   }
   return state;
