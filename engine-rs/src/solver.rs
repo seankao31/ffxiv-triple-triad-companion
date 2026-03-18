@@ -53,7 +53,9 @@ fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
     }
 }
 
-const TT_SIZE: usize = 1 << 22;
+// 128K entries (2MB). Sufficient coverage for mid-game transpositions while keeping
+// WASM heap footprint small.
+const TT_SIZE: usize = 1 << 17;
 const EMPTY_KEY: u64 = u64::MAX;
 
 #[derive(Clone, Copy)]
@@ -99,7 +101,7 @@ fn minimax(
     let key = hash_state(state);
     // Apply Fibonacci mixing before masking to distribute the polynomial hash uniformly.
     // hash_state uses base-32 encoding so low 22 bits alone would cluster mid-game positions.
-    let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - 22)) as usize;
+    let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - 17)) as usize;
     let cached_slot = tt[tt_idx];
     let cached = if cached_slot.key == key {
         Some(TTEntry { value: cached_slot.value, flag: cached_slot.flag })
