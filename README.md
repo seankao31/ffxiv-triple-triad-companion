@@ -42,7 +42,7 @@ engine-rs/
     bin/server.rs — Axum HTTP server at POST /api/solve (optional, server feature only)
   Cargo.toml      — dual-target: cdylib (WASM) + rlib; server feature gates Axum/Rayon deps
   tests/          — Rust integration tests (board fixtures, solver fixtures)
-pkg/              — wasm-pack output (generated; checked in for browser builds)
+pkg/              — wasm-pack output (gitignored; must be built before dev/build — see below)
 scripts/
   scrape-cards.ts — one-off script to refresh card data
 tests/
@@ -133,14 +133,14 @@ cd engine-rs && cargo test --features server
 ## Development
 
 ```bash
-bun run dev     # Vite dev server at localhost:5173 (requires pkg/ WASM output)
+bun run dev     # Vite dev server at localhost:5173 (requires pkg/ — see WASM build step below)
 bun run build   # Production build to dist/
 bun run check   # Svelte type checking
 ```
 
 ### Building the WASM module
 
-The WASM output (`pkg/`) is checked in, so `bun run dev` works out of the box. To rebuild after changes to `engine-rs/`:
+`pkg/` is gitignored and must be built before running the app. Run this once after cloning, and again after changes to `engine-rs/`:
 
 ```bash
 cd engine-rs && wasm-pack build --target web --out-dir ../pkg
