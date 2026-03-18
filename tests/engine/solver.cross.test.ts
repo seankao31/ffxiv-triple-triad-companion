@@ -208,6 +208,102 @@ describe('cross-verification: TypeScript vs WASM solver', () => {
     expect(diffs).toEqual([]);
   }, 300_000);
 
+  it('agrees on 200 random mid-game positions with Plus+Same rules (seed=777)', () => {
+    const rng = makeLCG(777);
+    const diffs: string[] = [];
+
+    for (let i = 0; i < 200; i++) {
+      const base = generateState(rng);
+      const state: GameState = {
+        ...base,
+        rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      };
+      const stateJson = JSON.stringify(state);
+
+      const tsMoves: WasmMove[] = findBestMove(state).map((m) => ({
+        card: { id: m.card.id },
+        position: m.position,
+        outcome: m.outcome as string,
+        robustness: m.robustness,
+      }));
+      const wasmMoves: WasmMove[] = JSON.parse(wasm_solve(stateJson));
+
+      const ts = canonicalize(tsMoves);
+      const wasm = canonicalize(wasmMoves);
+
+      if (ts.length !== wasm.length) {
+        diffs.push(`iter ${i}: count ts=${ts.length} wasm=${wasm.length} rules=plus+same`);
+        if (diffs.length >= 5) break;
+        continue;
+      }
+
+      for (let j = 0; j < ts.length; j++) {
+        const a = ts[j]!;
+        const b = wasm[j]!;
+        if (a.card.id !== b.card.id || a.position !== b.position || a.outcome !== b.outcome ||
+            Math.abs(a.robustness - b.robustness) > 1e-9) {
+          diffs.push(
+            `iter ${i} move ${j} (plus+same): ` +
+            `ts={id=${a.card.id},pos=${a.position},out=${a.outcome}} ` +
+            `wasm={id=${b.card.id},pos=${b.position},out=${b.outcome}}`,
+          );
+          if (diffs.length >= 5) break;
+        }
+      }
+      if (diffs.length >= 5) break;
+    }
+
+    expect(diffs).toEqual([]);
+  }, 300_000);
+
+  it('agrees on 200 random mid-game positions with Reverse+FallenAce rules (seed=888)', () => {
+    const rng = makeLCG(888);
+    const diffs: string[] = [];
+
+    for (let i = 0; i < 200; i++) {
+      const base = generateState(rng);
+      const state: GameState = {
+        ...base,
+        rules: { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false },
+      };
+      const stateJson = JSON.stringify(state);
+
+      const tsMoves: WasmMove[] = findBestMove(state).map((m) => ({
+        card: { id: m.card.id },
+        position: m.position,
+        outcome: m.outcome as string,
+        robustness: m.robustness,
+      }));
+      const wasmMoves: WasmMove[] = JSON.parse(wasm_solve(stateJson));
+
+      const ts = canonicalize(tsMoves);
+      const wasm = canonicalize(wasmMoves);
+
+      if (ts.length !== wasm.length) {
+        diffs.push(`iter ${i}: count ts=${ts.length} wasm=${wasm.length} rules=reverse+fallenAce`);
+        if (diffs.length >= 5) break;
+        continue;
+      }
+
+      for (let j = 0; j < ts.length; j++) {
+        const a = ts[j]!;
+        const b = wasm[j]!;
+        if (a.card.id !== b.card.id || a.position !== b.position || a.outcome !== b.outcome ||
+            Math.abs(a.robustness - b.robustness) > 1e-9) {
+          diffs.push(
+            `iter ${i} move ${j} (reverse+fallenAce): ` +
+            `ts={id=${a.card.id},pos=${a.position},out=${a.outcome}} ` +
+            `wasm={id=${b.card.id},pos=${b.position},out=${b.outcome}}`,
+          );
+          if (diffs.length >= 5) break;
+        }
+      }
+      if (diffs.length >= 5) break;
+    }
+
+    expect(diffs).toEqual([]);
+  }, 300_000);
+
   // --- WASM performance ---
 
   it('wasm opening position solve completes within 60 seconds', () => {
