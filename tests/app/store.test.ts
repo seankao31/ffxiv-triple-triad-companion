@@ -1,14 +1,15 @@
 // ABOUTME: Tests for the central game store — phase transitions, move placement, and undo.
 // ABOUTME: Covers startGame, playCard, undoMove, selectCard, and hand/ruleset updates.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
   game, currentState, rankedMoves, solverLoading, pimcProgress,
   startGame, playCard, undoMove, selectCard,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, revealCard,
+  updateSolverMode, updateServerEndpoint,
 } from '../../src/app/store';
-import { createCard, CardType, Owner, Outcome, resetCardIds } from '../../src/engine';
+import { createCard, CardType, Owner, Outcome, resetCardIds, type RankedMove } from '../../src/engine';
 import { lastWorkerInstance, workerInstances } from './setup';
 
 function makePlayerHand() {
@@ -596,6 +597,100 @@ describe('PIMC parallel dispatch', () => {
     // Late gen1 result arrives — must be discarded, gen2 pimcProgress must show 0 completed
     poolWorker.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(0); // gen2 has 0 completed, gen1 result was discarded
+  });
+});
+
+describe('server solver mode', () => {
+  const mockMoves: RankedMove[] = [
+    { card: { id: 0, top: 5, right: 5, bottom: 5, left: 5, type: CardType.None }, position: 0, outcome: Outcome.Win, robustness: 0.5 },
+  ];
+
+  beforeEach(() => {
+    updateSolverMode('wasm');
+    updateServerEndpoint('');
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    updateSolverMode('wasm');
+    updateServerEndpoint('');
+  });
+
+  it('POSTs to /api/solve when solverMode is server', () => {
+    const endpoint = 'http://localhost:8080';
+    updateServerEndpoint(endpoint);
+    updateSolverMode('server');
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ moves: mockMoves }) } as Response);
+
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+
+    // fetch is invoked synchronously (before the first await inside triggerServerSolve)
+    expect(mockFetch).toHaveBeenCalledOnce();
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${endpoint}/api/solve`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('sets rankedMoves from the server response', async () => {
+    const endpoint = 'http://localhost:8080';
+    updateServerEndpoint(endpoint);
+    updateSolverMode('server');
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ moves: mockMoves }) } as Response);
+
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+
+    // Flush microtasks: fetch resolves → json() resolves → rankedMoves.set runs
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(get(rankedMoves)).toHaveLength(1);
+    expect(get(solverLoading)).toBe(false);
+  });
+
+  it('falls back to WASM solve when endpoint is empty', () => {
+    updateSolverMode('server');
+    updateServerEndpoint('');
+    const mockFetch = vi.mocked(global.fetch);
+
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+
+    // No fetch call — falls back to WASM worker path
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(get(solverLoading)).toBe(true); // WASM loading still in progress
+  });
+
+  it('sends unknownCardIds and cardPool when Three Open', async () => {
+    const endpoint = 'http://localhost:8080';
+    updateServerEndpoint(endpoint);
+    updateSolverMode('server');
+    updateThreeOpen(true);
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ moves: mockMoves }) } as Response);
+
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    // slots 3 and 4 remain null (unknown)
+    startGame();
+
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const [, init] = mockFetch.mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.unknownCardIds).toHaveLength(2);
+    expect(body.cardPool).toBeDefined();
+    expect(Array.isArray(body.cardPool)).toBe(true);
   });
 });
 

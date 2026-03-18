@@ -3,6 +3,7 @@
 <script lang="ts">
   import HandInput from './HandInput.svelte';
   import RulesetInput from './RulesetInput.svelte';
+  import ServerSettings from './ServerSettings.svelte';
   import SwapStep from './SwapStep.svelte';
   import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen } from '../../store';
   import { Owner } from '../../../engine';
@@ -29,6 +30,7 @@
 
     <div class="flex flex-col items-center gap-4 w-full">
       <RulesetInput />
+      <ServerSettings />
 
       <fieldset class="flex gap-6 items-center border-t border-surface-700 pt-4 w-full justify-center">
         <legend class="text-sm font-semibold text-surface-400 mr-2">First Move</legend>

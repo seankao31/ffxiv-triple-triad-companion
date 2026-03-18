@@ -4,6 +4,8 @@
 pub mod types;
 pub mod board;
 pub mod solver;
+#[cfg(feature = "server")]
+pub mod pimc;
 
 use wasm_bindgen::prelude::*;
 

@@ -6,6 +6,12 @@ import {
   Owner,
   type Card, type GameState, type RuleSet, type RankedMove,
 } from '../engine';
+import { buildCandidatePool, computeStarBudgets, type PIMCCard } from '../engine/pimc';
+import cardsJson from '../data/cards.json';
+
+const allCards: PIMCCard[] = cardsJson as PIMCCard[];
+
+export type SolverMode = 'wasm' | 'server';
 
 export type Phase = 'setup' | 'swap' | 'play';
 
@@ -48,6 +54,11 @@ export const currentState = derived(game, ($g) => $g.history.at(-1) ?? null);
 export const rankedMoves = writable<RankedMove[]>([]);
 export const solverLoading = writable<boolean>(false);
 export const pimcProgress = writable<{ current: number; total: number } | null>(null);
+
+// Solver backend selection. 'wasm' uses in-browser Web Workers; 'server' uses the native binary.
+export const solverMode = writable<SolverMode>('wasm');
+// URL of the native solver server (e.g. 'http://localhost:8080'). Only used when solverMode is 'server'.
+export const serverEndpoint = writable<string>('');
 
 const PIMC_ITERATIONS = 50;
 
@@ -123,10 +134,76 @@ const pimcWorkerPool: Worker[] = Array.from(
   },
 );
 
+// Send a solve request to the native server. Handles both All Open and Three Open.
+// The server runs PIMC internally with Rayon parallelism; the client only waits for the result.
+async function triggerServerSolve(state: GameState, generation: number): Promise<void> {
+  const unknownCardIds = get(game).unknownCardIds;
+  const endpoint = get(serverEndpoint);
+
+  let cardPool: PIMCCard[] = [];
+  let maxFiveStars = 1;
+  let maxFourStars = 2;
+
+  if (unknownCardIds.size > 0) {
+    const knownIds = new Set<number>();
+    for (const cell of state.board) {
+      if (cell) knownIds.add(cell.card.id);
+    }
+    for (const c of state.playerHand) knownIds.add(c.id);
+    for (const c of state.opponentHand) {
+      if (!unknownCardIds.has(c.id)) knownIds.add(c.id);
+    }
+    cardPool = buildCandidatePool(allCards, knownIds);
+    const knownOpp = (state.opponentHand as Card[]).filter((c) => !unknownCardIds.has(c.id));
+    const budgets = computeStarBudgets(knownOpp, allCards);
+    maxFiveStars = budgets.maxFiveStars;
+    maxFourStars = budgets.maxFourStars;
+  }
+
+  try {
+    const response = await fetch(`${endpoint}/api/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        state,
+        unknownCardIds: [...unknownCardIds],
+        cardPool,
+        maxFiveStars,
+        maxFourStars,
+        simCount: PIMC_ITERATIONS,
+      }),
+    });
+
+    if (generation !== solveGeneration) return;
+    if (!response.ok) throw new Error(`Server error ${response.status}`);
+    const data: { moves: RankedMove[] } = await response.json();
+
+    if (generation !== solveGeneration) return;
+    rankedMoves.set(data.moves);
+    solverLoading.set(false);
+    pimcProgress.set(null);
+  } catch (e) {
+    console.error('Server solve error:', e);
+    if (generation === solveGeneration) {
+      solverLoading.set(false);
+      pimcProgress.set(null);
+    }
+  }
+}
+
 function triggerSolve(state: GameState) {
   const unknownCardIds = get(game).unknownCardIds;
   solveGeneration++;
   solverLoading.set(true);
+
+  const mode = get(solverMode);
+  const endpoint = get(serverEndpoint);
+
+  if (mode === 'server' && endpoint) {
+    void triggerServerSolve(state, solveGeneration);
+    return;
+  }
+
   if (unknownCardIds.size > 0) {
     // Reset PIMC batch state for this generation.
     pimcTally = new Map();
@@ -307,4 +384,12 @@ export function revealCard(
     unknownCardIds.delete(placeholderId);
     return { ...g, history, unknownCardIds };
   });
+}
+
+export function updateSolverMode(mode: SolverMode): void {
+  solverMode.set(mode);
+}
+
+export function updateServerEndpoint(endpoint: string): void {
+  serverEndpoint.set(endpoint);
 }
