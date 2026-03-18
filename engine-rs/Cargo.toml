@@ -25,3 +25,10 @@ tower-http = { version = "0.5", features = ["cors"], optional = true }
 [[bin]]
 name = "server"
 required-features = ["server"]
+
+[profile.release]
+# Enable link-time optimization for better WASM output.
+# "thin" is much faster than "fat" LTO and still improves WASM by ~15-30%.
+lto = "thin"
+# Single codegen unit: slower compile, better inlining across functions.
+codegen-units = 1
