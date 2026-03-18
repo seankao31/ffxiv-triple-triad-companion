@@ -950,4 +950,68 @@ mod tests {
             "Self-play outcome {:?} differs from prediction {:?}", actual_outcome, predicted_outcome
         );
     }
+
+    #[test]
+    fn solver_handles_plus_rule_without_panic() {
+        // Verify solver returns valid moves on a Plus-rule mid-game state.
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let rules = RuleSet { plus: true, same: false, reverse: false,
+            fallen_ace: false, ascension: false, descension: false };
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
+        // Use a mid-game position (3 cards placed) for speed.
+        let state = place_card(&state, p[0], 0);
+        let state = place_card(&state, o[0], 1);
+        let state = place_card(&state, p[1], 2);
+        let moves = find_best_move(&state);
+        assert!(!moves.is_empty());
+        for m in &moves {
+            assert!(matches!(m.outcome, Outcome::Win | Outcome::Draw | Outcome::Loss));
+        }
+    }
+
+    #[test]
+    fn solver_handles_same_rule_without_panic() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let rules = RuleSet { plus: false, same: true, reverse: false,
+            fallen_ace: false, ascension: false, descension: false };
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
+        let state = place_card(&state, p[0], 0);
+        let state = place_card(&state, o[0], 1);
+        let moves = find_best_move(&state);
+        assert!(!moves.is_empty());
+    }
+
+    #[test]
+    fn solver_handles_reverse_rule_without_panic() {
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|i| create_card(i as u8 + 1, i as u8 + 1, i as u8 + 1, i as u8 + 1, CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|i| create_card(10 - i as u8, 10 - i as u8, 10 - i as u8, 10 - i as u8, CardType::None)).collect();
+        let rules = RuleSet { plus: false, same: false, reverse: true,
+            fallen_ace: false, ascension: false, descension: false };
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
+        let state = place_card(&state, p[0], 4);
+        let state = place_card(&state, o[0], 5);
+        let moves = find_best_move(&state);
+        assert!(!moves.is_empty());
+    }
 }
