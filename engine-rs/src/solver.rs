@@ -340,7 +340,7 @@ mod tests {
     use super::*;
     use crate::board::place_card;
     use crate::types::{
-        create_card, create_initial_state, reset_card_ids, Board, CardType, Owner, Outcome,
+        create_card, create_initial_state, get_score, reset_card_ids, Board, CardType, Owner, Outcome,
         PlacedCard, RuleSet,
     };
 
@@ -823,6 +823,56 @@ mod tests {
         assert!(
             moves2[0].outcome == Outcome::Win || moves2[0].outcome == Outcome::Draw,
             "TT corruption: turn-2 outcome = {:?}", moves2[0].outcome
+        );
+    }
+
+    #[test]
+    fn predicted_loss_move_results_in_loss_when_played_optimally() {
+        // Mirrors TS "predicted-Loss move results in a Loss for the player".
+        // Verifies that solver's Loss prediction is accurate end-to-end.
+        reset_card_ids();
+        // Player has mostly weak cards; opponent has strong cards.
+        // This asymmetry should produce some Loss moves for the player.
+        let p = vec![
+            create_card(10, 10, 10, 10, CardType::None),  // one strong card
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(10, 10, 10, 10, CardType::None),
+            create_card(9, 9, 9, 9, CardType::None),
+            create_card(8, 8, 8, 8, CardType::None),
+            create_card(7, 7, 7, 7, CardType::None),
+            create_card(6, 6, 6, 6, CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+        let mut solver = Solver::new();
+
+        let moves = solver.solve(&state);
+        let loss_move = moves.iter().find(|m| m.outcome == Outcome::Loss);
+        let loss_move = match loss_move {
+            None => return, // No Loss moves exist — skip (setup didn't produce right scenario)
+            Some(m) => m.clone(),
+        };
+
+        // Play the predicted-Loss move and self-play to the end.
+        let mut cur = place_card(&state, loss_move.card, loss_move.position as usize);
+        loop {
+            let moves = solver.solve(&cur);
+            if moves.is_empty() {
+                break;
+            }
+            cur = place_card(&cur, moves[0].card, moves[0].position as usize);
+        }
+
+        // Final score: player should have lost (fewer cells than opponent).
+        let (player_score, opp_score) = get_score(&cur);
+        assert!(
+            player_score < opp_score,
+            "Predicted Loss but player did not lose: player={} opponent={}",
+            player_score, opp_score
         );
     }
 }
