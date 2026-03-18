@@ -66,3 +66,73 @@ fn test_board_fixtures() {
     );
     println!("Passed {} board fixtures", count);
 }
+
+#[test]
+fn get_score_counts_all_cards_in_hand_initially() {
+    use engine_rs::types::{CardType, Owner, create_card, create_initial_state, get_score, reset_card_ids, RuleSet};
+
+    reset_card_ids();
+    let no_rules = RuleSet {
+        plus: false,
+        same: false,
+        reverse: false,
+        fallen_ace: false,
+        ascension: false,
+        descension: false,
+    };
+    let p: Vec<engine_rs::types::Card> = (0..5)
+        .map(|_| create_card(10, 10, 10, 10, CardType::None))
+        .collect();
+    let o: Vec<engine_rs::types::Card> = (0..5)
+        .map(|_| create_card(1, 1, 1, 1, CardType::None))
+        .collect();
+    let state = create_initial_state(p, o, Owner::Player, no_rules);
+
+    // Initial: all 5 cards in each hand, no board cards
+    assert_eq!(get_score(&state), (5, 5));
+}
+
+#[test]
+fn get_score_reflects_captures() {
+    use engine_rs::types::{CardType, Owner, create_card, create_initial_state, reset_card_ids, RuleSet};
+
+    reset_card_ids();
+    let no_rules = RuleSet {
+        plus: false,
+        same: false,
+        reverse: false,
+        fallen_ace: false,
+        ascension: false,
+        descension: false,
+    };
+    let p: Vec<engine_rs::types::Card> = (0..5)
+        .map(|_| create_card(10, 10, 10, 10, CardType::None))
+        .collect();
+    let o: Vec<engine_rs::types::Card> = (0..5)
+        .map(|_| create_card(1, 1, 1, 1, CardType::None))
+        .collect();
+    let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules);
+
+    // Player places at position 4 (center), no adjacents yet
+    let state = place_card(&state, p[0], 4);
+    // 4 in hand + 1 on board = 5 player; 5 in hand + 0 board = 5 opponent
+    let (player_score, opponent_score) = engine_rs::types::get_score(&state);
+    assert_eq!((player_score, opponent_score), (5, 5));
+
+    // Opponent places at position 1 (top, adjacent to player's position 4).
+    // Position 1 is below position 4, so they are neighbors.
+    // Opponent's card at 1 has stats 1,1,1,1; player's card at 4 has stats 10,10,10,10.
+    // Opponent's top edge (1) faces player's bottom edge (10). 1 < 10, no capture.
+    let state = place_card(&state, o[0], 1);
+    // player: 4 in hand + 1 on board = 5; opponent: 4 in hand + 1 on board = 5
+    let (player_score, opponent_score) = engine_rs::types::get_score(&state);
+    assert_eq!((player_score, opponent_score), (5, 5));
+
+    // Player places at position 0 (top-left, adjacent to opponent's position 1).
+    // Position 0 is to the left of position 1.
+    // Position 0's right edge (10) faces position 1's left edge (1). 10 > 1, so player captures.
+    let state = place_card(&state, p[1], 0);
+    // player: 3 in hand + 3 on board (0, 1 captured, 4) = 6; opponent: 4 in hand + 0 on board = 4
+    let (player_score, opponent_score) = engine_rs::types::get_score(&state);
+    assert_eq!((player_score, opponent_score), (6, 4));
+}
