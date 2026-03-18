@@ -875,4 +875,79 @@ mod tests {
             player_score, opp_score
         );
     }
+
+    #[test]
+    #[ignore = "slow: full game self-play (~10ms with degenerate hands)"]
+    fn self_play_from_opening_achieves_predicted_outcome() {
+        // If solver predicts Win from opening, self-play should reach Win.
+        // Uses all-10s vs all-1s — degenerate, fast search, player always wins.
+        reset_card_ids();
+        let p: Vec<Card> = (0..5).map(|_| create_card(10, 10, 10, 10, CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1, 1, 1, 1, CardType::None)).collect();
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+
+        let mut solver = Solver::new();
+        let predicted_outcome = solver.solve(&state)[0].outcome;
+        assert_eq!(predicted_outcome, Outcome::Win);
+
+        let mut cur = state;
+        loop {
+            let moves = solver.solve(&cur);
+            if moves.is_empty() {
+                break;
+            }
+            cur = place_card(&cur, moves[0].card, moves[0].position as usize);
+        }
+
+        let (player_score, opp_score) = crate::types::get_score(&cur);
+        assert!(
+            player_score > opp_score,
+            "Self-play did not achieve predicted Win: player={} opponent={}",
+            player_score, opp_score
+        );
+    }
+
+    #[test]
+    #[ignore = "slow: full game self-play with Plus rule"]
+    fn self_play_with_plus_rule_achieves_predicted_outcome() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let rules = RuleSet { plus: true, same: false, reverse: false,
+            fallen_ace: false, ascension: false, descension: false };
+        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
+
+        let mut solver = Solver::new();
+        let predicted_outcome = solver.solve(&state)[0].outcome;
+
+        let mut cur = state;
+        loop {
+            let moves = solver.solve(&cur);
+            if moves.is_empty() {
+                break;
+            }
+            cur = place_card(&cur, moves[0].card, moves[0].position as usize);
+        }
+
+        let (player_score, opp_score) = crate::types::get_score(&cur);
+        let actual_outcome = if player_score > opp_score {
+            Outcome::Win
+        } else if player_score < opp_score {
+            Outcome::Loss
+        } else {
+            Outcome::Draw
+        };
+        assert_eq!(
+            actual_outcome, predicted_outcome,
+            "Self-play outcome {:?} differs from prediction {:?}", actual_outcome, predicted_outcome
+        );
+    }
 }
