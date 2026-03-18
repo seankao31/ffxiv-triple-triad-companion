@@ -73,6 +73,8 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
         }
     }
 
+    let use_explicit = !explicit_ids.is_empty();
+    let mut explicit_iter = explicit_ids.iter().copied();
     let mut derived_ids: Vec<u8> = Vec::new();
     let mut next_id: u8 = 0;
 
@@ -82,21 +84,26 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
         .map(|opt| match opt {
             Some(card) => card,
             None => {
-                // Advance to next unused ID within solver encoding limit.
-                while next_id < 15 && used_ids.contains(&next_id) {
+                let id = if use_explicit {
+                    explicit_iter.next().expect("not enough explicit_ids for null slots")
+                } else {
+                    // Advance to next unused ID within solver encoding limit.
+                    while next_id < 15 && used_ids.contains(&next_id) {
+                        next_id += 1;
+                    }
+                    assert!(next_id < 15, "ran out of available card IDs for placeholder (all 0–14 in use)");
+                    let id = next_id;
+                    used_ids.insert(id);
                     next_id += 1;
-                }
-                assert!(next_id < 15, "ran out of available card IDs for placeholder (all 0–14 in use)");
-                used_ids.insert(next_id);
-                let id = next_id;
+                    id
+                };
                 derived_ids.push(id);
-                next_id += 1;
                 Card { id, top: 0, right: 0, bottom: 0, left: 0, card_type: CardType::None }
             }
         })
         .collect();
 
-    let unknown_card_ids = if explicit_ids.is_empty() { derived_ids } else { explicit_ids };
+    let unknown_card_ids = if use_explicit { explicit_ids } else { derived_ids };
 
     let game_state = GameState {
         board: state.board,
@@ -221,6 +228,20 @@ mod tests {
         for id in &ids {
             assert!(resolved_state.opponent_hand.iter().any(|c| c.id == *id));
         }
+    }
+
+    #[test]
+    fn resolve_nulls_explicit_ids_are_used_as_placeholder_card_ids() {
+        // When explicit_ids is provided with null slots, the placeholder cards
+        // must carry those exact IDs so PIMC can locate them.
+        let state = make_nullable_state(
+            vec![make_card(0)],
+            vec![None, None],
+        );
+        let (resolved, ids) = resolve_nulls(state, vec![7, 8]);
+        assert_eq!(ids, vec![7, 8]);
+        assert_eq!(resolved.opponent_hand[0].id, 7);
+        assert_eq!(resolved.opponent_hand[1].id, 8);
     }
 
     #[test]
