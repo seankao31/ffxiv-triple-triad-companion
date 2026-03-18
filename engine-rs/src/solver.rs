@@ -1074,6 +1074,43 @@ mod tests {
     }
 
     #[test]
+    fn benchmark_pimc_single_sim() {
+        // Measures a single PIMC simulation: find_best_move with a fresh TT.
+        // Uses the same cards as solver.wasm.test.ts to keep baselines comparable.
+        // Each WASM wasm_simulate call is one invocation of find_best_move.
+        reset_card_ids();
+        let p = vec![
+            create_card(4,  8, 8,  1, CardType::None),
+            create_card(1,  4, 8,  8, CardType::None),
+            create_card(8,  2, 8, 10, CardType::None),
+            create_card(8,  2, 3,  8, CardType::None),
+            create_card(2,  5, 9,  9, CardType::None),
+        ];
+        let o = vec![
+            create_card(3,  7, 5,  2, CardType::None),
+            create_card(8,  3, 9,  6, CardType::None),
+            create_card(1,  5, 8,  4, CardType::None),
+            create_card(6,  9, 1,  7, CardType::None),
+            create_card(3,  2, 4, 10, CardType::None),
+        ];
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+
+        let t0 = std::time::Instant::now();
+        let moves = find_best_move(&state);
+        let elapsed_us = t0.elapsed().as_micros();
+
+        assert!(!moves.is_empty(), "Solver returned no moves");
+        println!("PIMC single sim (release): {elapsed_us}µs");
+        // Release-mode gate: 2× ~5.3s baseline measured on native.
+        // Skip assertion in debug builds (can be 10x–50x slower).
+        #[cfg(not(debug_assertions))]
+        assert!(
+            elapsed_us < 11_000_000,
+            "PIMC sim regression: {elapsed_us}µs (>11s). Baseline: ~5.3s native release."
+        );
+    }
+
+    #[test]
     fn solver_handles_reverse_rule_without_panic() {
         reset_card_ids();
         let p: Vec<Card> = (0..5).map(|i| create_card(i as u8 + 1, i as u8 + 1, i as u8 + 1, i as u8 + 1, CardType::None)).collect();
