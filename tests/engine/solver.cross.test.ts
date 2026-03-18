@@ -13,20 +13,29 @@ const FIXTURES_DIR = join(import.meta.dir, '../../tests/fixtures/solver');
 type WasmMove = { card: { id: number }; position: number; outcome: string; robustness: number };
 
 let wasm_solve: (state_json: string) => string;
+// WasmSolver exposes the persistent-TT solver as a JS class.
+// It mirrors the Rust Solver struct: solve() reuses TT across calls; reset() clears it.
+interface WasmSolverClass {
+  new(): WasmSolverInstance;
+}
+interface WasmSolverInstance {
+  solve(state_json: string): string;
+  reset(): void;
+  tt_size(): number;
+  free(): void;
+}
+let WasmSolver: WasmSolverClass;
 
 describe('cross-verification: TypeScript vs WASM solver', () => {
   beforeAll(async () => {
-    const bgModule = await import(`file://${join(PKG_DIR, 'engine_rs_bg.js')}`);
+    // Use engine_rs.js (the complete wasm-pack package) which provides __wbg_get_imports()
+    // including the __wbindgen_throw shim required when Rust code can panic.
+    // initSync loads WASM from raw bytes — no fetch() needed, works in Bun.
+    const pkg = await import(`file://${join(PKG_DIR, 'engine_rs.js')}`);
     const wasmBytes = readFileSync(join(PKG_DIR, 'engine_rs_bg.wasm'));
-    const wasmResult = await WebAssembly.instantiate(wasmBytes, {
-      './engine_rs_bg.js': bgModule,
-    });
-    bgModule.__wbg_set_wasm(wasmResult.instance.exports);
-    const exports = wasmResult.instance.exports as Record<string, unknown>;
-    if (typeof exports['__wbindgen_start'] === 'function') {
-      (exports['__wbindgen_start'] as () => void)();
-    }
-    wasm_solve = bgModule.wasm_solve;
+    pkg.initSync({ module: wasmBytes });
+    wasm_solve = pkg.wasm_solve;
+    WasmSolver = pkg.WasmSolver;
   });
 
   // Sort order: Win < Draw < Loss, then higher robustness, then lower card.id, then lower position.
@@ -198,4 +207,77 @@ describe('cross-verification: TypeScript vs WASM solver', () => {
 
     expect(diffs).toEqual([]);
   }, 300_000);
+
+  // --- WasmSolver persistent TT ---
+
+  it('WasmSolver.solve() returns same results as wasm_solve()', () => {
+    const fixture = JSON.parse(readFileSync(join(FIXTURES_DIR, 'solver_late_game_win.json'), 'utf-8'));
+    const stateJson = JSON.stringify(fixture.state);
+
+    const solver = new WasmSolver();
+    const solverResult: WasmMove[] = JSON.parse(solver.solve(stateJson));
+    const wasm_result: WasmMove[] = JSON.parse(wasm_solve(stateJson));
+    solver.free();
+
+    expect(solverResult.length).toBe(wasm_result.length);
+    for (let i = 0; i < solverResult.length; i++) {
+      expect(solverResult[i]!.card.id).toBe(wasm_result[i]!.card.id);
+      expect(solverResult[i]!.position).toBe(wasm_result[i]!.position);
+      expect(solverResult[i]!.outcome).toBe(wasm_result[i]!.outcome);
+    }
+  });
+
+  it('WasmSolver: TT is populated after solve() and empty after reset()', () => {
+    // Use a mid-game state (5-7 cells filled) so minimax recurses and writes TT entries.
+    // solver_late_game_win has only 1 empty cell — minimax terminates at the leaf without TT writes.
+    const stateJson = JSON.stringify(generateState(makeLCG(42)));
+
+    const solver = new WasmSolver();
+    expect(solver.tt_size()).toBe(0);
+
+    solver.solve(stateJson);
+    expect(solver.tt_size()).toBeGreaterThan(0);
+
+    solver.reset();
+    expect(solver.tt_size()).toBe(0);
+
+    solver.free();
+  });
+
+  it('WasmSolver: TT grows across successive solve() calls on different states', () => {
+    // Use two independent mid-game states so both solves write TT entries.
+    const rng = makeLCG(99);
+    const s1Json = JSON.stringify(generateState(rng));
+    const s2Json = JSON.stringify(generateState(rng));
+
+    const solver = new WasmSolver();
+    solver.solve(s1Json);
+    const sizeAfterFirst = solver.tt_size();
+    expect(sizeAfterFirst).toBeGreaterThan(0);
+
+    solver.solve(s2Json);
+    const sizeAfterSecond = solver.tt_size();
+    // TT may grow or stay the same (entries could overlap), but never shrinks without reset()
+    expect(sizeAfterSecond).toBeGreaterThanOrEqual(sizeAfterFirst);
+
+    solver.free();
+  });
+
+  it('WasmSolver: solve() after reset() still returns correct results', () => {
+    const stateJson = JSON.stringify(generateState(makeLCG(42)));
+    const reference: WasmMove[] = JSON.parse(wasm_solve(stateJson));
+
+    const solver = new WasmSolver();
+    solver.solve(stateJson);  // warm the TT
+    solver.reset();
+    const afterReset: WasmMove[] = JSON.parse(solver.solve(stateJson));
+    solver.free();
+
+    expect(afterReset.length).toBe(reference.length);
+    for (let i = 0; i < afterReset.length; i++) {
+      expect(afterReset[i]!.card.id).toBe(reference[i]!.card.id);
+      expect(afterReset[i]!.position).toBe(reference[i]!.position);
+      expect(afterReset[i]!.outcome).toBe(reference[i]!.outcome);
+    }
+  });
 });

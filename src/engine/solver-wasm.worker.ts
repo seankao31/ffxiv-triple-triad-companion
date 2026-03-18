@@ -1,6 +1,6 @@
 // ABOUTME: Web Worker entry point for the WASM-backed minimax solver.
 // ABOUTME: Handles All Open solves and Three Open PIMC simulations via the Rust/WASM engine.
-import init, { wasm_solve, wasm_simulate } from '../../engine-rs/pkg/engine_rs.js';
+import init, { WasmSolver, wasm_simulate } from '../../engine-rs/pkg/engine_rs.js';
 import {
   weightedSample, buildCandidatePool, computeStarBudgets, weightedSampleConstrained,
   type PIMCCard,
@@ -20,6 +20,9 @@ type OutMessage =
   | { type: 'sim-result'; move: RankedMove | null; generation: number; simIndex: number };
 
 let initPromise: Promise<void> | null = null;
+// Persistent solver reuses the TT across turns for All Open solves.
+// PIMC simulations use wasm_simulate (fresh TT per call) for safe parallelism.
+let persistentSolver: WasmSolver | null = null;
 
 // Store the in-flight Promise so concurrent callers all await the same one.
 async function ensureInit(): Promise<void> {
@@ -33,13 +36,14 @@ self.onmessage = async (e: MessageEvent<InMessage>) => {
   const msg = e.data;
 
   if (msg.type === 'newGame') {
-    // No-op: wasm_solve/wasm_simulate create fresh TTs per call, no persistent state to reset.
+    persistentSolver?.reset();
     return;
   }
 
   if (msg.type === 'solve') {
     await ensureInit();
-    const resultJson = wasm_solve(JSON.stringify(msg.state));
+    if (!persistentSolver) persistentSolver = new WasmSolver();
+    const resultJson = persistentSolver.solve(JSON.stringify(msg.state));
     const moves: RankedMove[] = JSON.parse(resultJson);
     self.postMessage({ type: 'result', moves, generation: msg.generation } satisfies OutMessage);
     return;
@@ -64,12 +68,10 @@ self.onmessage = async (e: MessageEvent<InMessage>) => {
     const unknownCount = unknownCardIds.size;
 
     if (unknownCount === 0 || pool.length < unknownCount) {
-      // Degenerate case: no unknowns or not enough candidates.
-      const movesJson = wasm_solve(JSON.stringify(state));
-      const moves: RankedMove[] = JSON.parse(movesJson);
-      self.postMessage({
-        type: 'sim-result', move: moves[0] ?? null, generation, simIndex,
-      } satisfies OutMessage);
+      // Degenerate case: no unknowns or not enough candidates — solve with fresh TT.
+      const topMoveJson = wasm_simulate(JSON.stringify(state));
+      const move: RankedMove | null = JSON.parse(topMoveJson);
+      self.postMessage({ type: 'sim-result', move, generation, simIndex } satisfies OutMessage);
       return;
     }
 
