@@ -208,6 +208,45 @@ describe('cross-verification: TypeScript vs WASM solver', () => {
     expect(diffs).toEqual([]);
   }, 300_000);
 
+  // --- WASM performance ---
+
+  it('wasm opening position solve completes within 60 seconds', () => {
+    // Same 10-card set as TS performance test and Rust benchmarks.
+    // Asserts WASM overhead is not catastrophically worse than TS (~21s).
+    // Using WasmSolver (persistent TT) so first-turn TT allocation happens once.
+    const p = [
+      { id: 0, top: 10, right: 5, bottom: 3, left: 8,  type: CardType.None },
+      { id: 1, top: 7,  right: 6, bottom: 4, left: 9,  type: CardType.None },
+      { id: 2, top: 2,  right: 8, bottom: 6, left: 3,  type: CardType.None },
+      { id: 3, top: 5,  right: 4, bottom: 7, left: 1,  type: CardType.None },
+      { id: 4, top: 9,  right: 3, bottom: 2, left: 6,  type: CardType.None },
+    ];
+    const o = [
+      { id: 5, top: 4,  right: 7, bottom: 5, left: 2,  type: CardType.None },
+      { id: 6, top: 8,  right: 3, bottom: 9, left: 6,  type: CardType.None },
+      { id: 7, top: 1,  right: 5, bottom: 8, left: 4,  type: CardType.None },
+      { id: 8, top: 6,  right: 9, bottom: 1, left: 7,  type: CardType.None },
+      { id: 9, top: 3,  right: 2, bottom: 4, left: 10, type: CardType.None },
+    ];
+    const state: GameState = {
+      board: [null, null, null, null, null, null, null, null, null] as unknown as Board,
+      playerHand: p,
+      opponentHand: o,
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+    };
+
+    const solver = new WasmSolver();
+    const t0 = performance.now();
+    const moves: WasmMove[] = JSON.parse(solver.solve(JSON.stringify(state)));
+    const elapsed = performance.now() - t0;
+    solver.free();
+
+    expect(moves.length).toBe(45); // 5 cards × 9 positions
+    console.log(`WASM opening position solve: ${elapsed.toFixed(0)}ms`);
+    expect(elapsed).toBeLessThan(60_000); // 60s — generous bound; expected ~20-30s
+  }, 90_000);
+
   // --- WasmSolver persistent TT ---
 
   it('WasmSolver.solve() returns same results as wasm_solve()', () => {
