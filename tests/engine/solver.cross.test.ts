@@ -319,4 +319,48 @@ describe('cross-verification: TypeScript vs WASM solver', () => {
       expect(afterReset[i]!.outcome).toBe(reference[i]!.outcome);
     }
   });
+
+  it('WasmSolver: turn-2 solve is at least 10× faster than turn-1 (warm TT)', () => {
+    // Turn 1: cold TT, full search.
+    // Turn 2 (same state): TT fully warm, should be near-instant.
+    const p = [
+      { id: 0, top: 10, right: 5, bottom: 3, left: 8,  type: CardType.None },
+      { id: 1, top: 7,  right: 6, bottom: 4, left: 9,  type: CardType.None },
+      { id: 2, top: 2,  right: 8, bottom: 6, left: 3,  type: CardType.None },
+      { id: 3, top: 5,  right: 4, bottom: 7, left: 1,  type: CardType.None },
+      { id: 4, top: 9,  right: 3, bottom: 2, left: 6,  type: CardType.None },
+    ];
+    const o = [
+      { id: 5, top: 4,  right: 7, bottom: 5, left: 2,  type: CardType.None },
+      { id: 6, top: 8,  right: 3, bottom: 9, left: 6,  type: CardType.None },
+      { id: 7, top: 1,  right: 5, bottom: 8, left: 4,  type: CardType.None },
+      { id: 8, top: 6,  right: 9, bottom: 1, left: 7,  type: CardType.None },
+      { id: 9, top: 3,  right: 2, bottom: 4, left: 10, type: CardType.None },
+    ];
+    const state: GameState = {
+      board: [null, null, null, null, null, null, null, null, null] as unknown as Board,
+      playerHand: p,
+      opponentHand: o,
+      currentTurn: Owner.Player,
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+    };
+
+    const solver = new WasmSolver();
+    expect(solver.tt_size()).toBe(0);
+
+    const t0 = performance.now();
+    solver.solve(JSON.stringify(state));
+    const firstMs = performance.now() - t0;
+    const ttAfterFirst = solver.tt_size();
+
+    const t1 = performance.now();
+    solver.solve(JSON.stringify(state));
+    const secondMs = performance.now() - t1;
+    const ttAfterSecond = solver.tt_size();
+    solver.free();
+
+    console.log(`Turn 1: ${firstMs.toFixed(0)}ms (TT: ${ttAfterFirst}), Turn 2: ${secondMs.toFixed(0)}ms (TT: ${ttAfterSecond})`);
+    // Second call should be dramatically faster (TT already populated from first call).
+    expect(secondMs * 10).toBeLessThan(firstMs + 1);
+  }, 300_000);
 });
