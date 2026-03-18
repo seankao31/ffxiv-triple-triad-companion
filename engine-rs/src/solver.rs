@@ -1075,9 +1075,7 @@ mod tests {
 
     #[test]
     fn benchmark_pimc_single_sim() {
-        // Measures a single PIMC simulation: find_best_move with a fresh TT.
-        // Uses the same cards as solver.wasm.test.ts to keep baselines comparable.
-        // Each WASM wasm_simulate call is one invocation of find_best_move.
+        // Measures a single PIMC simulation: one find_best_move call with a fresh TT.
         reset_card_ids();
         let p = vec![
             create_card(4,  8, 8,  1, CardType::None),
