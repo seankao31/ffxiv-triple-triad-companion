@@ -73,7 +73,7 @@
   Upper bound: `P(9,9) × P(10,10) = 9! × 10!` ≈ 131 billion — way too large.
   In practice: the actual reachable state count is far smaller because the board constrains which cards can be where, and the TT hash collapses many into the same slot.
 
-  Add a counter to `minimax` to measure how many unique hashes are visited during the opening-position solve:
+  Add a counter to `minimax` to measure how many unique hashes (note that the hash itself might be colliding, depending on the way it's calculated) are visited during the opening-position solve:
   ```rust
   // Temporary: add an AtomicUsize counter in tests to count unique TT writes
   ```
