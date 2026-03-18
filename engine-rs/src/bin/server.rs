@@ -83,7 +83,7 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
             Some(card) => card,
             None => {
                 // Advance to next unused ID within solver encoding limit.
-                while used_ids.contains(&next_id) {
+                while next_id < 15 && used_ids.contains(&next_id) {
                     next_id += 1;
                 }
                 assert!(next_id < 15, "ran out of available card IDs for placeholder (all 0–14 in use)");
