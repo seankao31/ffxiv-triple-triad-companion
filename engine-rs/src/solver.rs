@@ -53,9 +53,8 @@ fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
     }
 }
 
-// 128K entries (2MB). Sufficient coverage for mid-game transpositions while keeping
-// WASM heap footprint small.
-const TT_SIZE: usize = 1 << 17;
+// 4M entries (64MB). Sized to prevent saturation on the 10-distinct-card opening position.
+const TT_SIZE: usize = 1 << 22;
 const EMPTY_KEY: u64 = u64::MAX;
 
 #[derive(Clone, Copy)]
@@ -72,11 +71,15 @@ struct TTEntry {
 }
 
 // Flat array slot for the transposition table. key == EMPTY_KEY means unoccupied.
+// depth = cards remaining in both hands at the time of write (higher = closer to root).
+// Replacement policy: only overwrite an occupied slot if incoming depth >= existing depth.
+// This preserves root-adjacent entries (expensive to recompute) against leaf entries (cheap).
 #[derive(Clone, Copy)]
 struct TTSlot {
     key: u64,
     value: i32,
     flag: TTFlag,
+    depth: u8,
 }
 
 // Returns 1 for win, 0 for draw, -1 for loss from evaluating_for's perspective.
@@ -100,8 +103,8 @@ fn minimax(
 
     let key = hash_state(state);
     // Apply Fibonacci mixing before masking to distribute the polynomial hash uniformly.
-    // hash_state uses base-32 encoding so low 22 bits alone would cluster mid-game positions.
-    let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - 17)) as usize;
+    // hash_state uses base-32 encoding so low bits alone would cluster mid-game positions.
+    let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - TT_SIZE.trailing_zeros())) as usize;
     let cached_slot = tt[tt_idx];
     let cached = if cached_slot.key == key {
         Some(TTEntry { value: cached_slot.value, flag: cached_slot.flag })
@@ -170,9 +173,15 @@ fn minimax(
         else                        { TTFlag::Exact }
     };
 
+    let incoming_depth = (state.player_hand.len() + state.opponent_hand.len()) as u8;
     if key != EMPTY_KEY {
-        if tt[tt_idx].key == EMPTY_KEY { *occupied += 1; }
-        tt[tt_idx] = TTSlot { key, value: best_value, flag };
+        let existing = &tt[tt_idx];
+        if existing.key == EMPTY_KEY {
+            *occupied += 1;
+            tt[tt_idx] = TTSlot { key, value: best_value, flag, depth: incoming_depth };
+        } else if incoming_depth >= existing.depth {
+            tt[tt_idx] = TTSlot { key, value: best_value, flag, depth: incoming_depth };
+        }
     }
     best_value
 }
@@ -291,7 +300,7 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
 }
 
 pub fn find_best_move(state: &GameState) -> Vec<RankedMove> {
-    let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; TT_SIZE];
+    let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 }; TT_SIZE];
     let mut occupied = 0;
     let mut state = state.clone();
     find_best_move_with(&mut state, &mut tt, &mut occupied)
@@ -305,13 +314,13 @@ pub struct Solver {
 impl Solver {
     pub fn new() -> Self {
         Solver {
-            tt: vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; TT_SIZE],
+            tt: vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 }; TT_SIZE],
             tt_occupied: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        self.tt.fill(TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact });
+        self.tt.fill(TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 });
         self.tt_occupied = 0;
     }
 
@@ -682,7 +691,7 @@ mod tests {
     #[test]
     fn flat_tt_lookup_hit_and_miss() {
         // Directly test TTSlot lookup semantics
-        let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact }; 8]; // size=8, mask=7
+        let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 }; 8]; // size=8, mask=7
         let mask: u64 = 7;
         let key: u64 = 42;
         let idx = (key & mask) as usize; // = 42 & 7 = 2
@@ -691,7 +700,7 @@ mod tests {
         assert_eq!(tt[idx].key, EMPTY_KEY);
 
         // Insert
-        tt[idx] = TTSlot { key, value: 1, flag: TTFlag::Exact };
+        tt[idx] = TTSlot { key, value: 1, flag: TTFlag::Exact, depth: 0 };
 
         // Hit
         assert_eq!(tt[idx].key, key);
@@ -873,6 +882,69 @@ mod tests {
             player_score < opp_score,
             "Predicted Loss but player did not lose: player={} opponent={}",
             player_score, opp_score
+        );
+    }
+
+    #[test]
+    #[ignore = "slow: measures turn-2 TT reuse speedup for 10-distinct-card opening position (~20s release)"]
+    fn tt_reuse_speedup_10_card_opening() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+
+        let t0 = std::time::Instant::now();
+        solver.solve(&state);
+        let first_us = t0.elapsed().as_micros();
+        let tt_after_first = solver.tt_size();
+
+        let t1 = std::time::Instant::now();
+        solver.solve(&state);
+        let second_us = t1.elapsed().as_micros();
+        let tt_after_second = solver.tt_size();
+
+        println!("Turn 1: {first_us}µs (TT: {tt_after_first}/{TT_SIZE})");
+        println!("Turn 2: {second_us}µs (TT: {tt_after_second}/{TT_SIZE})");
+        println!("Speedup: {:.1}×", first_us as f64 / second_us as f64);
+        assert!(
+            second_us * 10 < first_us + 1,
+            "TT reuse insufficient: turn-1={first_us}µs turn-2={second_us}µs"
+        );
+    }
+
+    #[test]
+    #[ignore = "slow: opening solve with 10 distinct cards (~8s release). Verifies TT does not saturate."]
+    fn tt_not_saturated_after_10_card_opening_solve() {
+        reset_card_ids();
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let state = create_initial_state(p, o, Owner::Player, no_rules());
+        let mut solver = Solver::new();
+        solver.solve(&state);
+        println!("TT occupancy: {}/{} ({:.1}%)",
+            solver.tt_size(), TT_SIZE,
+            solver.tt_size() as f64 / TT_SIZE as f64 * 100.0);
+        assert!(
+            solver.tt_size() < TT_SIZE,
+            "TT saturated: {}/{} entries used; TT_SIZE needs to be increased.",
+            solver.tt_size(), TT_SIZE
         );
     }
 
