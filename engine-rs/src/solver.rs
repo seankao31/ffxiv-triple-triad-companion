@@ -755,6 +755,13 @@ mod tests {
 
         assert!(!moves.is_empty());
         println!("Flat-array TT solve: {elapsed_us}µs ({} moves)", moves.len());
+        // Release-mode gate: native solver must be faster than TS (~21s).
+        // Skip assertion in debug builds (can be 10x–50x slower).
+        #[cfg(not(debug_assertions))]
+        assert!(
+            elapsed_us < 15_000_000,
+            "Performance regression: opening position took {elapsed_us}µs (>15s). TS baseline ~21s."
+        );
     }
 
     #[test]
@@ -778,6 +785,12 @@ mod tests {
 
         assert!(!moves.is_empty(), "Solver returned no moves");
         println!("Step 5 in-place mutation: solve took {elapsed_us}µs ({} moves)", moves.len());
-        // No upper-bound assertion — this is a recording checkpoint, not a speed gate
+        // Release-mode gate: native solver must be faster than TS (~21s).
+        // Skip assertion in debug builds (can be 10x–50x slower).
+        #[cfg(not(debug_assertions))]
+        assert!(
+            elapsed_us < 15_000_000,
+            "Performance regression: opening position took {elapsed_us}µs (>15s). TS baseline ~21s."
+        );
     }
 }
