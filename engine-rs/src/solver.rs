@@ -1099,7 +1099,7 @@ mod tests {
 
         assert!(!moves.is_empty(), "Solver returned no moves");
         println!("PIMC single sim (release): {elapsed_us}µs");
-        // Release-mode gate: 2× ~5.3s baseline measured on native.
+        // Release-mode gate: 2× the ~5.3s native release baseline.
         // Skip assertion in debug builds (can be 10x–50x slower).
         #[cfg(not(debug_assertions))]
         assert!(
