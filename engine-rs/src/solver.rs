@@ -793,4 +793,36 @@ mod tests {
             "Performance regression: opening position took {elapsed_us}µs (>15s). TS baseline ~21s."
         );
     }
+
+    #[test]
+    fn cross_turn_tt_is_consistent() {
+        // Mirrors TS "cross-turn predictions are consistent" test.
+        // If solver predicts Win on turn 1, the TT must not corrupt evaluations on turn 2.
+        reset_card_ids();
+        // Asymmetric hands: all-10s vs all-1s — player is predicted to Win.
+        let p: Vec<Card> = (0..5).map(|_| create_card(10, 10, 10, 10, CardType::None)).collect();
+        let o: Vec<Card> = (0..5).map(|_| create_card(1, 1, 1, 1, CardType::None)).collect();
+        let state0 = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
+
+        let mut solver = Solver::new();
+
+        // Turn 1: player solves from opening — should predict Win.
+        let moves1 = solver.solve(&state0);
+        assert!(!moves1.is_empty());
+        assert_eq!(moves1[0].outcome, Outcome::Win);
+
+        // Simulate: player plays best move, opponent plays best (first ranked) move.
+        let state1 = place_card(&state0, moves1[0].card, moves1[0].position as usize);
+        let opp_moves = solver.solve(&state1);
+        assert!(!opp_moves.is_empty());
+        let state2 = place_card(&state1, opp_moves[0].card, opp_moves[0].position as usize);
+
+        // Turn 2: player's turn again — should still Win (not corrupted by persistent TT).
+        let moves2 = solver.solve(&state2);
+        assert!(!moves2.is_empty());
+        assert!(
+            moves2[0].outcome == Outcome::Win || moves2[0].outcome == Outcome::Draw,
+            "TT corruption: turn-2 outcome = {:?}", moves2[0].outcome
+        );
+    }
 }
