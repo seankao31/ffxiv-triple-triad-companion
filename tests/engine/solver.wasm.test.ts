@@ -90,6 +90,8 @@ describe('WASM solver', () => {
     const perSimMs = totalMs / 50;
 
     console.log(`PIMC benchmark: 50 sims in ${totalMs.toFixed(1)}ms (${perSimMs.toFixed(1)}ms/sim)`);
-    // No upper-bound assertion — this is a recording checkpoint
+    // Each WASM sim is a full minimax solve from opening position with a fresh TT.
+    // Baseline: ~5524ms/sim (release WASM). Threshold: 16572ms to catch regressions.
+    expect(perSimMs).toBeLessThan(16572);
   }, 600_000);
 });
