@@ -98,6 +98,8 @@ Examples:
 If you catch yourself writing "new", "old", "legacy", "wrapper", "unified", or implementation details in names or comments, STOP and find a better name that describes the thing's
 actual purpose.
 
+- When making a non-obvious implementation choice — one a reasonable reader might think is a mistake, a bug, or an obvious refactoring target — YOU MUST add an inline comment explaining the deliberate reason. The comment must say WHY, not just what.
+
 ## Version Control
 
 - If the project isn't in a git repo, STOP and ask permission to initialize one.
