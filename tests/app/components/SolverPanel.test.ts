@@ -144,4 +144,14 @@ describe('SolverPanel', () => {
     const text = screen.getByRole('listitem').textContent!;
     expect(text).toContain('50%');
   });
+
+  it('hides robustness for winning moves in All Open mode', () => {
+    const card = createCard(10, 10, 10, 10);
+    rankedMoves.set([
+      { card, position: 0, outcome: Outcome.Win, robustness: 0, confidence: null } as unknown as RankedMove,
+    ]);
+    render(SolverPanel);
+    const text = screen.getByRole('listitem').textContent!;
+    expect(text).not.toContain('%');
+  });
 });

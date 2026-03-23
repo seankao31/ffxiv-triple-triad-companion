@@ -74,7 +74,7 @@
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
         {#if move.confidence != null}
           <span class="text-surface-300 text-xs">{Math.round(move.confidence * 100)}%</span>
-        {:else}
+        {:else if move.outcome !== Outcome.Win}
           <span class="text-surface-300 text-xs">{Math.round(move.robustness * 100)}%</span>
         {/if}
       </li>
