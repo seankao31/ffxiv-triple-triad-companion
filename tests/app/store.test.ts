@@ -184,10 +184,31 @@ describe('undoMove', () => {
     expect(get(game).history).toHaveLength(1);
   });
 
-  it('returns to setup phase when history becomes empty', () => {
+  it('does not return to setup when undoing from the initial state', () => {
     setup();
     undoMove();
-    expect(get(game).phase).toBe('setup');
+    expect(get(game).phase).toBe('play');
+    expect(get(game).history).toHaveLength(1);
+  });
+
+  it('is a no-op when history has only the initial state (no moves played)', () => {
+    setup();
+    // history has exactly 1 entry (initial state)
+    expect(get(game).history).toHaveLength(1);
+    undoMove();
+    // Still in play phase with 1 history entry — not popped to setup
+    expect(get(game).phase).toBe('play');
+    expect(get(game).history).toHaveLength(1);
+  });
+
+  it('still works normally when history has 2+ entries', () => {
+    const { ph } = setup();
+    selectCard(ph[0]!);
+    playCard(0);
+    expect(get(game).history).toHaveLength(2);
+    undoMove();
+    expect(get(game).history).toHaveLength(1);
+    expect(get(game).phase).toBe('play');
   });
 });
 

@@ -365,9 +365,10 @@ export function playCard(position: number): void {
 
 export function undoMove(): void {
   game.update((s) => {
+    // Guard: keep the initial state intact — undoing past it is Reset's job.
+    if (s.history.length <= 1) return s;
     const history = s.history.slice(0, -1);
-    const phase: Phase = history.length === 0 ? 'setup' : 'play';
-    return { ...s, history, phase };
+    return { ...s, history };
   });
 }
 
