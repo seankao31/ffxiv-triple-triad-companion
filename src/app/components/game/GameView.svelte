@@ -4,7 +4,7 @@
   import Board from './Board.svelte';
   import HandPanel from './HandPanel.svelte';
   import SolverPanel from './SolverPanel.svelte';
-  import { undoMove, currentState, canUndo } from '../../store';
+  import { undoMove, resetGame, currentState, canUndo } from '../../store';
   import { Owner, getScore } from '../../../engine';
 
   let score = $derived(
@@ -18,14 +18,22 @@
     <div class="text-base font-semibold text-surface-300">
       You: {score.player} — Opponent: {score.opponent}
     </div>
-    <button
-      onclick={undoMove}
-      disabled={!$canUndo}
-      class="px-3 py-1 border border-surface-500 rounded text-sm
-        {$canUndo ? 'hover:border-surface-400 hover:bg-surface-700' : 'opacity-40 cursor-not-allowed'}"
-    >
-      Undo
-    </button>
+    <div class="flex gap-2">
+      <button
+        onclick={undoMove}
+        disabled={!$canUndo}
+        class="px-3 py-1 border border-surface-500 rounded text-sm
+          {$canUndo ? 'hover:border-surface-400 hover:bg-surface-700' : 'opacity-40 cursor-not-allowed'}"
+      >
+        Undo
+      </button>
+      <button
+        onclick={resetGame}
+        class="px-3 py-1 text-sm text-surface-400 hover:text-surface-300 hover:bg-surface-700 rounded"
+      >
+        Reset
+      </button>
+    </div>
   </div>
 
   <div class="flex gap-10 flex-1 items-start justify-center pt-6">
