@@ -5,7 +5,15 @@ import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
 import { game, startGame, currentState, selectCard, playCard, rankedMoves, solverLoading, pimcProgress } from '../../../src/app/store';
 import SolverPanel from '../../../src/app/components/game/SolverPanel.svelte';
-import { createCard, Owner, Outcome, findBestMove } from '../../../src/engine';
+import { createCard, Owner, Outcome, type Card, type RankedMove } from '../../../src/engine';
+
+// Constructs all 45 ranked moves (5 cards × 9 positions) as wins, mirroring what the solver
+// returns for all-10s vs all-1s hands. Used to populate rankedMoves without invoking the solver.
+function makeAllMoves(hand: readonly Card[]): RankedMove[] {
+  return hand.flatMap((card) =>
+    Array.from({ length: 9 }, (_, position) => ({ card, position, outcome: Outcome.Win, robustness: 1 }))
+  );
+}
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -32,7 +40,7 @@ beforeEach(() => {
   });
   startGame();
   // Worker is mocked — populate rankedMoves directly for component tests.
-  rankedMoves.set(findBestMove(get(currentState)!));
+  rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
 });
 
 describe('SolverPanel', () => {
