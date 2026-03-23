@@ -538,6 +538,51 @@ mod tests {
         }
     }
 
+    #[test]
+    fn robustness_nonzero_when_opponent_can_blunder() {
+        // Board: top row Player(10s), middle row Opponent(10s), bottom row empty.
+        // Player has 2 weak cards; Opponent has 2 strong cards. Player's turn.
+        //
+        // When Player places weak at pos 6 (or 8), the adjacent Opponent can only
+        // capture via pos 7 — placing elsewhere is a blunder (draw instead of loss).
+        // Expected robustness for pos 6/8 = 0.5, for pos 7 = 0.0.
+        reset_card_ids();
+        let board: Board = [
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Opponent }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Opponent }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Opponent }),
+            None, None, None,
+        ];
+
+        let state = GameState {
+            board,
+            player_hand: vec![
+                create_card(1,1,1,1,CardType::None),
+                create_card(1,1,1,1,CardType::None),
+            ],
+            opponent_hand: vec![
+                create_card(10,10,10,10,CardType::None),
+                create_card(10,10,10,10,CardType::None),
+            ],
+            current_turn: Owner::Player,
+            rules: no_rules(),
+        };
+
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 3);
+        assert!(moves.iter().all(|m| m.outcome == Outcome::Loss));
+        // Positions 6 and 8 have blunder-able opponent responses → robustness > 0
+        assert!(moves[0].robustness > 0.0,
+            "Best loss move should have non-zero robustness, got {}", moves[0].robustness);
+        assert_eq!(moves[0].robustness, 0.5);
+        // Position 7: all opponent responses lead to loss → robustness = 0
+        let pos7 = moves.iter().find(|m| m.position == 7).unwrap();
+        assert_eq!(pos7.robustness, 0.0);
+    }
+
     // ---- Solver struct ----
 
     #[test]

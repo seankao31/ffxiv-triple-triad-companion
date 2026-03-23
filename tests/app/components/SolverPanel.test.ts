@@ -133,4 +133,16 @@ describe('SolverPanel', () => {
     render(SolverPanel);
     expect(screen.getByRole('listitem').textContent).toMatch(/72%/);
   });
+
+  it('shows robustness when confidence is null (JSON-deserialized from Rust None)', () => {
+    const card = createCard(10, 10, 10, 10);
+    // Rust Option<f64>::None serializes to JSON null; JSON.parse preserves null (not undefined).
+    rankedMoves.set([
+      { card, position: 0, outcome: Outcome.Draw, robustness: 0.5, confidence: null } as unknown as RankedMove,
+    ]);
+    render(SolverPanel);
+    const text = screen.getByRole('listitem').textContent!;
+    expect(text).toContain('rob=0.50');
+    expect(text).not.toMatch(/0%/);
+  });
 });

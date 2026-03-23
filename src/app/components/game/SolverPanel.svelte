@@ -72,7 +72,7 @@
           {notation.values}{#if notation.typeAbbr}<span class="{notation.typeClass}">[{notation.typeAbbr}]</span>{/if}
         </span>
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
-        {#if move.confidence !== undefined}
+        {#if move.confidence != null}
           <span class="text-surface-300 text-xs">{Math.round(move.confidence * 100)}%</span>
         {:else}
           <span class="text-surface-300 text-xs">rob={move.robustness.toFixed(2)}</span>
