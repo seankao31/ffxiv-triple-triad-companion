@@ -304,6 +304,9 @@ export function startGame(): void {
   if (!s.threeOpen && s.opponentHand.some((c) => c === null)) {
     throw new Error('All opponent hand slots must be filled before starting the game.');
   }
+  if (s.ruleset.ascension && s.ruleset.descension) {
+    throw new Error('Ascension and Descension cannot both be active.');
+  }
 
   // Reset card IDs FIRST, then re-create every card so IDs are deterministic
   // regardless of how many createCard() calls happened during setup (e.g. from CardInput).

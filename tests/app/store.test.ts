@@ -101,6 +101,14 @@ describe('startGame', () => {
 
     expect(() => startGame()).toThrow();
   });
+
+  it('throws if both Ascension and Descension are active', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateRuleset({ plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: true });
+
+    expect(() => startGame()).toThrow('Ascension and Descension cannot both be active');
+  });
 });
 
 describe('selectCard', () => {
