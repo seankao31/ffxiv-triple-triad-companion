@@ -1,6 +1,6 @@
 // ABOUTME: Shared card display helpers for type labels and modifier calculation.
 // ABOUTME: Used by BoardCell, HandPanel, and SolverPanel.
-import { CardType, type GameState } from '../engine';
+import { CardType, type GameState, type RuleSet } from '../engine';
 
 export const typeAbbrev: Partial<Record<CardType, string>> = {
   [CardType.Primal]: 'P',
@@ -22,4 +22,14 @@ export function boardTypeCount(state: GameState, type: CardType): number {
     if (cell && cell.card.type === type) count++;
   }
   return count;
+}
+
+export function cardModifier(
+  cardType: CardType, state: GameState | null, ruleset: RuleSet
+): number | null {
+  if (!state || !typeAbbrev[cardType]) return null;
+  if (!ruleset.ascension && !ruleset.descension) return null;
+  const count = boardTypeCount(state, cardType);
+  if (count === 0) return null;
+  return ruleset.ascension ? count : -count;
 }

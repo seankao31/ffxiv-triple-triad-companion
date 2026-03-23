@@ -1,7 +1,7 @@
 // ABOUTME: Tests for card display helpers — type abbreviation maps and board type counting.
 // ABOUTME: Validates boardTypeCount against various board configurations.
 import { describe, it, expect } from 'vitest';
-import { boardTypeCount, typeAbbrev, typeColor } from '../../src/app/card-display';
+import { boardTypeCount, typeAbbrev, typeColor, cardModifier } from '../../src/app/card-display';
 import { CardType, Owner, createInitialState, createCard, resetCardIds, type GameState } from '../../src/engine';
 import { placeCard } from '../../src/engine';
 
@@ -74,5 +74,44 @@ describe('boardTypeCount', () => {
     let state = createInitialState(ph, oh);
     state = placeCard(state, primal, 0);
     expect(boardTypeCount(state, CardType.None)).toBe(0);
+  });
+});
+
+describe('cardModifier', () => {
+  const noRules = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false };
+
+  it('returns null for CardType.None', () => {
+    const state = emptyState();
+    expect(cardModifier(CardType.None, state, { ...noRules, ascension: true })).toBeNull();
+  });
+
+  it('returns null when neither ascension nor descension is active', () => {
+    const state = emptyState();
+    expect(cardModifier(CardType.Primal, state, noRules)).toBeNull();
+  });
+
+  it('returns positive count for ascension', () => {
+    resetCardIds();
+    const primal = createCard(5, 5, 5, 5, CardType.Primal);
+    const ph = [primal, createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5)];
+    const oh = Array.from({ length: 5 }, () => createCard(5, 5, 5, 5));
+    let state = createInitialState(ph, oh);
+    state = placeCard(state, primal, 0);
+    expect(cardModifier(CardType.Primal, state, { ...noRules, ascension: true })).toBe(1);
+  });
+
+  it('returns negative count for descension', () => {
+    resetCardIds();
+    const primal = createCard(5, 5, 5, 5, CardType.Primal);
+    const ph = [primal, createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5)];
+    const oh = Array.from({ length: 5 }, () => createCard(5, 5, 5, 5));
+    let state = createInitialState(ph, oh);
+    state = placeCard(state, primal, 0);
+    expect(cardModifier(CardType.Primal, state, { ...noRules, descension: true })).toBe(-1);
+  });
+
+  it('returns null when no cards of the type are on the board', () => {
+    const state = emptyState();
+    expect(cardModifier(CardType.Primal, state, { ...noRules, ascension: true })).toBeNull();
   });
 });

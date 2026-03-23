@@ -3,8 +3,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
-  import { Owner, type Card, type GameState, type RuleSet } from '../../../engine';
-  import { typeAbbrev, typeColor, boardTypeCount } from '../../card-display';
+  import { Owner, type Card } from '../../../engine';
+  import { typeAbbrev, typeColor, cardModifier } from '../../card-display';
   import CardInput from '../setup/CardInput.svelte';
 
   let { owner }: { owner: Owner } = $props();
@@ -21,14 +21,6 @@
   // ID of the unknown card currently being revealed; null when no reveal form is open.
   let revealingCardId: number | null = $state(null);
   let revealCardInput: { focusFirst: () => void } | null = $state(null);
-
-  function getModifier(card: Card, state: GameState | null, ruleset: RuleSet): number | null {
-    if (!state || !typeAbbrev[card.type]) return null;
-    if (!ruleset.ascension && !ruleset.descension) return null;
-    const count = boardTypeCount(state, card.type);
-    if (count === 0) return null;
-    return ruleset.ascension ? count : -count;
-  }
 
   async function handleClick(card: Card) {
     if (!isActive) return;
@@ -75,7 +67,7 @@
         {:else}
           {@const abbr = typeAbbrev[card.type]}
           {@const colorClass = typeColor[card.type]}
-          {@const mod = getModifier(card, $currentState, $game.ruleset)}
+          {@const mod = cardModifier(card.type, $currentState, $game.ruleset)}
           <div class="relative col-span-3 row-span-3 grid grid-cols-3">
             {#if mod}
               <div class="absolute top-0 left-0.5 text-[10px] font-semibold {mod > 0 ? 'text-eval-win' : 'text-eval-loss'}">
