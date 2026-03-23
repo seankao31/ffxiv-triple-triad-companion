@@ -2,7 +2,8 @@
 <!-- ABOUTME: Highlights the top move with a ring; shows the shared outcome once in the header. -->
 <script lang="ts">
   import { rankedMoves, solverLoading, pimcProgress, currentState, game } from '../../store';
-  import { Outcome, CardType, Owner, type Card } from '../../../engine';
+  import { Outcome, Owner, type Card } from '../../../engine';
+  import { typeAbbrev, typeColor } from '../../card-display';
 
   const outcomeLabel: Record<Outcome, string> = {
     [Outcome.Win]: 'Win',
@@ -14,20 +15,6 @@
     [Outcome.Win]: 'text-eval-win',
     [Outcome.Draw]: 'text-eval-draw',
     [Outcome.Loss]: 'text-eval-loss',
-  };
-
-  const typeAbbrev: Partial<Record<CardType, string>> = {
-    [CardType.Primal]: 'P',
-    [CardType.Scion]: 'Sc',
-    [CardType.Society]: 'So',
-    [CardType.Garlean]: 'G',
-  };
-
-  const typeColor: Partial<Record<CardType, string>> = {
-    [CardType.Primal]: 'text-type-primal',
-    [CardType.Scion]: 'text-type-scion',
-    [CardType.Society]: 'text-type-society',
-    [CardType.Garlean]: 'text-type-garlean',
   };
 
   function positionLabel(pos: number): string {
