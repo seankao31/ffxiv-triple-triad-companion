@@ -100,6 +100,8 @@ The best-outcome tier is reliable in the direction that matters: a labeled Win i
 
 Displaying the outcome once in the header rather than repeating it on every row eliminates visual redundancy — all visible rows share the same outcome by construction.
 
+Each move row shows a percentage: **confidence** (PIMC/Three Open) or **robustness** (All Open). Robustness is hidden for winning moves because it is always 0 — nothing beats a win — and showing "0%" would be misleading when higher percentages are better for draws and losses.
+
 ---
 
 ## `startGame` Validates Outside `game.update()`
