@@ -3,7 +3,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
-  import { Owner, type Card } from '../../../engine';
+  import { Owner, type Card, type GameState, type RuleSet } from '../../../engine';
+  import { typeAbbrev, typeColor, boardTypeCount } from '../../card-display';
   import CardInput from '../setup/CardInput.svelte';
 
   let { owner }: { owner: Owner } = $props();
@@ -20,6 +21,14 @@
   // ID of the unknown card currently being revealed; null when no reveal form is open.
   let revealingCardId: number | null = $state(null);
   let revealCardInput: { focusFirst: () => void } | null = $state(null);
+
+  function getModifier(card: Card, state: GameState | null, ruleset: RuleSet): number | null {
+    if (!state || !typeAbbrev[card.type]) return null;
+    if (!ruleset.ascension && !ruleset.descension) return null;
+    const count = boardTypeCount(state, card.type);
+    if (count === 0) return null;
+    return ruleset.ascension ? count : -count;
+  }
 
   async function handleClick(card: Card) {
     if (!isActive) return;
@@ -64,15 +73,28 @@
         {#if isUnknown}
           <div class="col-span-3 row-span-3 flex items-center justify-center text-lg text-surface-400">?</div>
         {:else}
-          <div></div>
-          <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
-          <div></div>
-          <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
-          <div></div>
-          <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
-          <div></div>
-          <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
-          <div></div>
+          {@const abbr = typeAbbrev[card.type]}
+          {@const colorClass = typeColor[card.type]}
+          {@const mod = getModifier(card, $currentState, $game.ruleset)}
+          <div class="relative col-span-3 row-span-3 grid grid-cols-3">
+            {#if mod}
+              <div class="absolute top-0 left-0.5 text-[10px] font-semibold {mod > 0 ? 'text-eval-win' : 'text-eval-loss'}">
+                {mod > 0 ? '+' : ''}{mod}
+              </div>
+            {/if}
+            {#if abbr}
+              <div class="absolute top-0 right-0.5 text-[10px] font-semibold {colorClass}">{abbr}</div>
+            {/if}
+            <div></div>
+            <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
+            <div></div>
+            <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
+            <div></div>
+            <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
+            <div></div>
+            <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
+            <div></div>
+          </div>
         {/if}
       </button>
     {/if}

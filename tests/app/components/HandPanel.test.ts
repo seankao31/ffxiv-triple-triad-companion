@@ -3,9 +3,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, selectCard, rankedMoves, currentState, updateThreeOpen, revealCard } from '../../../src/app/store';
+import { game, startGame, selectCard, playCard, rankedMoves, currentState, updateThreeOpen, revealCard, updateRuleset } from '../../../src/app/store';
 import HandPanel from '../../../src/app/components/game/HandPanel.svelte';
-import { createCard, Owner, Outcome, type Card, type RankedMove } from '../../../src/engine';
+import { createCard, Owner, Outcome, CardType, type Card, type RankedMove, resetCardIds } from '../../../src/engine';
 
 // Constructs all 45 ranked moves (5 cards × 9 positions) as wins, mirroring what the solver
 // returns for all-10s vs all-1s hands. Used to populate rankedMoves without invoking the solver.
@@ -150,5 +150,82 @@ describe('HandPanel', () => {
       .getAllByRole('button')
       .filter((b) => b.classList.contains('ring-2'));
     expect(highlighted.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('HandPanel type label', () => {
+  it('shows type abbreviation for typed cards in hand', () => {
+    // Set up with typed cards
+    resetCardIds();
+    const ph = [
+      createCard(10, 10, 10, 10, CardType.Primal),
+      createCard(10, 10, 10, 10, CardType.Scion),
+      createCard(10, 10, 10, 10, CardType.Society),
+      createCard(10, 10, 10, 10, CardType.Garlean),
+      createCard(10, 10, 10, 10),
+    ];
+    const oh = makeOpponentHand();
+    game.set({
+      phase: 'setup',
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      swap: false,
+      threeOpen: false,
+      playerHand: ph,
+      opponentHand: oh,
+      firstTurn: Owner.Player,
+      history: [],
+      selectedCard: null,
+      unknownCardIds: new Set(),
+    });
+    startGame();
+    rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
+
+    render(HandPanel, { props: { owner: Owner.Player } });
+    expect(screen.getByText('P')).toBeInTheDocument();
+    expect(screen.getByText('Sc')).toBeInTheDocument();
+    expect(screen.getByText('So')).toBeInTheDocument();
+    expect(screen.getByText('G')).toBeInTheDocument();
+  });
+});
+
+describe('HandPanel modifier', () => {
+  it('shows modifier for typed cards when Ascension is active and same-type cards are on the board', () => {
+    resetCardIds();
+    const primal1 = createCard(10, 10, 10, 10, CardType.Primal);
+    const primal2 = createCard(10, 10, 10, 10, CardType.Primal);
+    const ph = [primal1, primal2, createCard(10, 10, 10, 10), createCard(10, 10, 10, 10), createCard(10, 10, 10, 10)];
+    const oh = makeOpponentHand();
+    game.set({
+      phase: 'setup',
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false },
+      swap: false,
+      threeOpen: false,
+      playerHand: ph,
+      opponentHand: oh,
+      firstTurn: Owner.Player,
+      history: [],
+      selectedCard: null,
+      unknownCardIds: new Set(),
+    });
+    startGame();
+
+    // Place primal1 at position 0 (now a Primal card is on the board)
+    const freshHand = get(currentState)!.playerHand;
+    selectCard(freshHand[0]!);
+    playCard(0);
+
+    rankedMoves.set(makeAllMoves(get(currentState)!.opponentHand));
+
+    // Render player hand — primal2 should show +1 modifier
+    render(HandPanel, { props: { owner: Owner.Player } });
+    expect(screen.getByText('+1')).toBeInTheDocument();
+  });
+
+  it('does not show modifier when Ascension/Descension are not active', () => {
+    // Default setup has no ascension/descension — already tested by existing tests
+    // that don't expect modifier text. Just verify explicitly.
+    render(HandPanel, { props: { owner: Owner.Player } });
+    expect(screen.queryByText(/^\+\d$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^-\d$/)).not.toBeInTheDocument();
   });
 });
