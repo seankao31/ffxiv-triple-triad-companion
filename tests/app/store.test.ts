@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
   game, currentState, rankedMoves, solverLoading, pimcProgress,
-  startGame, playCard, undoMove, selectCard,
+  startGame, playCard, undoMove, selectCard, resetGame,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, revealCard,
   updateSolverMode, updateServerEndpoint,
@@ -209,6 +209,93 @@ describe('undoMove', () => {
     undoMove();
     expect(get(game).history).toHaveLength(1);
     expect(get(game).phase).toBe('play');
+  });
+});
+
+describe('resetGame', () => {
+  function setup() {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
+    updateFirstTurn(Owner.Opponent);
+    startGame();
+  }
+
+  it('returns to setup phase', () => {
+    setup();
+    resetGame();
+    expect(get(game).phase).toBe('setup');
+  });
+
+  it('preserves ruleset', () => {
+    setup();
+    resetGame();
+    expect(get(game).ruleset.plus).toBe(true);
+  });
+
+  it('preserves firstTurn', () => {
+    setup();
+    resetGame();
+    expect(get(game).firstTurn).toBe(Owner.Opponent);
+  });
+
+  it('preserves playerHand (with card objects from the game)', () => {
+    setup();
+    const handBefore = get(game).playerHand;
+    resetGame();
+    const handAfter = get(game).playerHand;
+    // Cards are preserved (same stats), though IDs may differ after next startGame
+    expect(handAfter).toHaveLength(5);
+    expect(handAfter.every((c) => c !== null)).toBe(true);
+    expect(handAfter[0]!.top).toBe(handBefore[0]!.top);
+  });
+
+  it('clears opponentHand to all nulls', () => {
+    setup();
+    resetGame();
+    expect(get(game).opponentHand).toEqual([null, null, null, null, null]);
+  });
+
+  it('clears history', () => {
+    setup();
+    resetGame();
+    expect(get(game).history).toEqual([]);
+  });
+
+  it('clears selectedCard', () => {
+    setup();
+    selectCard(get(game).playerHand[0]!);
+    resetGame();
+    expect(get(game).selectedCard).toBeNull();
+  });
+
+  it('clears unknownCardIds', () => {
+    setup();
+    game.update((g) => ({ ...g, unknownCardIds: new Set([99]) }));
+    resetGame();
+    expect(get(game).unknownCardIds.size).toBe(0);
+  });
+
+  it('preserves swap setting', () => {
+    updateSwap(true);
+    setup();
+    resetGame();
+    expect(get(game).swap).toBe(true);
+  });
+
+  it('preserves threeOpen setting', () => {
+    updateThreeOpen(true);
+    // Need to set up with threeOpen
+    const ph = makePlayerHand();
+    ph.forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    startGame();
+    resetGame();
+    expect(get(game).threeOpen).toBe(true);
   });
 });
 

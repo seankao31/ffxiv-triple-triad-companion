@@ -374,6 +374,17 @@ export function undoMove(): void {
   });
 }
 
+export function resetGame(): void {
+  game.update((s) => ({
+    ...s,
+    phase: 'setup' as Phase,
+    opponentHand: [null, null, null, null, null],
+    history: [],
+    selectedCard: null,
+    unknownCardIds: new Set<number>(),
+  }));
+}
+
 export function revealCard(
   placeholderId: number,
   stats: { top: number; right: number; bottom: number; left: number },
