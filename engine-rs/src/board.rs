@@ -14,15 +14,17 @@ pub(crate) fn card_edge_value(card: &Card, edge: Edge) -> u8 {
     }
 }
 
-// Applies Ascension/Descension stat modifiers to an edge value based on card type.
-// Ascension: Primal cards get +asc_count (capped at 10). Descension: Scion cards get -desc_count (floored at 1).
-// The counts are snapshotted before card placement so the placed card never counts toward its own resolution.
-fn apply_stat_mod(value: u8, card_type: CardType, rules: RuleSet, asc_count: u8, desc_count: u8) -> u8 {
-    if rules.ascension && card_type == CardType::Primal {
-        return value.saturating_add(asc_count).min(10);
+// Applies Ascension/Descension stat modifiers to an edge value.
+// Ascension: boosts a card's edge values by the count of same-type cards already on board (capped at 10).
+// Descension: reduces a card's edge values by the count of same-type cards already on board (floored at 1).
+// type_counts is snapshotted before placement so the placed card never counts toward its own modifier.
+fn apply_stat_mod(value: u8, card_type: CardType, rules: RuleSet, type_counts: &HashMap<CardType, u8>) -> u8 {
+    let count = *type_counts.get(&card_type).unwrap_or(&0);
+    if rules.ascension {
+        return value.saturating_add(count).min(10);
     }
-    if rules.descension && card_type == CardType::Scion {
-        return value.saturating_sub(desc_count).max(1);
+    if rules.descension {
+        return value.saturating_sub(count).max(1);
     }
     value
 }
@@ -55,8 +57,7 @@ fn resolve_plus(
     position: usize,
     current_turn: Owner,
     rules: RuleSet,
-    asc_count: u8,
-    desc_count: u8,
+    type_counts: &HashMap<CardType, u8>,
 ) -> Vec<usize> {
     let mut sum_groups: HashMap<u8, Vec<usize>> = HashMap::new();
 
@@ -67,15 +68,13 @@ fn resolve_plus(
                 card_edge_value(card, neighbor.attacking_edge),
                 card.card_type,
                 rules,
-                asc_count,
-                desc_count,
+                type_counts,
             );
             let defend_val = apply_stat_mod(
                 card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                 neighbor_cell.card.card_type,
                 rules,
-                asc_count,
-                desc_count,
+                type_counts,
             );
             let sum = attack_val + defend_val;
             sum_groups.entry(sum).or_default().push(neighbor_pos);
@@ -106,8 +105,7 @@ fn resolve_same(
     position: usize,
     current_turn: Owner,
     rules: RuleSet,
-    asc_count: u8,
-    desc_count: u8,
+    type_counts: &HashMap<CardType, u8>,
 ) -> Vec<usize> {
     let mut same_pairs: Vec<usize> = Vec::new();
 
@@ -118,15 +116,13 @@ fn resolve_same(
                 card_edge_value(card, neighbor.attacking_edge),
                 card.card_type,
                 rules,
-                asc_count,
-                desc_count,
+                type_counts,
             );
             let defend_val = apply_stat_mod(
                 card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                 neighbor_cell.card.card_type,
                 rules,
-                asc_count,
-                desc_count,
+                type_counts,
             );
             if attack_val == defend_val {
                 same_pairs.push(neighbor_pos);
@@ -156,8 +152,7 @@ fn resolve_combo(
     current_turn: Owner,
     initial_flips: Vec<usize>,
     rules: RuleSet,
-    asc_count: u8,
-    desc_count: u8,
+    type_counts: &HashMap<CardType, u8>,
 ) {
     let mut queue: VecDeque<usize> = initial_flips.into_iter().collect();
     let mut processed: HashSet<usize> = HashSet::new();
@@ -177,15 +172,13 @@ fn resolve_combo(
                         card_edge_value(&cell.card, neighbor.attacking_edge),
                         cell.card.card_type,
                         rules,
-                        asc_count,
-                        desc_count,
+                        type_counts,
                     );
                     let defend_val = apply_stat_mod(
                         card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                         neighbor_cell.card.card_type,
                         rules,
-                        asc_count,
-                        desc_count,
+                        type_counts,
                     );
                     if captures(attack_val, defend_val, rules) {
                         board[neighbor_pos] =
@@ -212,17 +205,10 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
 
-    // Snapshot Ascension/Descension counts BEFORE placing the card.
-    // The placed card must not count toward its own resolution.
-    let mut asc_count: u8 = 0;
-    let mut desc_count: u8 = 0;
+    // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
+    let mut type_counts: HashMap<CardType, u8> = HashMap::new();
     for placed in state.board.iter().flatten() {
-        if state.rules.ascension && placed.card.card_type == CardType::Primal {
-            asc_count += 1;
-        }
-        if state.rules.descension && placed.card.card_type == CardType::Scion {
-            desc_count += 1;
-        }
+        *type_counts.entry(placed.card.card_type).or_insert(0) += 1;
     }
 
     let mut new_board = state.board;
@@ -230,21 +216,21 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
 
     // Plus rule
     let plus_flips = if state.rules.plus {
-        resolve_plus(&mut new_board, &card, position, state.current_turn, state.rules, asc_count, desc_count)
+        resolve_plus(&mut new_board, &card, position, state.current_turn, state.rules, &type_counts)
     } else {
         Vec::new()
     };
 
     // Same rule
     let same_flips = if state.rules.same {
-        resolve_same(&mut new_board, &card, position, state.current_turn, state.rules, asc_count, desc_count)
+        resolve_same(&mut new_board, &card, position, state.current_turn, state.rules, &type_counts)
     } else {
         Vec::new()
     };
 
     // Combo cascade
     let combo_seeds: Vec<usize> = plus_flips.into_iter().chain(same_flips).collect();
-    resolve_combo(&mut new_board, state.current_turn, combo_seeds, state.rules, asc_count, desc_count);
+    resolve_combo(&mut new_board, state.current_turn, combo_seeds, state.rules, &type_counts);
 
     // Standard capture: flip adjacent opponent cards based on active capture rules
     for neighbor in ADJACENCY[position] {
@@ -255,15 +241,13 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
                     card_edge_value(&card, neighbor.attacking_edge),
                     card.card_type,
                     state.rules,
-                    asc_count,
-                    desc_count,
+                    &type_counts,
                 );
                 let defend_val = apply_stat_mod(
                     card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                     neighbor_cell.card.card_type,
                     state.rules,
-                    asc_count,
-                    desc_count,
+                    &type_counts,
                 );
                 if captures(attack_val, defend_val, state.rules) {
                     new_board[neighbor_pos] =
@@ -314,8 +298,7 @@ fn resolve_combo_tracked(
     current_turn: Owner,
     initial_flips: Vec<usize>,
     rules: RuleSet,
-    asc_count: u8,
-    desc_count: u8,
+    type_counts: &HashMap<CardType, u8>,
 ) -> Vec<(usize, Owner)> {
     let mut queue: VecDeque<usize> = initial_flips.into_iter().collect();
     let mut processed: HashSet<usize> = HashSet::new();
@@ -336,15 +319,13 @@ fn resolve_combo_tracked(
                         card_edge_value(&cell.card, neighbor.attacking_edge),
                         cell.card.card_type,
                         rules,
-                        asc_count,
-                        desc_count,
+                        type_counts,
                     );
                     let defend_val = apply_stat_mod(
                         card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                         neighbor_cell.card.card_type,
                         rules,
-                        asc_count,
-                        desc_count,
+                        type_counts,
                     );
                     if captures(attack_val, defend_val, rules) {
                         all_flipped.push((neighbor_pos, neighbor_cell.owner));
@@ -375,17 +356,10 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
 
-    // Snapshot Ascension/Descension counts BEFORE placing the card.
-    // The placed card must not count toward its own resolution.
-    let mut asc_count: u8 = 0;
-    let mut desc_count: u8 = 0;
+    // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
+    let mut type_counts: HashMap<CardType, u8> = HashMap::new();
     for placed in state.board.iter().flatten() {
-        if state.rules.ascension && placed.card.card_type == CardType::Primal {
-            asc_count += 1;
-        }
-        if state.rules.descension && placed.card.card_type == CardType::Scion {
-            desc_count += 1;
-        }
+        *type_counts.entry(placed.card.card_type).or_insert(0) += 1;
     }
 
     let prev_turn = state.current_turn;
@@ -395,7 +369,7 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
 
     // Plus rule
     let plus_flips = if state.rules.plus {
-        let positions = resolve_plus(&mut state.board, &card, position, state.current_turn, state.rules, asc_count, desc_count);
+        let positions = resolve_plus(&mut state.board, &card, position, state.current_turn, state.rules, &type_counts);
         for &pos in &positions {
             // resolve_plus already flipped owner to current_turn; record the old owner (opponent)
             let old_owner = match state.current_turn {
@@ -411,7 +385,7 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
 
     // Same rule
     let same_flips = if state.rules.same {
-        let positions = resolve_same(&mut state.board, &card, position, state.current_turn, state.rules, asc_count, desc_count);
+        let positions = resolve_same(&mut state.board, &card, position, state.current_turn, state.rules, &type_counts);
         for &pos in &positions {
             let old_owner = match state.current_turn {
                 Owner::Player => Owner::Opponent,
@@ -426,7 +400,7 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
 
     // Combo cascade — track all ownership changes
     let combo_seeds: Vec<usize> = plus_flips.into_iter().chain(same_flips).collect();
-    let combo_flips = resolve_combo_tracked(&mut state.board, state.current_turn, combo_seeds, state.rules, asc_count, desc_count);
+    let combo_flips = resolve_combo_tracked(&mut state.board, state.current_turn, combo_seeds, state.rules, &type_counts);
     flipped.extend(combo_flips);
 
     // Standard capture: flip adjacent opponent cards based on active capture rules
@@ -438,15 +412,13 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
                     card_edge_value(&card, neighbor.attacking_edge),
                     card.card_type,
                     state.rules,
-                    asc_count,
-                    desc_count,
+                    &type_counts,
                 );
                 let defend_val = apply_stat_mod(
                     card_edge_value(&neighbor_cell.card, neighbor.defending_edge),
                     neighbor_cell.card.card_type,
                     state.rules,
-                    asc_count,
-                    desc_count,
+                    &type_counts,
                 );
                 if captures(attack_val, defend_val, state.rules) {
                     flipped.push((neighbor_pos, neighbor_cell.owner));
@@ -1253,19 +1225,20 @@ mod tests {
     // ── Ascension rule ────────────────────────────────────────────────────────
 
     #[test]
-    fn test_ascension_boosts_attacking_primal() {
+    fn test_ascension_boosts_attacking_card() {
         reset_card_ids();
-        // Board has 1 opp Primal at pos 2 before placement. ascCount=1.
-        // Player Primal top=5 at pos 3 attacks opp None bottom=5 at pos 0.
-        // Boosted: 5+1=6 > 5 → capture.
-        let opp_primal = create_card(1, 1, 1, 1, CardType::Primal); // just occupies pos 2
-        let opp_none = create_card(1, 1, 5, 1, CardType::None);     // bottom=5
-        let p_primal = create_card(5, 1, 1, 1, CardType::Primal);   // top=5
+        // 2 Primals on board. Player Primal top=5 (+2=7). Opp Garlean bottom=5 (+1=6). 7>6 → capture.
+        // Without Ascension: 5>5 → no capture.
+        let opp_primal1 = create_card(1, 1, 1, 1, CardType::Primal); // pos 2: Primal filler
+        let opp_primal2 = create_card(1, 1, 1, 1, CardType::Primal); // pos 5: Primal filler
+        let opp_garlean = create_card(1, 1, 5, 1, CardType::Garlean); // pos 0, bottom=5
+        let p_primal = create_card(5, 1, 1, 1, CardType::Primal);     // top=5
 
         let board: Board = {
             let mut b = [None; 9];
-            b[0] = Some(PlacedCard { card: opp_none, owner: Owner::Opponent });
-            b[2] = Some(PlacedCard { card: opp_primal, owner: Owner::Opponent }); // provides ascCount=1
+            b[0] = Some(PlacedCard { card: opp_garlean, owner: Owner::Opponent });
+            b[2] = Some(PlacedCard { card: opp_primal1, owner: Owner::Opponent });
+            b[5] = Some(PlacedCard { card: opp_primal2, owner: Owner::Opponent });
             b
         };
         let state = GameState {
@@ -1276,22 +1249,19 @@ mod tests {
             rules: RuleSet { ascension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_primal, 3);
+        let s = place_card(&state, p_primal, 3); // top=5+2=7 > Garlean 5+1=6 → capture
 
         assert_eq!(s.board[0].unwrap().owner, Owner::Player);
     }
 
     #[test]
-    fn test_ascension_boosts_defending_primal() {
+    fn test_ascension_boosts_defending_card() {
         reset_card_ids();
-        // 1 opp Primal on board at pos 0 (bottom=6). ascCount=1.
-        // Player None top=7 at pos 3 attacks opp Primal bottom=6 (+1=7). 7>7? No → no capture.
-        let opp_primal = create_card(1, 1, 6, 1, CardType::Primal); // bottom=6
+        // 1 Primal (the defender) on board. Player None top=7 vs opp Primal bottom=6.
+        // typeCounts[Primal]=1, typeCounts[None]=0. 7+0=7, 6+1=7. 7>7? No → no capture.
+        let opp_primal = create_card(1, 1, 6, 1, CardType::Primal); // pos 0, bottom=6
         let p_none = create_card(7, 1, 1, 1, CardType::None);       // top=7
 
-        // We need another Primal on the board to get ascCount=1 when placing p_none...
-        // Wait: ascCount counts Primals on board BEFORE placement. opp_primal IS the one at pos 0.
-        // So ascCount=1. opp_primal bottom=6+1=7. p_none top=7. 7>7? No.
         let board: Board = {
             let mut b = [None; 9];
             b[0] = Some(PlacedCard { card: opp_primal, owner: Owner::Opponent });
@@ -1311,13 +1281,14 @@ mod tests {
     }
 
     #[test]
-    fn test_ascension_does_not_affect_non_primal() {
+    fn test_ascension_boosts_all_types_not_just_primal() {
         reset_card_ids();
-        // 1 Primal on board providing ascCount=1. Player None top=5, opp None bottom=5.
-        // 5>5? No → no capture. Ascension only boosts Primals.
-        let primal_filler = create_card(1, 1, 1, 1, CardType::Primal); // provides ascCount
-        let opp_none = create_card(1, 1, 5, 1, CardType::None);        // bottom=5
-        let p_none = create_card(5, 1, 1, 1, CardType::None);          // top=5
+        // 1 Primal on board. Player None top=5, opp None bottom=5.
+        // typeCounts[Primal]=1, typeCounts[None]=1 (the opp None).
+        // Both Nones get +1: 5+1=6 vs 5+1=6. 6>6? No → no capture (equal boost, no advantage).
+        let primal_filler = create_card(1, 1, 1, 1, CardType::Primal);
+        let opp_none = create_card(1, 1, 5, 1, CardType::None);
+        let p_none = create_card(5, 1, 1, 1, CardType::None);
 
         let board: Board = {
             let mut b = [None; 9];
@@ -1333,25 +1304,28 @@ mod tests {
             rules: RuleSet { ascension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_none, 4); // top=5 attacks pos1 bottom=5; neither is Primal
+        let s = place_card(&state, p_none, 4); // both Nones boosted equally: 6 vs 6 → no capture
 
-        assert_eq!(s.board[1].unwrap().owner, Owner::Opponent); // no capture
+        assert_eq!(s.board[1].unwrap().owner, Owner::Opponent);
     }
 
     #[test]
     fn test_ascension_caps_boosted_value_at_ten() {
         reset_card_ids();
-        // 2 Primals on board. ascCount=2. Player Primal top=9 (+2=11 → capped at 10). opp None bottom=10. 10>10? No.
+        // 3 Primals on board. Player Primal top=9 (9+3=12 → capped to 10). Opp Garlean bottom=9 (+1=10). 10>10? No.
+        // Without cap: 12>10 → capture.
         let primal1 = create_card(1, 1, 1, 1, CardType::Primal);
         let primal2 = create_card(1, 1, 1, 1, CardType::Primal);
-        let opp_none = create_card(1, 1, 10, 1, CardType::None); // bottom=10
-        let p_primal = create_card(9, 1, 1, 1, CardType::Primal); // top=9
+        let primal3 = create_card(1, 1, 1, 1, CardType::Primal);
+        let opp_garlean = create_card(1, 1, 9, 1, CardType::Garlean); // pos 1, bottom=9
+        let p_primal = create_card(9, 1, 1, 1, CardType::Primal);     // top=9
 
         let board: Board = {
             let mut b = [None; 9];
             b[2] = Some(PlacedCard { card: primal1, owner: Owner::Opponent });
             b[5] = Some(PlacedCard { card: primal2, owner: Owner::Opponent });
-            b[1] = Some(PlacedCard { card: opp_none, owner: Owner::Opponent });
+            b[8] = Some(PlacedCard { card: primal3, owner: Owner::Opponent });
+            b[1] = Some(PlacedCard { card: opp_garlean, owner: Owner::Opponent });
             b
         };
         let state = GameState {
@@ -1362,21 +1336,25 @@ mod tests {
             rules: RuleSet { ascension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_primal, 4);
+        let s = place_card(&state, p_primal, 4); // min(10, 9+3)=10 vs Garlean 9+1=10. 10>10 false.
 
-        assert_eq!(s.board[1].unwrap().owner, Owner::Opponent); // 10>10 is false
+        assert_eq!(s.board[1].unwrap().owner, Owner::Opponent); // cap prevents capture
     }
 
     #[test]
-    fn test_ascension_placed_primal_does_not_count_itself() {
+    fn test_ascension_placed_card_does_not_count_itself() {
         reset_card_ids();
-        // No Primals on board before placement. Player Primal top=5 (ascCount=0, no boost). opp None bottom=5. 5>5? No.
-        let opp_none = create_card(1, 1, 5, 1, CardType::None); // bottom=5
-        let p_primal = create_card(5, 1, 1, 1, CardType::Primal); // top=5
+        // 1 Primal filler on board. Player Primal top=5: typeCounts[Primal]=1 (filler only, not itself).
+        // Player Primal 5+1=6 vs opp Garlean 5+1=6. 6>6? No → no capture.
+        // If placed Primal counted itself: typeCounts[Primal]=2 → top=7 > 6 → capture (wrong).
+        let primal_filler = create_card(1, 1, 1, 1, CardType::Primal); // pos 2: Primal for count
+        let opp_garlean = create_card(1, 1, 5, 1, CardType::Garlean); // pos 0, bottom=5
+        let p_primal = create_card(5, 1, 1, 1, CardType::Primal);     // top=5
 
         let board: Board = {
             let mut b = [None; 9];
-            b[0] = Some(PlacedCard { card: opp_none, owner: Owner::Opponent });
+            b[0] = Some(PlacedCard { card: opp_garlean, owner: Owner::Opponent });
+            b[2] = Some(PlacedCard { card: primal_filler, owner: Owner::Opponent });
             b
         };
         let state = GameState {
@@ -1387,28 +1365,29 @@ mod tests {
             rules: RuleSet { ascension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_primal, 3);
+        let s = place_card(&state, p_primal, 3); // typeCounts[Primal]=1 (filler only). 5+1=6 vs 5+1=6. No capture.
 
-        assert_eq!(s.board[0].unwrap().owner, Owner::Opponent); // no capture: ascCount=0
+        assert_eq!(s.board[0].unwrap().owner, Owner::Opponent);
     }
 
     #[test]
     fn test_ascension_uses_modified_values_for_same_rule() {
         reset_card_ids();
-        // 1 Primal on board. ascCount=1.
-        // Player Primal at pos 4: top=4 (+1=5), left=3 (+1=4).
-        // Opp None at pos 1: bottom=5. Opp None at pos 3: right=4.
-        // Without ascension: 4≠5, 3≠4 → no Same. With: 5==5, 4==4 → Same triggers.
-        let primal_filler = create_card(1, 1, 1, 1, CardType::Primal);
-        let opp1 = create_card(1, 1, 5, 1, CardType::None); // bottom=5
-        let opp3 = create_card(1, 4, 1, 1, CardType::None); // right=4
-        let p_primal = create_card(4, 1, 1, 3, CardType::Primal); // top=4, left=3
+        // 2 Primals on board. Player Primal at pos 4: top=3 (+2=5), left=2 (+2=4).
+        // Opp Garlean at pos 1 (bottom=4, +1=5), opp Society at pos 3 (right=3, +1=4).
+        // Without Ascension: 3≠4, 2≠3 → no Same. With: 5==5, 4==4 → Same triggers.
+        let primal1 = create_card(1, 1, 1, 1, CardType::Primal);
+        let primal2 = create_card(1, 1, 1, 1, CardType::Primal);
+        let opp_garlean = create_card(1, 1, 4, 1, CardType::Garlean); // pos 1, bottom=4
+        let opp_society = create_card(1, 3, 1, 1, CardType::Society); // pos 3, right=3
+        let p_primal = create_card(3, 1, 1, 2, CardType::Primal);     // top=3, left=2
 
         let board: Board = {
             let mut b = [None; 9];
-            b[2] = Some(PlacedCard { card: primal_filler, owner: Owner::Opponent });
-            b[1] = Some(PlacedCard { card: opp1, owner: Owner::Opponent });
-            b[3] = Some(PlacedCard { card: opp3, owner: Owner::Opponent });
+            b[2] = Some(PlacedCard { card: primal1, owner: Owner::Opponent });
+            b[5] = Some(PlacedCard { card: primal2, owner: Owner::Opponent });
+            b[1] = Some(PlacedCard { card: opp_garlean, owner: Owner::Opponent });
+            b[3] = Some(PlacedCard { card: opp_society, owner: Owner::Opponent });
             b
         };
         let state = GameState {
@@ -1421,6 +1400,8 @@ mod tests {
 
         let s = place_card(&state, p_primal, 4);
 
+        // typeCounts[Primal]=2, typeCounts[Garlean]=1, typeCounts[Society]=1.
+        // top=3+2=5==Garlean(4+1=5), left=2+2=4==Society(3+1=4). Same triggers → both flip.
         assert_eq!(s.board[1].unwrap().owner, Owner::Player);
         assert_eq!(s.board[3].unwrap().owner, Owner::Player);
     }
@@ -1428,17 +1409,20 @@ mod tests {
     // ── Descension rule ───────────────────────────────────────────────────────
 
     #[test]
-    fn test_descension_penalizes_attacking_scion() {
+    fn test_descension_penalizes_attacking_card() {
         reset_card_ids();
-        // 1 Scion on board at pos 2. descCount=1. Player Scion top=6 (-1=5). Opp None bottom=5. 5>5? No.
-        let scion_filler = create_card(1, 1, 1, 1, CardType::Scion); // provides descCount
-        let opp_none = create_card(1, 1, 5, 1, CardType::None);      // bottom=5
-        let p_scion = create_card(6, 1, 1, 1, CardType::Scion);      // top=6
+        // 2 Scions on board. Player Scion top=6 (-2=4). Opp Garlean bottom=5 (-1=4). 4>4? No → no capture.
+        // Without Descension: 6>5 → capture.
+        let scion1 = create_card(1, 1, 1, 1, CardType::Scion); // pos 2: Scion filler
+        let scion2 = create_card(1, 1, 1, 1, CardType::Scion); // pos 5: Scion filler
+        let opp_garlean = create_card(1, 1, 5, 1, CardType::Garlean); // pos 0, bottom=5
+        let p_scion = create_card(6, 1, 1, 1, CardType::Scion);       // top=6
 
         let board: Board = {
             let mut b = [None; 9];
-            b[2] = Some(PlacedCard { card: scion_filler, owner: Owner::Opponent });
-            b[0] = Some(PlacedCard { card: opp_none, owner: Owner::Opponent });
+            b[0] = Some(PlacedCard { card: opp_garlean, owner: Owner::Opponent });
+            b[2] = Some(PlacedCard { card: scion1, owner: Owner::Opponent });
+            b[5] = Some(PlacedCard { card: scion2, owner: Owner::Opponent });
             b
         };
         let state = GameState {
@@ -1449,17 +1433,18 @@ mod tests {
             rules: RuleSet { descension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_scion, 3);
+        let s = place_card(&state, p_scion, 3); // top=6-2=4 vs Garlean 5-1=4. 4>4? No → no capture
 
-        assert_eq!(s.board[0].unwrap().owner, Owner::Opponent); // 5>5 is false
+        assert_eq!(s.board[0].unwrap().owner, Owner::Opponent);
     }
 
     #[test]
-    fn test_descension_penalizes_defending_scion() {
+    fn test_descension_penalizes_defending_card() {
         reset_card_ids();
-        // 2 Scions on board. descCount=2. Opp Scion bottom=7 (-2=5). Player None top=7. 7>5 → capture.
+        // 2 Scions on board. typeCounts[Scion]=2, typeCounts[None]=0.
+        // Player None top=7 (-0=7). Opp Scion bottom=7 (-2=5). 7>5 → capture.
         let scion1 = create_card(1, 1, 1, 1, CardType::Scion);
-        let scion2 = create_card(1, 1, 7, 1, CardType::Scion); // bottom=7
+        let scion2 = create_card(1, 1, 7, 1, CardType::Scion); // pos 0, bottom=7
         let p_none = create_card(7, 1, 1, 1, CardType::None);  // top=7
 
         let board: Board = {
@@ -1482,13 +1467,14 @@ mod tests {
     }
 
     #[test]
-    fn test_descension_does_not_affect_non_scion() {
+    fn test_descension_both_same_type_penalized_equally() {
         reset_card_ids();
-        // 1 Scion on board providing descCount=1. Player None top=5, opp None bottom=4.
-        // 5>4 → capture. Penalty doesn't apply to None cards.
-        let scion_filler = create_card(1, 1, 1, 1, CardType::Scion); // provides descCount
-        let opp_none = create_card(1, 1, 4, 1, CardType::None);      // bottom=4
-        let p_none = create_card(5, 1, 1, 1, CardType::None);        // top=5
+        // 1 Scion on board. Player None top=5, opp None bottom=4.
+        // typeCounts[Scion]=1, typeCounts[None]=1 (the opp None).
+        // Both Nones penalized: 5-1=4 > 4-1=3 → capture (equal penalty, larger value still wins).
+        let scion_filler = create_card(1, 1, 1, 1, CardType::Scion);
+        let opp_none = create_card(1, 1, 4, 1, CardType::None); // pos 1, bottom=4
+        let p_none = create_card(5, 1, 1, 1, CardType::None);   // top=5
 
         let board: Board = {
             let mut b = [None; 9];
@@ -1504,9 +1490,9 @@ mod tests {
             rules: RuleSet { descension: true, ..RuleSet::default() },
         };
 
-        let s = place_card(&state, p_none, 4);
+        let s = place_card(&state, p_none, 4); // 5-1=4 > 4-1=3 → capture
 
-        assert_eq!(s.board[1].unwrap().owner, Owner::Player); // 5>4 → capture
+        assert_eq!(s.board[1].unwrap().owner, Owner::Player);
     }
 
     // ── place_card_mut / undo_place ──────────────────────────────────────────

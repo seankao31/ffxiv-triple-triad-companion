@@ -8,7 +8,7 @@ thread_local! {
     static NEXT_CARD_ID: Cell<u8> = const { Cell::new(0) };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CardType {
     None,

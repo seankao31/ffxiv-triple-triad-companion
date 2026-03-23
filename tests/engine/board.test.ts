@@ -817,12 +817,119 @@ describe("Fallen Ace rule", () => {
 describe("Ascension rule", () => {
   const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false };
 
-  it("boosts attacking Primal card", () => {
-    // 1 Primal on board at pos 2 (count only, not adjacent to pos 3).
-    // Player Primal top=5 (+1=6) vs opponent None bottom=5 at pos 0. Without: 5>5 no. With: 6>5 yes.
+  it("boosts attacking card based on same-type count on board", () => {
+    // 2 Primals on board + player Primal (top=5) vs opp Garlean (bottom=5).
+    // typeCounts[Primal]=2, typeCounts[Garlean]=1 (the defender counts itself).
+    // With Ascension: Primal 5+2=7 > Garlean 5+1=6 → capture.
+    // Without Ascension: 5>5 → no capture.
     const oCards = [
-      createCard(1, 1, 5, 1),                   // pos 0: None, bottom=5 (the defender)
-      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal for count
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal filler
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 5: Primal filler
+      createCard(1, 1, 5, 1, CardType.Garlean), // pos 0: Garlean, bottom=5
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    const pCards = [
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(5, 1, 1, 1, CardType.Primal),  // player Primal, top=5
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 2); // opp Primal filler at pos 2
+    state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
+    state = placeCard(state, oCards[1]!, 5); // opp Primal filler at pos 5
+    state = placeCard(state, pCards[1]!, 8); // player filler at pos 8
+    state = placeCard(state, oCards[2]!, 0); // opp Garlean at pos 0 (bottom=5)
+    state = placeCard(state, pCards[2]!, 3); // player Primal at pos 3 (top=5 attacks pos 0)
+    // typeCounts[Primal]=2, typeCounts[Garlean]=1. 5+2=7 > 5+1=6 → capture.
+    expect(state.board[0]?.owner).toBe(Owner.Player);
+  });
+
+  it("boosts defending card based on same-type count on board", () => {
+    // 1 Primal on board (the defender itself). Player None top=7 vs opp Primal bottom=6.
+    // typeCounts[None]=0, typeCounts[Primal]=1.
+    // With Ascension: player None 7+0=7, opp Primal 6+1=7. 7>7? No → no capture.
+    // Without Ascension: 7>6 → capture.
+    const oCards = [
+      createCard(1, 1, 6, 1, CardType.Primal), // pos 0: Primal, bottom=6
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    const pCards = [
+      createCard(7, 1, 1, 1), // player None, top=7
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opp Primal at pos 0 (bottom=6)
+    state = placeCard(state, pCards[0]!, 3); // player None at pos 3 (top=7 attacks pos 0's bottom=6)
+    // typeCounts[Primal]=1, typeCounts[None]=0. 7+0=7, 6+1=7. 7>7? No → no capture.
+    expect(state.board[0]?.owner).toBe(Owner.Opponent);
+  });
+
+  it("boosts all card types, not just Primal", () => {
+    // 2 Garleans on board + player Garlean (top=5) vs opp Society (bottom=5).
+    // typeCounts[Garlean]=2, typeCounts[Society]=1.
+    // With Ascension: Garlean 5+2=7 > Society 5+1=6 → capture.
+    // Without Ascension: 5>5 → no capture.
+    const oCards = [
+      createCard(1, 1, 1, 1, CardType.Garlean),  // pos 2: Garlean filler
+      createCard(1, 1, 1, 1, CardType.Garlean),  // pos 5: Garlean filler
+      createCard(1, 1, 5, 1, CardType.Society),  // pos 0: Society, bottom=5
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    const pCards = [
+      createCard(1, 1, 1, 1),                    // filler
+      createCard(1, 1, 1, 1),                    // filler
+      createCard(5, 1, 1, 1, CardType.Garlean),  // player Garlean, top=5
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+    ];
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 2); // opp Garlean filler at pos 2
+    state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
+    state = placeCard(state, oCards[1]!, 5); // opp Garlean filler at pos 5
+    state = placeCard(state, pCards[1]!, 8); // player filler at pos 8
+    state = placeCard(state, oCards[2]!, 0); // opp Society at pos 0 (bottom=5)
+    state = placeCard(state, pCards[2]!, 3); // player Garlean at pos 3 (top=5 attacks pos 0)
+    // typeCounts[Garlean]=2, typeCounts[Society]=1. 5+2=7 > 5+1=6 → capture.
+    expect(state.board[0]?.owner).toBe(Owner.Player);
+  });
+
+  it("caps boosted value at 10", () => {
+    // 3 Primal fillers on board. Player Primal top=9 (+3 → capped to 10). Opp Society bottom=9 (+1=10).
+    // 10>10? No → no capture. Without cap: 12>10 → capture.
+    const oCards = [
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal filler
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 5: Primal filler
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 8: Primal filler
+      createCard(1, 1, 9, 1, CardType.Society), // pos 0: Society, bottom=9
+      createCard(1, 1, 1, 1),
+    ];
+    const pCards = [
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(9, 1, 1, 1, CardType.Primal),  // player Primal, top=9
+      createCard(1, 1, 1, 1),
+    ];
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 2); // opp Primal filler at pos 2
+    state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
+    state = placeCard(state, oCards[1]!, 5); // opp Primal filler at pos 5
+    state = placeCard(state, pCards[1]!, 7); // player filler at pos 7
+    state = placeCard(state, oCards[2]!, 8); // opp Primal filler at pos 8
+    state = placeCard(state, pCards[2]!, 4); // player filler at pos 4
+    state = placeCard(state, oCards[3]!, 0); // opp Society at pos 0 (bottom=9)
+    state = placeCard(state, pCards[3]!, 3); // player Primal at pos 3 (top=9 attacks pos 0)
+    // typeCounts[Primal]=3. min(10, 9+3)=10. typeCounts[Society]=1. 9+1=10. 10>10? No → no capture.
+    expect(state.board[0]?.owner).toBe(Owner.Opponent); // cap prevents capture
+  });
+
+  it("placed card does not count itself (i++ timing)", () => {
+    // 1 Primal filler on board. Player Primal sees typeCounts[Primal]=1 (filler only, not itself).
+    // Player Primal top=5+1=6 vs opp Garlean bottom=5+1=6 (typeCounts[Garlean]=1). 6>6? No → no capture.
+    // If placed Primal counted itself: typeCounts[Primal]=2 → top=7 > 6 → capture (wrong).
+    const oCards = [
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal filler
+      createCard(1, 1, 5, 1, CardType.Garlean), // pos 0: Garlean, bottom=5
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     const pCards = [
@@ -831,122 +938,44 @@ describe("Ascension rule", () => {
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[1]!, 2); // opp Primal at pos 2 (count only, not adjacent to pos 3)
-    state = placeCard(state, pCards[0]!, 8); // player filler at pos 8
-    state = placeCard(state, oCards[0]!, 0); // opp None at pos 0 (bottom=5)
-    state = placeCard(state, pCards[1]!, 3); // player Primal at pos 3 (top=5 attacks pos 0's bottom=5)
-    // ascCount=1. Player Primal top=5+1=6 > opp None bottom=5 → capture.
-    expect(state.board[0]?.owner).toBe(Owner.Player);
-  });
-
-  it("boosts defending Primal card", () => {
-    // 1 Primal on board. Player None top=7 vs opponent Primal bottom=6 (+1=7). Without: 7>6 yes. With: 7>7 no.
-    const oCards = [
-      createCard(1, 1, 6, 1, CardType.Primal), // pos 0: Primal, bottom=6
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    const pCards = [
-      createCard(7, 1, 1, 1), // player None, top=7 (no ascension boost)
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 0); // opp Primal at pos 0 (bottom=6)
-    state = placeCard(state, pCards[0]!, 3); // player None at pos 3 (top=7 attacks pos 0's bottom=6)
-    // ascCount=1. Opp Primal bottom=6+1=7. Player None top=7. 7>7? No → no capture.
-    expect(state.board[0]?.owner).toBe(Owner.Opponent);
-  });
-
-  it("does not affect non-Primal cards", () => {
-    // 1 Primal on board. Player None top=5 (unchanged). Opponent None bottom=5 (unchanged).
-    // If None were wrongly boosted (+1=6): 6>5 yes. Correctly: 5>5 no.
-    const oCards = [
-      createCard(1, 1, 1, 1, CardType.Primal), // pos 0: Primal for count (not adjacent to pos 4)
-      createCard(1, 1, 5, 1),                   // pos 1: None, bottom=5
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    const pCards = [
-      createCard(1, 1, 1, 1), // filler
-      createCard(5, 1, 1, 1), // player None, top=5
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 0);  // opp Primal at pos 0
-    state = placeCard(state, pCards[0]!, 6);  // player filler at pos 6
-    state = placeCard(state, oCards[1]!, 1);  // opp None at pos 1 (bottom=5, faces pos 4's top)
-    state = placeCard(state, pCards[1]!, 4);  // player None at pos 4 (top=5 attacks pos 1's bottom=5)
-    // ascCount=1 but player is None → no boost. Player None top=5. Opp None bottom=5. 5>5? No → no capture.
-    expect(state.board[1]?.owner).toBe(Owner.Opponent);
-  });
-
-  it("caps boosted value at 10", () => {
-    // 2 Primals on board. Player Primal top=9 (+2 → capped to 10). Opp None bottom=10. 10>10? No → no capture.
-    // If uncapped: 11>10 yes → capture.
-    const oCards = [
-      createCard(1, 1, 1, 1, CardType.Primal), // pos 0: Primal for count
-      createCard(1, 1, 10, 1),                  // pos 1: None, bottom=10
-      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal for count
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    const pCards = [
-      createCard(1, 1, 1, 1),                   // filler
-      createCard(1, 1, 1, 1),                   // filler
-      createCard(9, 1, 1, 1, CardType.Primal),  // player Primal, top=9
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 0);  // opp Primal at pos 0
-    state = placeCard(state, pCards[0]!, 6);  // player filler at pos 6
-    state = placeCard(state, oCards[1]!, 1);  // opp None at pos 1 (bottom=10, faces pos 4's top)
-    state = placeCard(state, pCards[1]!, 8);  // player filler at pos 8
-    state = placeCard(state, oCards[2]!, 2);  // opp Primal at pos 2
-    state = placeCard(state, pCards[2]!, 4);  // player Primal at pos 4 (top=9, attacks pos 1's bottom=10)
-    // ascCount=2. Player Primal top=min(10, 9+2)=10. Opp None bottom=10. 10>10? No → no capture.
-    expect(state.board[1]?.owner).toBe(Owner.Opponent);
-  });
-
-  it("placed Primal does not count itself (i++ timing)", () => {
-    // Player places first Primal with 0 Primals on board. Player Primal top=5 (+0=5). Opp None bottom=5.
-    // 5>5? No → no capture. If placed card wrongly counted itself: 6>5 yes → capture.
-    const oCards = [
-      createCard(1, 1, 5, 1), // None at pos 0, bottom=5
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    const pCards = [
-      createCard(5, 1, 1, 1, CardType.Primal), // player Primal, top=5
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
-    ];
-    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 0); // opp None at pos 0 (bottom=5)
-    state = placeCard(state, pCards[0]!, 3); // player Primal at pos 3 (top=5 attacks pos 0's bottom=5)
-    // ascCount=0 (no Primals before placing). top=5+0=5. 5>5? No → no capture.
+    state = placeCard(state, oCards[0]!, 2); // opp Primal filler at pos 2
+    state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
+    state = placeCard(state, oCards[1]!, 0); // opp Garlean at pos 0 (bottom=5)
+    state = placeCard(state, pCards[1]!, 3); // player Primal at pos 3 (top=5 attacks pos 0)
+    // typeCounts[Primal]=1 (filler only), typeCounts[Garlean]=1. 5+1=6 vs 5+1=6. 6>6? No → no capture.
     expect(state.board[0]?.owner).toBe(Owner.Opponent);
   });
 
   it("uses modified values for Same rule", () => {
-    // 1 Primal on board (pos 0). Player Primal at pos 4: top=4 (+1=5), left=3 (+1=4).
-    // Opp None at pos 1 (bottom=5), opp None at pos 3 (right=4).
-    // Without ascension: 4≠5, 3≠4 → no Same. With: 5==5, 4==4 → 2 Same pairs → Same triggers.
+    // 2 Primal fillers on board. Player Primal at pos 4: top=3 (+2=5), left=2 (+2=4).
+    // Opp Garlean at pos 1 (bottom=4, +1=5), opp Society at pos 3 (right=3, +1=4).
+    // Without Ascension: 3≠4, 2≠3 → no Same. With: 5==5, 4==4 → 2+ Same pairs → Same triggers.
     const rulesWithSame: RuleSet = { ...rules, same: true };
     const oCards = [
-      createCard(1, 1, 1, 1, CardType.Primal), // pos 0: Primal for count
-      createCard(1, 1, 5, 1),                   // pos 1: None, bottom=5 (faces pos 4's top)
-      createCard(1, 4, 1, 1),                   // pos 3: None, right=4 (faces pos 4's left)
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 2: Primal filler
+      createCard(1, 1, 1, 1, CardType.Primal),  // pos 5: Primal filler
+      createCard(1, 1, 4, 1, CardType.Garlean), // pos 1: Garlean, bottom=4 (faces pos 4's top)
+      createCard(1, 3, 1, 1, CardType.Society), // pos 3: Society, right=3 (faces pos 4's left)
+      createCard(1, 1, 1, 1),
     ];
     const pCards = [
-      createCard(1, 1, 1, 1),                           // filler
-      createCard(1, 1, 1, 1),                           // filler
-      createCard(4, 1, 1, 3, CardType.Primal),          // player Primal: top=4, left=3
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(1, 1, 1, 1),                   // filler for pos 7
+      createCard(3, 1, 1, 2, CardType.Primal),  // player Primal: top=3, left=2
+      createCard(1, 1, 1, 1),
     ];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rulesWithSame);
-    state = placeCard(state, oCards[0]!, 0); // opp Primal at pos 0
+    state = placeCard(state, oCards[0]!, 2); // opp Primal filler at pos 2
     state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
-    state = placeCard(state, oCards[1]!, 1); // opp None at pos 1 (bottom=5)
+    state = placeCard(state, oCards[1]!, 5); // opp Primal filler at pos 5
     state = placeCard(state, pCards[1]!, 8); // player filler at pos 8
-    state = placeCard(state, oCards[2]!, 3); // opp None at pos 3 (right=4)
-    state = placeCard(state, pCards[2]!, 4); // player Primal at pos 4 (top=4, left=3)
-    // ascCount=1. top=5==5, left=4==4 → Same triggers. Both pos 1 and pos 3 flip.
+    state = placeCard(state, oCards[2]!, 1); // opp Garlean at pos 1 (bottom=4, faces pos 4's top)
+    state = placeCard(state, pCards[2]!, 7); // player filler at pos 7
+    state = placeCard(state, oCards[3]!, 3); // opp Society at pos 3 (right=3, faces pos 4's left)
+    state = placeCard(state, pCards[3]!, 4); // player Primal at pos 4 (top=3, left=2)
+    // typeCounts[Primal]=2, typeCounts[Garlean]=1, typeCounts[Society]=1.
+    // top=3+2=5==Garlean(4+1=5), left=2+2=4==Society(3+1=4). Same triggers → both flip.
     expect(state.board[1]?.owner).toBe(Owner.Player);
     expect(state.board[3]?.owner).toBe(Owner.Player);
   });
@@ -955,68 +984,77 @@ describe("Ascension rule", () => {
 describe("Descension rule", () => {
   const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: true };
 
-  it("penalizes attacking Scion card", () => {
-    // 1 Scion on board (pos 2, not adjacent to pos 3). Player Scion top=6 (-1=5). Opp None bottom=5.
-    // Without: 6>5 yes. With: 5>5 no → no capture.
+  it("penalizes attacking card based on same-type count on board", () => {
+    // 2 Scions on board (opp filler + player filler). Player Scion (top=6) vs opp Garlean (bottom=5).
+    // typeCounts[Scion]=2, typeCounts[Garlean]=1.
+    // With Descension: Scion 6-2=4, Garlean 5-1=4. 4>4? No → no capture.
+    // Without Descension: 6>5 → capture.
     const oCards = [
-      createCard(1, 1, 1, 1, CardType.Scion), // pos 2: Scion for count
-      createCard(1, 1, 5, 1),                  // pos 0: None, bottom=5
+      createCard(1, 1, 1, 1, CardType.Scion),   // pos 2: Scion filler
+      createCard(1, 1, 5, 1, CardType.Garlean), // pos 0: Garlean, bottom=5
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     const pCards = [
-      createCard(1, 1, 1, 1),                  // filler
-      createCard(6, 1, 1, 1, CardType.Scion),  // player Scion, top=6
-      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
+      createCard(1, 1, 1, 1, CardType.Scion),   // pos 5: Scion filler (player)
+      createCard(1, 1, 1, 1),                   // filler
+      createCard(6, 1, 1, 1, CardType.Scion),   // player Scion, top=6
+      createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 2); // opp Scion at pos 2 (count only)
-    state = placeCard(state, pCards[0]!, 6); // player filler at pos 6
-    state = placeCard(state, oCards[1]!, 0); // opp None at pos 0 (bottom=5)
-    state = placeCard(state, pCards[1]!, 3); // player Scion at pos 3 (top=6 attacks pos 0's bottom=5)
-    // descCount=1. Player Scion top=6-1=5. Opp None bottom=5. 5>5? No → no capture.
+    state = placeCard(state, oCards[0]!, 2); // opp Scion filler at pos 2
+    state = placeCard(state, pCards[0]!, 5); // player Scion filler at pos 5
+    state = placeCard(state, oCards[1]!, 0); // opp Garlean at pos 0 (bottom=5)
+    state = placeCard(state, pCards[1]!, 8); // player filler at pos 8
+    state = placeCard(state, oCards[2]!, 6); // opp filler at pos 6
+    state = placeCard(state, pCards[2]!, 3); // player Scion at pos 3 (top=6 attacks pos 0)
+    // typeCounts[Scion]=2, typeCounts[Garlean]=1. 6-2=4, 5-1=4. 4>4? No → no capture.
     expect(state.board[0]?.owner).toBe(Owner.Opponent);
   });
 
-  it("penalizes defending Scion card", () => {
-    // 2 Scions on board. Player None top=7. Opp Scion bottom=7 (-2=5). Without: 7>7 no. With: 7>5 yes → capture.
+  it("penalizes defending card based on same-type count on board", () => {
+    // 2 Scions on board. Player None top=7. Opp Scion bottom=7 (-2=5).
+    // typeCounts[None]=1 (player filler), typeCounts[Scion]=2.
+    // With Descension: player None 7-1=6 > opp Scion 7-2=5 → capture.
+    // Without Descension: 7>7 → no capture.
     const oCards = [
-      createCard(1, 1, 1, 1, CardType.Scion),  // pos 2: Scion for count
+      createCard(1, 1, 1, 1, CardType.Scion),  // pos 2: Scion filler
       createCard(1, 1, 7, 1, CardType.Scion),  // pos 0: Scion, bottom=7
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     const pCards = [
-      createCard(1, 1, 1, 1), // filler
+      createCard(1, 1, 1, 1), // pos 6: None filler (typeCounts[None]=1 at key placement)
       createCard(7, 1, 1, 1), // player None, top=7
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 2); // opp Scion at pos 2 (descCount becomes 1)
-    state = placeCard(state, pCards[0]!, 6); // player filler
-    state = placeCard(state, oCards[1]!, 0); // opp Scion at pos 0 (bottom=7, descCount becomes 2)
+    state = placeCard(state, oCards[0]!, 2); // opp Scion filler at pos 2 (typeCounts[Scion]=1)
+    state = placeCard(state, pCards[0]!, 6); // player None filler at pos 6 (typeCounts[None]=1)
+    state = placeCard(state, oCards[1]!, 0); // opp Scion at pos 0 (bottom=7, typeCounts[Scion]=2)
     state = placeCard(state, pCards[1]!, 3); // player None at pos 3 (top=7 attacks pos 0's bottom=7)
-    // descCount=2. Player None top=7 (no penalty). Opp Scion bottom=7-2=5. 7>5 → capture.
+    // typeCounts[Scion]=2, typeCounts[None]=1. 7-1=6 > 7-2=5 → capture.
     expect(state.board[0]?.owner).toBe(Owner.Player);
   });
 
-  it("does not affect non-Scion cards", () => {
-    // 1 Scion on board. Player None top=5 (unchanged). Opp None bottom=4 (unchanged).
-    // If None were wrongly penalized: 4>4 no. Correctly: 5>4 yes → capture.
+  it("both cards of same type are penalized equally", () => {
+    // 1 Scion filler on board. Player None top=5 vs opp None bottom=4.
+    // typeCounts[None]=2 (opp None at pos 1 + player filler at pos 6).
+    // With Descension: player None 5-2=3 > opp None 4-2=2 → capture (equal penalty, still wins).
     const oCards = [
-      createCard(1, 1, 1, 1, CardType.Scion), // pos 0: Scion for count (not adjacent to pos 4)
+      createCard(1, 1, 1, 1, CardType.Scion), // pos 0: Scion filler (not adjacent to pos 4)
       createCard(1, 1, 4, 1),                  // pos 1: None, bottom=4 (faces pos 4's top)
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     const pCards = [
-      createCard(1, 1, 1, 1), // filler
+      createCard(1, 1, 1, 1), // pos 6: None filler
       createCard(5, 1, 1, 1), // player None, top=5
       createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1),
     ];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
-    state = placeCard(state, oCards[0]!, 0);  // opp Scion at pos 0
-    state = placeCard(state, pCards[0]!, 6);  // player filler at pos 6
-    state = placeCard(state, oCards[1]!, 1);  // opp None at pos 1 (bottom=4, faces pos 4's top)
+    state = placeCard(state, oCards[0]!, 0);  // opp Scion filler at pos 0
+    state = placeCard(state, pCards[0]!, 6);  // player None filler at pos 6 (typeCounts[None]=1)
+    state = placeCard(state, oCards[1]!, 1);  // opp None at pos 1 (bottom=4, typeCounts[None]=2)
     state = placeCard(state, pCards[1]!, 4);  // player None at pos 4 (top=5 attacks pos 1's bottom=4)
-    // descCount=1 but player is None → no penalty. Player None top=5 > 4 → capture.
+    // typeCounts[None]=2. 5-2=3 > 4-2=2 → capture.
     expect(state.board[1]?.owner).toBe(Owner.Player);
   });
 });

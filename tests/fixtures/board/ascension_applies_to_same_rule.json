@@ -140,7 +140,7 @@
           "left": 1,
           "type": "none"
         },
-        "owner": "player"
+        "owner": "opponent"
       },
       null,
       {
@@ -152,7 +152,7 @@
           "left": 1,
           "type": "none"
         },
-        "owner": "player"
+        "owner": "opponent"
       },
       {
         "card": {
