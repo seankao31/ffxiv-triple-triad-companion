@@ -5,3 +5,4 @@ dist/
 engine-rs/target/
 engine-rs/Cargo.lock
 engine-rs/pkg/
+.superpowers/
