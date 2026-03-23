@@ -1,6 +1,6 @@
 # QoL Features Design
 
-Six quality-of-life improvements to the game UI and server infrastructure.
+Five quality-of-life improvements to the game UI and server infrastructure.
 
 ## Feature 1: Undo Guard
 
@@ -95,7 +95,7 @@ The modifier value is `+count` (Ascension) or `-count` (Descension), displayed o
 - `src/app/components/game/BoardCell.svelte` — add type label and modifier to card display
 - `src/app/components/game/HandPanel.svelte` — add type label and modifier to hand cards
 - `src/app/components/game/SolverPanel.svelte` — import shared type maps instead of local definitions
-- New shared file for `typeAbbrev`, `typeColor`, `boardTypeCount` (location TBD — could be a small `src/app/card-display.ts` or similar)
+- `src/app/card-display.ts` (new) — shared `typeAbbrev`, `typeColor` maps and `boardTypeCount` helper
 
 ## Testing Strategy
 
