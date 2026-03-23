@@ -3,16 +3,19 @@
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
   import { Owner, Outcome } from '../../../engine';
+  import { typeAbbrev, typeColor } from '../../card-display';
 
   let {
     cell,
     highlighted = false,
     evaluation = null,
+    modifier = null,
     onclick,
   }: {
     cell: BoardCellData;
     highlighted?: boolean;
     evaluation?: Outcome | null;
+    modifier?: number | null;
     onclick: () => void;
   } = $props();
 
@@ -39,7 +42,17 @@
         : 'bg-surface-800 hover:bg-surface-700'}"
 >
   {#if cell}
-    <div class="grid grid-cols-3 gap-0 text-xs font-bold font-mono w-full h-full p-1">
+    {@const abbr = typeAbbrev[cell.card.type]}
+    {@const colorClass = typeColor[cell.card.type]}
+    <div class="grid grid-cols-3 gap-0 text-xs font-bold font-mono w-full h-full p-1 relative">
+      {#if modifier}
+        <div class="absolute top-0.5 left-1 text-[10px] font-semibold {modifier > 0 ? 'text-eval-win' : 'text-eval-loss'}">
+          {modifier > 0 ? '+' : ''}{modifier}
+        </div>
+      {/if}
+      {#if abbr}
+        <div class="absolute top-0.5 right-1 text-[10px] font-semibold {colorClass}">{abbr}</div>
+      {/if}
       <div></div>
       <div class="flex items-center justify-center">{displayValue(cell.card.top)}</div>
       <div></div>
