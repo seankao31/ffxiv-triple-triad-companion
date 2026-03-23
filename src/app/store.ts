@@ -51,6 +51,8 @@ export const game = writable<AppState>(initialAppState);
 
 export const currentState = derived(game, ($g) => $g.history.at(-1) ?? null);
 
+export const canUndo = derived(game, ($g) => $g.history.length > 1);
+
 export const rankedMoves = writable<RankedMove[]>([]);
 export const solverLoading = writable<boolean>(false);
 export const pimcProgress = writable<{ current: number; total: number } | null>(null);
