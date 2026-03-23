@@ -3,7 +3,8 @@
 <script lang="ts">
   import BoardCell from './BoardCell.svelte';
   import { currentState, rankedMoves, game, playCard } from '../../store';
-  import { Outcome } from '../../../engine';
+  import { Outcome, type BoardCell as BoardCellData, type GameState, type RuleSet } from '../../../engine';
+  import { boardTypeCount, typeAbbrev } from '../../card-display';
 
   let suggestedPosition = $derived.by(() => {
     const selected = $game.selectedCard;
@@ -23,6 +24,14 @@
     }
     return map;
   });
+
+  function getCellModifier(cell: BoardCellData, state: GameState | null, ruleset: RuleSet): number | null {
+    if (!state || !cell || !typeAbbrev[cell.card.type]) return null;
+    if (!ruleset.ascension && !ruleset.descension) return null;
+    const count = boardTypeCount(state, cell.card.type);
+    if (count === 0) return null;
+    return ruleset.ascension ? count : -count;
+  }
 </script>
 
 <div class="grid grid-cols-3 gap-2">
@@ -31,6 +40,7 @@
       cell={$currentState?.board[i] ?? null}
       highlighted={suggestedPosition === i}
       evaluation={evalMap?.get(i) ?? null}
+      modifier={getCellModifier($currentState?.board[i] ?? null, $currentState, $game.ruleset)}
       onclick={() => playCard(i)}
     />
   {/each}
