@@ -3,7 +3,17 @@
 <script lang="ts">
   import { solverMode, serverEndpoint, updateSolverMode, updateServerEndpoint } from '../../store';
 
+  const DEFAULT_SERVER_URL = 'http://127.0.0.1:8080';
+
   let endpointInput = $state($serverEndpoint);
+
+  function handleModeChange(mode: 'wasm' | 'server') {
+    updateSolverMode(mode);
+    if (mode === 'server' && !endpointInput) {
+      endpointInput = DEFAULT_SERVER_URL;
+      updateServerEndpoint(DEFAULT_SERVER_URL);
+    }
+  }
 
   function handleEndpointBlur() {
     updateServerEndpoint(endpointInput.trim());
@@ -20,7 +30,7 @@
         name="solverMode"
         value="wasm"
         checked={$solverMode === 'wasm'}
-        onchange={() => updateSolverMode('wasm')}
+        onchange={() => handleModeChange('wasm')}
       />
       WASM (in-browser)
     </label>
@@ -30,7 +40,7 @@
         name="solverMode"
         value="server"
         checked={$solverMode === 'server'}
-        onchange={() => updateSolverMode('server')}
+        onchange={() => handleModeChange('server')}
       />
       Native server
     </label>
