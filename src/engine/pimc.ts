@@ -1,5 +1,5 @@
-// ABOUTME: Perfect Information Monte Carlo (PIMC) solver for Three Open games.
-// ABOUTME: Samples unknown opponent cards from a weighted pool, runs minimax per simulation, aggregates confidence.
+// ABOUTME: Candidate pool construction and weighted sampling utilities for Three Open PIMC games.
+// ABOUTME: Provides buildCandidatePool, weightedSample, weightedSampleConstrained, and star budget helpers.
 
 import { type Card } from './types';
 

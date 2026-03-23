@@ -1,5 +1,5 @@
-// ABOUTME: Public API barrel export for the Triple Triad engine.
-// ABOUTME: Re-exports types, board logic, and solver functions.
+// ABOUTME: Public API barrel export for the Triple Triad game logic.
+// ABOUTME: Re-exports types, board logic, and PIMC sampling utilities.
 
 export {
   type Card,
