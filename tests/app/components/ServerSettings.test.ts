@@ -1,6 +1,6 @@
-// ABOUTME: Tests for ServerSettings — solver mode switching and server URL handling.
-// ABOUTME: Validates default URL population on solver mode switch.
-import { describe, it, expect, beforeEach } from 'vitest';
+// ABOUTME: Tests for ServerSettings — solver mode switching, server URL handling, and health check.
+// ABOUTME: Validates default URL population on mode switch and connection status on URL blur.
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { solverMode, serverEndpoint, updateSolverMode, updateServerEndpoint } from '../../../src/app/store';
@@ -35,5 +35,63 @@ describe('ServerSettings default URL', () => {
 
     // Should preserve the custom URL, not overwrite with default
     expect(get(serverEndpoint)).toBe('http://custom:9090');
+  });
+});
+
+describe('ServerSettings health check', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shows "Connected" after successful health check on blur', async () => {
+    updateSolverMode('server');
+    updateServerEndpoint('http://127.0.0.1:8080');
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'ok' }) } as Response);
+
+    render(ServerSettings);
+
+    const input = screen.getByLabelText(/server url/i);
+    await fireEvent.blur(input);
+
+    // Wait for async health check to complete
+    await vi.waitFor(() => {
+      expect(screen.getByText(/connected/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Cannot connect" after failed health check on blur', async () => {
+    updateSolverMode('server');
+    updateServerEndpoint('http://127.0.0.1:8080');
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    render(ServerSettings);
+
+    const input = screen.getByLabelText(/server url/i);
+    await fireEvent.blur(input);
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/cannot connect/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Checking..." while health check is in progress', async () => {
+    updateSolverMode('server');
+    updateServerEndpoint('http://127.0.0.1:8080');
+    const mockFetch = vi.mocked(global.fetch);
+    // Never-resolving promise to keep the check in progress
+    mockFetch.mockReturnValueOnce(new Promise(() => {}));
+
+    render(ServerSettings);
+
+    const input = screen.getByLabelText(/server url/i);
+    await fireEvent.blur(input);
+
+    expect(screen.getByText(/checking/i)).toBeInTheDocument();
   });
 });

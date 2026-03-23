@@ -6,6 +6,8 @@
   const DEFAULT_SERVER_URL = 'http://127.0.0.1:8080';
 
   let endpointInput = $state($serverEndpoint);
+  let healthStatus: 'idle' | 'checking' | 'connected' | 'failed' = $state('idle');
+  let lastCheckedUrl = '';
 
   function handleModeChange(mode: 'wasm' | 'server') {
     updateSolverMode(mode);
@@ -15,8 +17,23 @@
     }
   }
 
-  function handleEndpointBlur() {
-    updateServerEndpoint(endpointInput.trim());
+  async function handleEndpointBlur() {
+    const trimmed = endpointInput.trim();
+    updateServerEndpoint(trimmed);
+
+    if (!trimmed || trimmed === lastCheckedUrl) return;
+    lastCheckedUrl = trimmed;
+    healthStatus = 'checking';
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(`${trimmed}/api/health`, { signal: controller.signal });
+      clearTimeout(timeout);
+      healthStatus = response.ok ? 'connected' : 'failed';
+    } catch {
+      healthStatus = 'failed';
+    }
   }
 </script>
 
@@ -57,6 +74,13 @@
         bind:value={endpointInput}
         onblur={handleEndpointBlur}
       />
+      {#if healthStatus === 'checking'}
+        <span class="text-sm text-surface-400">Checking…</span>
+      {:else if healthStatus === 'connected'}
+        <span class="text-sm text-eval-win">✓ Connected</span>
+      {:else if healthStatus === 'failed'}
+        <span class="text-sm text-eval-loss">✗ Cannot connect</span>
+      {/if}
     </div>
   {/if}
 </fieldset>
