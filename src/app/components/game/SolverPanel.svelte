@@ -75,7 +75,7 @@
         {#if move.confidence != null}
           <span class="text-surface-300 text-xs">{Math.round(move.confidence * 100)}%</span>
         {:else}
-          <span class="text-surface-300 text-xs">rob={move.robustness.toFixed(2)}</span>
+          <span class="text-surface-300 text-xs">{Math.round(move.robustness * 100)}%</span>
         {/if}
       </li>
     {/each}

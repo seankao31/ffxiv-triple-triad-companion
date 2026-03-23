@@ -142,7 +142,6 @@ describe('SolverPanel', () => {
     ]);
     render(SolverPanel);
     const text = screen.getByRole('listitem').textContent!;
-    expect(text).toContain('rob=0.50');
-    expect(text).not.toMatch(/0%/);
+    expect(text).toContain('50%');
   });
 });
