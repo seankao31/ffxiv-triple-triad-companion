@@ -1,7 +1,7 @@
 // ABOUTME: Native Axum HTTP server binary for high-performance solver access.
 // ABOUTME: Exposes POST /api/solve — handles both All Open (minimax) and Three Open (PIMC).
 
-use axum::{routing::post, Json, Router};
+use axum::{routing::{get, post}, Json, Router};
 use engine_rs::pimc::{run_pimc, PIMCCard};
 use engine_rs::types::{Card, CardType, GameState, Owner, RankedMove, RuleSet};
 use serde::{Deserialize, Serialize};
@@ -116,6 +116,10 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
     (game_state, unknown_card_ids)
 }
 
+async fn health() -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "status": "ok" }))
+}
+
 async fn solve(Json(req): Json<SolveRequest>) -> Json<SolveResponse> {
     let (state, unknown_card_ids) = resolve_nulls(req.state, req.unknown_card_ids);
     let moves = if unknown_card_ids.is_empty() {
@@ -140,7 +144,10 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new().route("/api/solve", post(solve)).layer(cors);
+    let app = Router::new()
+        .route("/api/solve", post(solve))
+        .route("/api/health", get(health))
+        .layer(cors);
 
     let addr = "127.0.0.1:8080";
     let listener = tokio::net::TcpListener::bind(addr).await.expect("failed to bind");
@@ -260,5 +267,26 @@ mod tests {
         assert!(!ids.contains(&0));
         assert!(!ids.contains(&1));
         assert!(!ids.contains(&3));
+    }
+
+    #[tokio::test]
+    async fn health_endpoint_returns_ok() {
+        use tower::ServiceExt;
+        use http_body_util::BodyExt;
+
+        let app = Router::new().route("/api/health", axum::routing::get(health));
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/api/health")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["status"], "ok");
     }
 }

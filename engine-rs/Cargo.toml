@@ -22,6 +22,10 @@ rayon = { version = "1", optional = true }
 rand = { version = "0.8", features = ["small_rng"], optional = true }
 tower-http = { version = "0.5", features = ["cors"], optional = true }
 
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
 [[bin]]
 name = "server"
 required-features = ["server"]
