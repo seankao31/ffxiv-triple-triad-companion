@@ -2,10 +2,19 @@
 // ABOUTME: Exposes POST /api/solve — handles both All Open (minimax) and Three Open (PIMC).
 
 use axum::{routing::{get, post}, Json, Router};
+use clap::Parser;
 use engine_rs::pimc::{run_pimc, PIMCCard};
 use engine_rs::types::{Card, CardType, GameState, Owner, RankedMove, RuleSet};
 use serde::{Deserialize, Serialize};
 use tower_http::cors::{Any, CorsLayer};
+
+#[derive(Parser)]
+#[command(about = "Triple Triad solver server")]
+struct Cli {
+    /// Port to listen on
+    #[arg(short, long, default_value_t = 8080)]
+    port: u16,
+}
 
 /// GameState variant used for deserialization where opponent cards may be unknown (null).
 /// Mirrors GameState but accepts null entries in opponent_hand for Three Open mode.
@@ -139,6 +148,8 @@ async fn solve(Json(req): Json<SolveRequest>) -> Json<SolveResponse> {
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -149,8 +160,8 @@ async fn main() {
         .route("/api/health", get(health))
         .layer(cors);
 
-    let addr = "127.0.0.1:8080";
-    let listener = tokio::net::TcpListener::bind(addr).await.expect("failed to bind");
+    let addr = format!("127.0.0.1:{}", cli.port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.expect("failed to bind");
     println!("Triple Triad solver server listening on http://{addr}");
     axum::serve(listener, app).await.expect("server error");
 }
