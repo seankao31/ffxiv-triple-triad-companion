@@ -208,6 +208,10 @@ function triggerSolve(state: GameState) {
   }
 
   if (unknownCardIds.size > 0) {
+    if (wasLoading) {
+      for (const w of pimcWorkerPool) w.terminate();
+      pimcWorkerPool = createPimcPool();
+    }
     // Reset PIMC batch state for this generation.
     pimcTally = new Map();
     pimcPending = PIMC_ITERATIONS;

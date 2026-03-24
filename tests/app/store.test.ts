@@ -695,27 +695,33 @@ describe('PIMC parallel dispatch', () => {
 
   it('mid-flight generation bump discards remaining in-flight results without corrupting new batch', () => {
     setupThreeOpen();
-    const poolWorker = workerInstances[1]!;
-    const simMsgs = poolWorker.postedMessages.filter((m: any) => (m as any).type === 'simulate') as any[];
-    const gen1 = simMsgs[0]!.generation;
+    const oldPool = workerInstances.filter(
+      (w) => w.postedMessages.some((m: any) => m.type === 'simulate'),
+    );
+    const gen1SimMsg = oldPool[0]!.postedMessages.find((m: any) => (m as any).type === 'simulate') as any;
+    const gen1 = gen1SimMsg.generation;
     const card = createCard(5, 5, 5, 5);
 
     // Deliver one result for gen1
-    poolWorker.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 0 } } as MessageEvent);
+    oldPool[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 0 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(1);
 
-    // Bump generation by pushing a new state to history (triggers triggerSolve via currentState)
+    // Bump generation by pushing a new state to history (triggers triggerSolve via currentState).
+    // This terminates the old pool and creates new pool workers.
     const initial = get(currentState)!;
     game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
 
-    // Clear postedMessages before checking to get only the new batch's messages
-    const newSimMsgs = poolWorker.postedMessages.filter((m: any) => (m as any).type === 'simulate' && (m as any).generation > gen1) as any[];
-    expect(newSimMsgs.length).toBeGreaterThan(0);
-    const gen2 = newSimMsgs[0]!.generation;
+    // New pool workers should have gen2 simulate messages.
+    const newPoolWorkers = workerInstances.filter(
+      (w) => !w.terminated && !oldPool.includes(w) && w.postedMessages.some((m: any) => m.type === 'simulate'),
+    );
+    expect(newPoolWorkers.length).toBeGreaterThan(0);
+    const gen2SimMsg = newPoolWorkers[0]!.postedMessages.find((m: any) => (m as any).type === 'simulate') as any;
+    const gen2 = gen2SimMsg.generation;
     expect(gen2).toBeGreaterThan(gen1);
 
-    // Late gen1 result arrives — must be discarded, gen2 pimcProgress must show 0 completed
-    poolWorker.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
+    // Late gen1 result arrives on a new worker — must be discarded, gen2 pimcProgress must show 0 completed
+    newPoolWorkers[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(0); // gen2 has 0 completed, gen1 result was discarded
   });
 });
@@ -851,6 +857,55 @@ describe('solver interruption', () => {
     );
     expect(newSolver).toBeDefined();
     expect(newSolver!.postedMessages.some((m: any) => m.type === 'solve')).toBe(true);
+  });
+
+  it('terminates PIMC pool workers when a new solve triggers during in-flight PIMC', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    startGame();
+    // PIMC in-flight: solverLoading = true, pool workers have sim messages.
+    expect(get(solverLoading)).toBe(true);
+    const oldPool = workerInstances.filter(
+      (w) => w.postedMessages.some((m: any) => m.type === 'simulate'),
+    );
+    expect(oldPool.length).toBeGreaterThan(0);
+
+    // Trigger a new solve by pushing a fake history entry.
+    const initial = get(currentState)!;
+    game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
+
+    for (const w of oldPool) {
+      expect(w.terminated).toBe(true);
+    }
+  });
+
+  it('creates new PIMC pool workers that receive sim messages after termination', () => {
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    updateOpponentCard(1, createCard(5, 5, 5, 5));
+    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    startGame();
+    const oldPool = workerInstances.filter(
+      (w) => w.postedMessages.some((m: any) => m.type === 'simulate'),
+    );
+
+    const initial = get(currentState)!;
+    game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
+
+    // New pool workers should exist (non-terminated, have sim messages from gen2).
+    const gen2Messages = workerInstances.filter(
+      (w) => !w.terminated && !oldPool.includes(w) && w.postedMessages.some((m: any) => m.type === 'simulate'),
+    );
+    expect(gen2Messages.length).toBeGreaterThan(0);
+    const totalNewSims = gen2Messages.reduce(
+      (sum, w) => sum + w.postedMessages.filter((m: any) => m.type === 'simulate').length,
+      0,
+    );
+    expect(totalNewSims).toBe(50);
   });
 });
 
