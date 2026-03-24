@@ -821,6 +821,35 @@ describe('server solver mode', () => {
     expect(body.cardPool).toBeDefined();
     expect(Array.isArray(body.cardPool)).toBe(true);
   });
+
+  it('aborts in-flight fetch when a new solve triggers', async () => {
+    const endpoint = 'http://localhost:8080';
+    updateServerEndpoint(endpoint);
+    updateSolverMode('server');
+    const mockFetch = vi.mocked(global.fetch);
+
+    // First fetch: never resolves (simulates long-running solve).
+    let firstSignal: AbortSignal | undefined;
+    mockFetch.mockImplementationOnce((_url, init) => {
+      firstSignal = (init as RequestInit).signal as AbortSignal;
+      return new Promise(() => {}); // never resolves
+    });
+    // Second fetch: resolves immediately.
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ moves: [] }) } as Response);
+
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame(); // triggers first fetch
+
+    expect(firstSignal).toBeDefined();
+    expect(firstSignal!.aborted).toBe(false);
+
+    // Trigger a new solve by pushing a fake history entry.
+    const initial = get(currentState)!;
+    game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
+
+    expect(firstSignal!.aborted).toBe(true);
+  });
 });
 
 describe('solver interruption', () => {

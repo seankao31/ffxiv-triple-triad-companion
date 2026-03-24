@@ -135,10 +135,11 @@ function createPimcPool(): Worker[] {
 
 let solverWorker = createSolverWorker();
 let pimcWorkerPool = createPimcPool();
+let serverAbortController: AbortController | null = null;
 
 // Send a solve request to the native server. Handles both All Open and Three Open.
 // The server runs PIMC internally with Rayon parallelism; the client only waits for the result.
-async function triggerServerSolve(state: GameState, generation: number): Promise<void> {
+async function triggerServerSolve(state: GameState, generation: number, signal: AbortSignal): Promise<void> {
   const unknownCardIds = get(game).unknownCardIds;
   const endpoint = get(serverEndpoint);
 
@@ -174,6 +175,7 @@ async function triggerServerSolve(state: GameState, generation: number): Promise
         maxFourStars,
         simCount: PIMC_ITERATIONS,
       }),
+      signal,
     });
 
     if (generation !== solveGeneration) return;
@@ -185,6 +187,7 @@ async function triggerServerSolve(state: GameState, generation: number): Promise
     solverLoading.set(false);
     pimcProgress.set(null);
   } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') return;
     console.error('Server solve error:', e);
     if (generation === solveGeneration) {
       solverLoading.set(false);
@@ -203,7 +206,9 @@ function triggerSolve(state: GameState) {
   const endpoint = get(serverEndpoint);
 
   if (mode === 'server' && endpoint) {
-    void triggerServerSolve(state, solveGeneration);
+    if (serverAbortController) serverAbortController.abort();
+    serverAbortController = new AbortController();
+    void triggerServerSolve(state, solveGeneration, serverAbortController.signal);
     return;
   }
 
