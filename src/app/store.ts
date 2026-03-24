@@ -195,6 +195,7 @@ async function triggerServerSolve(state: GameState, generation: number): Promise
 
 function triggerSolve(state: GameState) {
   const unknownCardIds = get(game).unknownCardIds;
+  const wasLoading = get(solverLoading);
   solveGeneration++;
   solverLoading.set(true);
 
@@ -224,6 +225,10 @@ function triggerSolve(state: GameState) {
       });
     }
   } else {
+    if (wasLoading) {
+      solverWorker.terminate();
+      solverWorker = createSolverWorker();
+    }
     solverWorker.postMessage({ type: 'solve', state, generation: solveGeneration });
   }
 }

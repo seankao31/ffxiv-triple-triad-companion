@@ -8,9 +8,10 @@ import {
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, revealCard,
   updateSolverMode, updateServerEndpoint,
+  _resetWorkersForTesting,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, Outcome, resetCardIds, type RankedMove } from '../../src/engine';
-import { lastWorkerInstance, workerInstances } from './setup';
+import { lastWorkerInstance, workerInstances, resetWorkers } from './setup';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -22,10 +23,8 @@ function makeOpponentHand() {
 
 beforeEach(() => {
   resetCardIds();
-  // Clear accumulated messages on all worker instances so each test starts with a clean slate.
-  for (const w of workerInstances) {
-    w.postedMessages.length = 0;
-  }
+  resetWorkers();
+  _resetWorkersForTesting();
   game.set({
     phase: 'setup',
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
@@ -361,20 +360,25 @@ describe('generation counter', () => {
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
     const gen1 = currentGeneration();
+    const oldWorker = workerInstances[0]!;
 
     // Simulate playing a card by pushing a new fake state onto history.
     // This changes currentState, triggering another solve (gen2).
+    // Because solverLoading is true, the old worker is terminated and a new one is spawned.
     const initial = get(currentState)!;
     game.update((s) => ({ ...s, history: [...s.history, { ...initial }] }));
-    const gen2 = currentGeneration();
+    const newWorker = workerInstances.find(
+      (w) => w !== oldWorker && !w.terminated && w.postedMessages.some((m: any) => m.type === 'solve'),
+    )!;
+    const gen2 = (newWorker.lastPostedMessage as { generation: number }).generation;
 
     const move1 = { card: ph[1]!, position: 0, outcome: Outcome.Win, robustness: 0 };
     const move2 = { card: ph[2]!, position: 1, outcome: Outcome.Draw, robustness: 0 };
-    // stale result from gen1 arrives after gen2 was issued
-    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen1, moves: [move1] } } as MessageEvent);
+    // stale result from gen1 on the old worker's handler — discarded by generation check
+    oldWorker.onmessage!({ data: { type: 'result', generation: gen1, moves: [move1] } } as MessageEvent);
     expect(get(rankedMoves)).toEqual([]);
-    // current generation result arrives
-    lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen2, moves: [move2] } } as MessageEvent);
+    // current generation result arrives on the new worker
+    newWorker.onmessage!({ data: { type: 'result', generation: gen2, moves: [move2] } } as MessageEvent);
     expect(get(rankedMoves)).toHaveLength(1);
     expect(get(rankedMoves)[0]!.outcome).toBe(Outcome.Draw);
   });
@@ -721,6 +725,8 @@ describe('server solver mode', () => {
     { card: { id: 0, top: 5, right: 5, bottom: 5, left: 5, type: CardType.None }, position: 0, outcome: Outcome.Win, robustness: 0.5 },
   ];
 
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     updateSolverMode('wasm');
     updateServerEndpoint('');
@@ -728,7 +734,8 @@ describe('server solver mode', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    // Restore only fetch — vi.unstubAllGlobals() would also remove the Worker stub from setup.ts.
+    vi.stubGlobal('fetch', originalFetch);
     updateSolverMode('wasm');
     updateServerEndpoint('');
   });
@@ -807,6 +814,43 @@ describe('server solver mode', () => {
     expect(body.unknownCardIds).toHaveLength(2);
     expect(body.cardPool).toBeDefined();
     expect(Array.isArray(body.cardPool)).toBe(true);
+  });
+});
+
+describe('solver interruption', () => {
+  function setupAndStartGame() {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    startGame();
+    return get(game).playerHand;
+  }
+
+  it('terminates solver worker when a new solve triggers during in-flight All Open solve', () => {
+    const freshHand = setupAndStartGame();
+    // solverLoading is true — All Open solve is in-flight.
+    expect(get(solverLoading)).toBe(true);
+    const oldSolver = workerInstances[0]!;
+
+    // Play a card → triggers new solve while old solve is in-flight.
+    selectCard(freshHand[0]!);
+    playCard(4);
+
+    expect(oldSolver.terminated).toBe(true);
+  });
+
+  it('creates a new solver worker that receives the solve message after termination', () => {
+    const freshHand = setupAndStartGame();
+    const oldSolver = workerInstances[0]!;
+
+    selectCard(freshHand[0]!);
+    playCard(4);
+
+    // New solver worker should exist and have received the solve message.
+    const newSolver = workerInstances.find(
+      (w) => w !== oldSolver && !w.terminated && w.postedMessages.some((m: any) => m.type === 'solve'),
+    );
+    expect(newSolver).toBeDefined();
+    expect(newSolver!.postedMessages.some((m: any) => m.type === 'solve')).toBe(true);
   });
 });
 
