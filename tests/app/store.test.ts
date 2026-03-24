@@ -952,5 +952,18 @@ describe('solver interruption', () => {
     expect(solver.terminated).toBe(false);
     expect(solver.postedMessages.filter((m: any) => m.type === 'solve')).toHaveLength(2);
   });
+
+  it('does not trigger a redundant solve when selectCard fires without a state change', () => {
+    const freshHand = setupAndStartGame();
+    const solver = workerInstances[0]!;
+    const solveCount = solver.postedMessages.filter((m: any) => m.type === 'solve').length;
+    expect(solveCount).toBe(1);
+
+    // selectCard changes game but NOT history — should not trigger another solve.
+    selectCard(freshHand[0]!);
+
+    const newSolveCount = solver.postedMessages.filter((m: any) => m.type === 'solve').length;
+    expect(newSolveCount).toBe(1);
+  });
 });
 
