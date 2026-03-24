@@ -936,5 +936,21 @@ describe('solver interruption', () => {
     );
     expect(totalNewSims).toBe(50);
   });
+
+  it('does not terminate solver worker when no solve is in-flight', () => {
+    const freshHand = setupAndStartGame();
+    const solver = workerInstances[0]!;
+
+    // Simulate the solver finishing: deliver a result for the current generation.
+    const gen = (solver.lastPostedMessage as any).generation;
+    solver.onmessage!({ data: { type: 'result', generation: gen, moves: [] } } as MessageEvent);
+    expect(get(solverLoading)).toBe(false);
+
+    // Now play a card — should NOT terminate, should reuse the same worker.
+    selectCard(freshHand[0]!);
+    playCard(4);
+    expect(solver.terminated).toBe(false);
+    expect(solver.postedMessages.filter((m: any) => m.type === 'solve')).toHaveLength(2);
+  });
 });
 

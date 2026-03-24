@@ -72,6 +72,11 @@ const POOL_SIZE = Math.min(4, (typeof navigator !== 'undefined' ? navigator.hard
 // Responses with a different generation are stale and discarded.
 let solveGeneration = 0;
 
+// Last GameState passed to triggerSolve. svelte/store's safe_not_equal always returns true for
+// objects, so currentState.subscribe fires on every game update even when history is unchanged
+// (e.g. selectCard). We guard with identity equality to avoid redundant solves.
+let lastSolvedState: GameState | null = null;
+
 function createSolverWorker(): Worker {
   const w = new Worker(WORKER_URL, WORKER_OPTIONS);
   w.onmessage = (e: MessageEvent) => {
@@ -245,8 +250,11 @@ function triggerSolve(state: GameState) {
 // Trigger solve when game state changes; clean up when returning to setup.
 currentState.subscribe((state) => {
   if (state) {
+    if (state === lastSolvedState) return;
+    lastSolvedState = state;
     triggerSolve(state);
   } else {
+    lastSolvedState = null;
     rankedMoves.set([]);
     solverLoading.set(false);
     pimcProgress.set(null);
