@@ -6,6 +6,7 @@ use crate::board::{place_card_mut, undo_place};
 use crate::types::{Card, CardType, GameState, Outcome, Owner, RankedMove};
 
 // Assigns a unique integer to each card based on its values and type for within-hand deduplication.
+// Duplicate cards in one hand are illegal in-game, but this dedup is cheap and aids testing.
 fn stats_key(c: &Card) -> u32 {
     let type_idx: u32 = match c.card_type {
         CardType::None    => 0,
