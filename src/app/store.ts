@@ -64,30 +64,32 @@ export const serverEndpoint = writable<string>('');
 
 const PIMC_ITERATIONS = 50;
 
-const solverWorker = new Worker(
-  new URL('../engine/solver-wasm.worker.ts', import.meta.url),
-  { type: 'module' },
-);
+const WORKER_URL = new URL('../engine/solver-wasm.worker.ts', import.meta.url);
+const WORKER_OPTIONS: WorkerOptions = { type: 'module' };
+const POOL_SIZE = Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : null) ?? 4);
 
 // Monotonically-increasing counter; each solve request gets a unique generation.
 // Responses with a different generation are stale and discarded.
 let solveGeneration = 0;
 
-solverWorker.onmessage = (e: MessageEvent) => {
-  const { type, generation } = e.data;
-  if (generation !== solveGeneration) return;
-  if (type === 'result') {
-    rankedMoves.set(e.data.moves);
+function createSolverWorker(): Worker {
+  const w = new Worker(WORKER_URL, WORKER_OPTIONS);
+  w.onmessage = (e: MessageEvent) => {
+    const { type, generation } = e.data;
+    if (generation !== solveGeneration) return;
+    if (type === 'result') {
+      rankedMoves.set(e.data.moves);
+      solverLoading.set(false);
+      pimcProgress.set(null);
+    }
+  };
+  w.onerror = (e) => {
+    console.error('Solver worker error:', e.message, e);
     solverLoading.set(false);
     pimcProgress.set(null);
-  }
-};
-
-solverWorker.onerror = (e) => {
-  console.error('Solver worker error:', e.message, e);
-  solverLoading.set(false);
-  pimcProgress.set(null);
-};
+  };
+  return w;
+}
 
 // Mutable state for in-progress PIMC batch (reset on each triggerSolve PIMC call).
 let pimcTally = new Map<string, { move: RankedMove; count: number }>();
@@ -123,18 +125,16 @@ function handlePoolMessage(e: MessageEvent) {
   }
 }
 
-// Worker pool for parallel PIMC simulations.
-const pimcWorkerPool: Worker[] = Array.from(
-  { length: Math.min(4, (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : null) ?? 4) },
-  () => {
-    const w = new Worker(
-      new URL('../engine/solver-wasm.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
+function createPimcPool(): Worker[] {
+  return Array.from({ length: POOL_SIZE }, () => {
+    const w = new Worker(WORKER_URL, WORKER_OPTIONS);
     w.onmessage = handlePoolMessage;
     return w;
-  },
-);
+  });
+}
+
+let solverWorker = createSolverWorker();
+let pimcWorkerPool = createPimcPool();
 
 // Send a solve request to the native server. Handles both All Open and Three Open.
 // The server runs PIMC internally with Rayon parallelism; the client only waits for the result.
@@ -409,4 +409,11 @@ export function updateSolverMode(mode: SolverMode): void {
 
 export function updateServerEndpoint(endpoint: string): void {
   serverEndpoint.set(endpoint);
+}
+
+// Resets mutable worker state. Called from test beforeEach to prevent cross-test contamination
+// when tests trigger worker termination and respawn.
+export function _resetWorkersForTesting(): void {
+  solverWorker = createSolverWorker();
+  pimcWorkerPool = createPimcPool();
 }
