@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 export interface MockWorker {
   onmessage: ((e: MessageEvent) => void) | null;
   onerror: ((e: ErrorEvent) => void) | null;
+  terminated: boolean;
   postedMessages: unknown[];
   get lastPostedMessage(): unknown;
 }
@@ -17,13 +18,22 @@ export const workerInstances: MockWorker[] = [];
 // Backward-compat alias: main solver worker (index 0).
 export let lastWorkerInstance: MockWorker | null = null;
 
+export function resetWorkers() {
+  workerInstances.length = 0;
+  lastWorkerInstance = null;
+}
+
 vi.stubGlobal('Worker', class implements MockWorker {
   onmessage: ((e: MessageEvent) => void) | null = null;
   onerror: ((e: ErrorEvent) => void) | null = null;
   postedMessages: unknown[] = [];
   get lastPostedMessage() { return this.postedMessages.at(-1) ?? null; }
-  postMessage(msg: unknown) { this.postedMessages.push(msg); }
-  terminate() {}
+  terminated = false;
+  postMessage(msg: unknown) {
+    if (this.terminated) throw new Error('postMessage called on terminated worker');
+    this.postedMessages.push(msg);
+  }
+  terminate() { this.terminated = true; }
   constructor() {
     workerInstances.push(this as unknown as MockWorker);
     if (workerInstances.length === 1) lastWorkerInstance = this as unknown as MockWorker;
