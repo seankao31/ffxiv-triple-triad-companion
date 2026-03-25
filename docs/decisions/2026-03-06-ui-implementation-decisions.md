@@ -125,3 +125,5 @@ Each move row shows a percentage: **confidence** (PIMC/Three Open) or **robustne
 **Decision:** `store.ts` registers a `solverWorker.onerror` handler that logs the error and calls `solverLoading.set(false)`.
 
 **Why:** Without it, a Worker crash (e.g. `RangeError: Map maximum size exceeded` from V8's hard `Map` limit) is silently swallowed. The UI stays in "Calculating…" indefinitely with no indication that anything went wrong. The `onerror` handler surfaces the crash to the console and resets the loading state so the UI is not permanently blocked.
+
+**Known gap:** The PIMC pool workers (`createPimcPool` in `store.ts`) lack an `onerror` handler. If a pool worker crashes mid-PIMC, `pimcPending` never reaches 0, leaving `solverLoading` stuck at true and the UI permanently in "Calculating…" state. The main solver worker has `onerror`; the pool workers should get one too, likely one that decrements `pimcPending` and checks for batch completion.
