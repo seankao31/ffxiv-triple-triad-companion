@@ -724,6 +724,20 @@ describe('PIMC parallel dispatch', () => {
     newPoolWorkers[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(0); // gen2 has 0 completed, gen1 result was discarded
   });
+
+  it('clears solverLoading when a pool worker crashes via onerror', () => {
+    setupThreeOpen();
+    expect(get(solverLoading)).toBe(true);
+    const poolWorker = workerInstances[1]!;
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    poolWorker.onerror!({ message: 'out of memory' } as ErrorEvent);
+
+    expect(get(solverLoading)).toBe(false);
+    expect(get(pimcProgress)).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith('PIMC worker error:', 'out of memory', expect.anything());
+    errorSpy.mockRestore();
+  });
 });
 
 describe('server solver mode', () => {

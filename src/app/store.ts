@@ -134,6 +134,11 @@ function createPimcPool(): Worker[] {
   return Array.from({ length: POOL_SIZE }, () => {
     const w = new Worker(WORKER_URL, WORKER_OPTIONS);
     w.onmessage = handlePoolMessage;
+    w.onerror = (e) => {
+      console.error('PIMC worker error:', e.message, e);
+      solverLoading.set(false);
+      pimcProgress.set(null);
+    };
     return w;
   });
 }
