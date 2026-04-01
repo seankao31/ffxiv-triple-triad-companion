@@ -1091,3 +1091,14 @@ describe("Descension rule", () => {
     expect(state.board[1]?.owner).toBe(Owner.Player);
   });
 });
+
+describe("createCard", () => {
+  it("assigns unique IDs to consecutive cards", () => {
+    const a = createCard(1, 1, 1, 1);
+    const b = createCard(2, 2, 2, 2);
+    const c = createCard(3, 3, 3, 3);
+    expect(a.id).not.toBe(b.id);
+    expect(b.id).not.toBe(c.id);
+    expect(a.id).not.toBe(c.id);
+  });
+});

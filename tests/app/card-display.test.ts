@@ -80,8 +80,13 @@ describe('boardTypeCount', () => {
 describe('cardModifier', () => {
   const noRules = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false };
 
-  it('returns null for CardType.None', () => {
-    const state = emptyState();
+  it('returns null for CardType.None even when None-type cards are on the board', () => {
+    resetCardIds();
+    const none = createCard(5, 5, 5, 5); // CardType.None by default
+    const ph = [none, createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5), createCard(5, 5, 5, 5)];
+    const oh = Array.from({ length: 5 }, () => createCard(5, 5, 5, 5));
+    let state = createInitialState(ph, oh);
+    state = placeCard(state, none, 0);
     expect(cardModifier(CardType.None, state, { ...noRules, ascension: true })).toBeNull();
   });
 
