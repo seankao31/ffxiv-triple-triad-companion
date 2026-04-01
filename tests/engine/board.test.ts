@@ -741,6 +741,18 @@ describe("Reverse rule", () => {
     expect(getScore(state).opponent).toBe(5); // opponent card not captured, still owns it
   });
 
+  it("does not capture when values are equal under Reverse", () => {
+    // Reverse requires strictly less than. Equal values should NOT capture.
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const pCards = [createCard(5, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const oCards = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
+    state = placeCard(state, oCards[0]!, 0); // opponent at pos 0 (bottom=5)
+    state = placeCard(state, pCards[0]!, 3); // player at pos 3 (top=5 attacks bottom=5)
+    // Under Reverse: 5 < 5 is false → no capture
+    expect(state.board[0]?.owner).toBe(Owner.Opponent);
+  });
+
   it("captures when attacker value is strictly less than defender value", () => {
     const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
     const pCards = [createCard(3, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
