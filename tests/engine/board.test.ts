@@ -44,8 +44,8 @@ describe("placeCard", () => {
   test("throws when position is out of range", () => {
     const state = createInitialState([card1, card2], [opponentCard1, opponentCard2]);
 
-    expect(() => placeCard(state, card1, -1)).toThrow();
-    expect(() => placeCard(state, card1, 9)).toThrow();
+    expect(() => placeCard(state, card1, -1)).toThrow("Invalid position: -1");
+    expect(() => placeCard(state, card1, 9)).toThrow("Invalid position: 9");
   });
 });
 
