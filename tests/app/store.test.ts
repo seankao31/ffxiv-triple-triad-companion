@@ -671,6 +671,7 @@ describe('PIMC parallel dispatch', () => {
     expect(get(pimcProgress)).toBeNull();
     expect(get(rankedMoves).length).toBeGreaterThan(0);
     expect(get(rankedMoves)[0]!.confidence).toBeGreaterThan(0);
+    expect(get(rankedMoves)[0]!.confidence).toBeLessThanOrEqual(1);
   });
 
   it('discards stale sim-results from previous generation', () => {
