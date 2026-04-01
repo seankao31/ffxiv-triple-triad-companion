@@ -38,6 +38,29 @@ describe('weightedSample', () => {
     expect(sampled).toHaveLength(1);
     expect(sampled[0]!.top).toBe(5);
   });
+
+  it('favors high-stat cards over low-stat cards', () => {
+    // One strong card (10,10,1,1) vs four weak cards (1,1,1,1).
+    // Non-uniform stats so weight uses top TWO: correct weight = 10+10=20, weak = 1+1=2.
+    // With stats[0]+stats[2] bug: strong = 10+1=11, changing the distribution detectably.
+    // With constant weight bug: uniform 1/5=20%.
+    // Correct P(strong) ≈ 20/(20+8) = 71.4%. Both mutations drop below 63%.
+    const strong = makePIMCCard(10, 10, 1, 1);
+    const pool: PIMCCard[] = [
+      strong,
+      makePIMCCard(1, 1, 1, 1),
+      makePIMCCard(1, 1, 1, 1),
+      makePIMCCard(1, 1, 1, 1),
+      makePIMCCard(1, 1, 1, 1),
+    ];
+    let strongCount = 0;
+    const trials = 5000;
+    for (let i = 0; i < trials; i++) {
+      const sampled = weightedSample(pool, 1);
+      if (sampled[0]!.top === 10) strongCount++;
+    }
+    expect(strongCount).toBeGreaterThan(trials * 0.63);
+  });
 });
 
 describe('buildCandidatePool', () => {
