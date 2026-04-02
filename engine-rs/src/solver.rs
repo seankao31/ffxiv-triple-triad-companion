@@ -455,9 +455,20 @@ mod tests {
         let moves = find_best_move(&state);
         assert_eq!(moves.len(), 12);
         let tier = |s: u8| if s > 5 { 0u8 } else if s == 5 { 1 } else { 2 };
+        // Non-decreasing tier order (existing invariant)
         for i in 1..moves.len() {
             assert!(tier(moves[i].score) >= tier(moves[i - 1].score));
         }
+        // Tier boundaries: verify exact counts, not just ordering.
+        // This game state produces 3 wins, 8 draws, 1 loss.
+        let win_count = moves.iter().filter(|m| m.score > 5).count();
+        let draw_count = moves.iter().filter(|m| m.score == 5).count();
+        let loss_count = moves.iter().filter(|m| m.score < 5).count();
+        assert_eq!(win_count, 3, "Expected 3 wins");
+        assert_eq!(draw_count, 8, "Expected 8 draws");
+        assert_eq!(loss_count, 1, "Expected 1 loss");
+        // First non-win must be a draw, not another win (catches >= 5 tier mutation)
+        assert_eq!(tier(moves[win_count].score), 1, "First move after wins should be a draw");
     }
 
     // ---- tie-breaking ----
