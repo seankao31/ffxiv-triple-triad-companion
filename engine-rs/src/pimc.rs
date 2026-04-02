@@ -102,7 +102,7 @@ fn pimc_card_type(s: &str) -> CardType {
 }
 
 /// Run PIMC: for each simulation, sample replacement cards for unknown slots,
-/// run minimax on the fully-resolved world, record the top move.
+/// run negamax on the fully-resolved world, record the top move.
 /// Aggregates results as confidence = fraction of simulations where each move was best.
 ///
 /// `unknown_ids`: game-session IDs of placeholder cards in `state.opponent_hand`.
@@ -333,9 +333,9 @@ mod tests {
     }
 
     #[test]
-    fn run_pimc_with_no_unknowns_falls_back_to_minimax() {
+    fn run_pimc_with_no_unknowns_falls_back_to_negamax() {
         let state = state_with_one_unknown();
         let results = run_pimc(&state, &[], &[], 1, 2, 10);
-        assert!(!results.is_empty(), "fallback minimax should return moves");
+        assert!(!results.is_empty(), "fallback negamax should return moves");
     }
 }

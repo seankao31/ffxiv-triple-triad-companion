@@ -1,5 +1,5 @@
 // ABOUTME: Native Axum HTTP server binary for high-performance solver access.
-// ABOUTME: Exposes POST /api/solve — handles both All Open (minimax) and Three Open (PIMC).
+// ABOUTME: Exposes POST /api/solve — handles both All Open (negamax) and Three Open (PIMC).
 
 use axum::{routing::{get, post}, Json, Router};
 use clap::Parser;
@@ -29,7 +29,7 @@ struct NullableGameState {
 }
 
 /// Request body for POST /api/solve.
-/// If `unknown_card_ids` is empty, runs a single minimax solve (All Open).
+/// If `unknown_card_ids` is empty, runs a single negamax solve (All Open).
 /// If non-empty, runs PIMC with `sim_count` parallel simulations (Three Open).
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

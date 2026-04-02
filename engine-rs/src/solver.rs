@@ -1,4 +1,4 @@
-// ABOUTME: Minimax solver with alpha-beta pruning and transposition table.
+// ABOUTME: Negamax solver with alpha-beta pruning and transposition table.
 // ABOUTME: Returns moves ranked by score (higher = better) from the current player's perspective.
 
 use std::collections::HashSet;
@@ -42,17 +42,22 @@ fn board_full(state: &GameState) -> bool {
     state.board.iter().all(|cell| cell.is_some())
 }
 
-// Returns mover_score - 5: positive means the player-to-move is winning.
+// Returns mover_score - 5: positive means the current_turn player is winning.
 // Range: -4 to +4 (scores are 1-9 since 0 and 10 are impossible).
-fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
+fn terminal_value(state: &GameState) -> i32 {
     let (player, opponent) = crate::types::get_score(state);
-    let ef_score = if evaluating_for == Owner::Player { player } else { opponent };
-    ef_score as i32 - 5
+    let mover_score = if state.current_turn == Owner::Player { player } else { opponent };
+    mover_score as i32 - 5
 }
 
 // 4M entries (64MB). Sized to prevent saturation on the 10-distinct-card opening position.
 const TT_SIZE: usize = 1 << 22;
 const EMPTY_KEY: u64 = u64::MAX;
+
+// Domain-appropriate bounds for alpha-beta. Using i32::MIN/MAX causes overflow on negation.
+// Score range is -4..+4, so -10/+10 are safely outside.
+const NEG_INF: i32 = -10;
+const POS_INF: i32 = 10;
 
 #[derive(Clone, Copy)]
 enum TTFlag {
@@ -79,10 +84,10 @@ struct TTSlot {
     depth: u8,
 }
 
-// Returns score differential (mover_score - 5) from evaluating_for's perspective.
-fn minimax(
+// Returns value from the mover's perspective (positive = good for mover).
+// Range: -4 to +4 (score - 5, where score is 1-9).
+fn negamax(
     state: &mut GameState,
-    evaluating_for: Owner,
     mut alpha: i32,
     mut beta: i32,
     tt: &mut Vec<TTSlot>,
@@ -95,7 +100,7 @@ fn minimax(
     };
 
     if hand_len == 0 || board_full(state) {
-        return terminal_value(state, evaluating_for);
+        return terminal_value(state);
     }
 
     let key = hash_state(state);
@@ -123,12 +128,9 @@ fn minimax(
         if alpha >= beta { return entry.value; }
     }
 
-    let is_maximizing = state.current_turn == evaluating_for;
     let orig_alpha = alpha;
-    let orig_beta = beta;
-    let mut best_value = if is_maximizing { i32::MIN } else { i32::MAX };
+    let mut best_value = NEG_INF;
 
-    // Clone hand to avoid borrow conflicts during mutation
     let hand_cards: Vec<Card> = if state.current_turn == Owner::Player {
         state.player_hand.clone()
     } else {
@@ -145,29 +147,22 @@ fn minimax(
             if state.board[i].is_some() { continue; }
 
             let undo = place_card_mut(state, *card, i);
-            let value = minimax(state, evaluating_for, alpha, beta, tt, occupied);
+            let value = -negamax(state, -beta, -alpha, tt, occupied);
             undo_place(state, undo);
 
-            if is_maximizing {
-                if value > best_value { best_value = value; }
-                if value > alpha { alpha = value; }
-            } else {
-                if value < best_value { best_value = value; }
-                if value < beta { beta = value; }
-            }
+            if value > best_value { best_value = value; }
+            if value > alpha { alpha = value; }
             if alpha >= beta { break 'outer; }
         }
     }
 
-    // Determine bound type based on whether alpha-beta narrowed the window
-    let flag = if is_maximizing {
-        if best_value <= orig_alpha { TTFlag::UpperBound }
-        else if best_value >= beta  { TTFlag::LowerBound }
-        else                        { TTFlag::Exact }
+    // TTFlag: always maximizing, so standard alpha-beta flag logic.
+    let flag = if best_value <= orig_alpha {
+        TTFlag::UpperBound
+    } else if best_value >= beta {
+        TTFlag::LowerBound
     } else {
-        if best_value >= orig_beta  { TTFlag::LowerBound }
-        else if best_value <= alpha { TTFlag::UpperBound }
-        else                        { TTFlag::Exact }
+        TTFlag::Exact
     };
 
     let incoming_depth = (state.player_hand.len() + state.opponent_hand.len()) as u8;
@@ -194,11 +189,9 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
         return vec![];
     }
 
-    // All minimax calls use Owner::Player as evaluating_for so TT values are always from
-    // Player's perspective. This makes TT entries safe to reuse across turns even when
-    // the persistent solver is in use (current_turn flips each turn, but stored values
-    // never change meaning).
-    let current_is_player = state.current_turn == Owner::Player;
+    // negamax values are from the mover's perspective. TT entries are keyed by hash_state
+    // which includes current_turn, so entries for Player-to-move and Opponent-to-move
+    // never collide. The persistent Solver's TT reuse across turns is safe.
 
     // Clone hand before first pass to avoid borrow conflicts during mutation
     let hand_cards: Vec<Card> = if state.current_turn == Owner::Player {
@@ -207,7 +200,7 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
         state.opponent_hand.clone()
     };
 
-    // First pass: evaluate all moves with minimax
+    // First pass: evaluate all moves with negamax
     let mut evaluated: Vec<(Card, usize, i32)> = Vec::new();
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
@@ -218,7 +211,7 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
         for i in 0..9usize {
             if state.board[i].is_some() { continue; }
             let undo = place_card_mut(state, *card, i);
-            let value = minimax(state, Owner::Player, i32::MIN, i32::MAX, tt, occupied);
+            let value = -negamax(state, NEG_INF, POS_INF, tt, occupied);
             undo_place(state, undo);
             evaluated.push((*card, i, value));
         }
@@ -246,28 +239,24 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
                     if state.board[i].is_some() { continue; }
                     total_responses += 1;
                     let inner_undo = place_card_mut(state, *opp_card, i);
+                    // 2 plies from root = root mover's turn. negamax returns from
+                    // root mover's perspective directly, no negation needed.
                     let response_value =
-                        minimax(state, Owner::Player, i32::MIN, i32::MAX, tt, occupied);
+                        negamax(state, NEG_INF, POS_INF, tt, occupied);
                     undo_place(state, inner_undo);
                     // Compare outcome tiers, not raw scores.
-                    // value and response_value are both from Player's perspective.
-                    // "Better for current player" = higher tier from their perspective.
-                    let tier = |v: i32, is_player: bool| {
-                        let eff = if is_player { v } else { -v };
-                        if eff > 0 { 0u8 } else if eff == 0 { 1 } else { 2 }
-                    };
-                    let move_tier = tier(value, current_is_player);
-                    let resp_tier = tier(response_value, current_is_player);
+                    // Both values are from root mover's perspective.
+                    let tier = |v: i32| if v > 0 { 0u8 } else if v == 0 { 1 } else { 2 };
+                    let move_tier = tier(value);
+                    let resp_tier = tier(response_value);
                     if resp_tier < move_tier { better_outcome_count += 1; }
                 }
             }
 
             undo_place(state, undo);
 
-            // value is from Player's perspective; flip when it's Opponent's turn.
-            let effective_value = if current_is_player { value } else { -value };
-            // Convert from differential (mover_score - 5) back to raw score (1-9).
-            let score = (effective_value + 5) as u8;
+            // value is from root mover's perspective; convert from differential to raw score (1-9).
+            let score = (value + 5) as u8;
             let robustness = if total_responses > 0 {
                 better_outcome_count as f64 / total_responses as f64
             } else {
