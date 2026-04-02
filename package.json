@@ -10,7 +10,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test:engine": "bun test tests/engine",
     "test:app": "bunx vitest run",
-    "test": "bun run test:engine && bun run test:app"
+    "test": "bun run test:engine && bun run test:app",
+    "bench:wasm": "bun test tests/bench"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
