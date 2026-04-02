@@ -499,6 +499,54 @@ mod tests {
     }
 
     #[test]
+    fn draw_robustness_nonzero_when_opponent_can_blunder_into_win() {
+        // Reuses the same board as prefers_draw_move_with_more_opponent_mistakes.
+        // Both moves are draws, but the opponent can blunder (play weak card at the
+        // wrong spot) and give us a win. Robustness must be > 0 for draws.
+        // This catches the mutation v > 0 → v >= 0 in the robustness tier function,
+        // which would collapse draws into the "win" tier and make robustness = 0.
+        reset_card_ids();
+        let filler    = create_card(1,  1,  1, 1, CardType::None);
+        let pos4_card = create_card(1,  1, 10, 1, CardType::None);
+        let p_card    = create_card(10, 10, 1, 10, CardType::None);
+        let o1        = create_card(1,  1,  1, 1, CardType::None);
+        let o2        = create_card(10, 10, 10, 10, CardType::None);
+
+        let board: Board = [
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            Some(PlacedCard { card: pos4_card, owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Player   }),
+            Some(PlacedCard { card: filler,    owner: Owner::Opponent }),
+            None,
+            None,
+        ];
+
+        let state = GameState {
+            board,
+            player_hand: vec![p_card],
+            opponent_hand: vec![o1, o2],
+            current_turn: Owner::Player,
+            rules: no_rules(),
+        };
+
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 2);
+        assert!(moves.iter().all(|m| m.score == 5), "Expected all draws");
+        // Position 7 lets the opponent blunder (play weak card o1) giving us a win;
+        // robustness must be > 0. Position 8 has no such blunder opportunity, so
+        // robustness is 0. This catches the mutation v > 0 → v >= 0 in the tier
+        // function, which would treat draws as wins and collapse robustness to 0.
+        let pos7 = moves.iter().find(|m| m.position == 7)
+            .expect("Expected move at position 7");
+        assert!(pos7.robustness > 0.0,
+            "Draw at pos 7 should have non-zero robustness (opponent can blunder), got {}",
+            pos7.robustness);
+    }
+
+    #[test]
     fn prefers_moves_with_higher_robustness() {
         reset_card_ids();
         let p: Vec<Card> = (0..5u8).map(|v| create_card(10 - v, 10 - v, 10 - v, 10 - v, CardType::None)).collect();
