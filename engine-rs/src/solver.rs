@@ -104,6 +104,8 @@ fn negamax(
     }
 
     let key = hash_state(state);
+    // Apply Fibonacci mixing before masking to distribute the polynomial hash uniformly.
+    // hash_state uses base-32 encoding so low bits alone would cluster mid-game positions.
     let tt_idx = (key.wrapping_mul(0x9e3779b97f4a7c15) >> (64 - TT_SIZE.trailing_zeros())) as usize;
     let cached_slot = tt[tt_idx];
     let cached = if cached_slot.key == key {
