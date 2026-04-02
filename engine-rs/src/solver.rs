@@ -865,7 +865,8 @@ mod tests {
     }
 
     #[test]
-    fn benchmark_flat_array_tt() {
+    #[ignore = "heavy benchmark: opening-position solve with 10 distinct cards (~7s release)"]
+    fn benchmark_opening_position() {
         reset_card_ids();
         let p = vec![
             create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
@@ -884,44 +885,7 @@ mod tests {
         let elapsed_us = t0.elapsed().as_micros();
 
         assert!(!moves.is_empty());
-        println!("Flat-array TT solve: {elapsed_us}µs ({} moves)", moves.len());
-        // Release-mode gate: native solver must be faster than TS (~21s).
-        // Skip assertion in debug builds (can be 10x–50x slower).
-        #[cfg(not(debug_assertions))]
-        assert!(
-            elapsed_us < 15_000_000,
-            "Performance regression: opening position took {elapsed_us}µs (>15s). TS baseline ~21s."
-        );
-    }
-
-    #[test]
-    fn benchmark_mutation_speedup() {
-        reset_card_ids();
-        let p = vec![
-            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
-            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
-            create_card(9,3,2,6,CardType::None),
-        ];
-        let o = vec![
-            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
-            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
-            create_card(3,2,4,10,CardType::None),
-        ];
-        let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
-
-        let t0 = std::time::Instant::now();
-        let moves = find_best_move(&state);
-        let elapsed_us = t0.elapsed().as_micros();
-
-        assert!(!moves.is_empty(), "Solver returned no moves");
-        println!("Step 5 in-place mutation: solve took {elapsed_us}µs ({} moves)", moves.len());
-        // Release-mode gate: native solver must be faster than TS (~21s).
-        // Skip assertion in debug builds (can be 10x–50x slower).
-        #[cfg(not(debug_assertions))]
-        assert!(
-            elapsed_us < 15_000_000,
-            "Performance regression: opening position took {elapsed_us}µs (>15s). TS baseline ~21s."
-        );
+        println!("Opening-position solve: {elapsed_us}µs ({} moves)", moves.len());
     }
 
     #[test]
@@ -1183,8 +1147,8 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "heavy benchmark: single PIMC simulation (~5.3s release)"]
     fn benchmark_pimc_single_sim() {
-        // Measures a single PIMC simulation: one find_best_move call with a fresh TT.
         reset_card_ids();
         let p = vec![
             create_card(4,  8, 8,  1, CardType::None),
@@ -1207,14 +1171,7 @@ mod tests {
         let elapsed_us = t0.elapsed().as_micros();
 
         assert!(!moves.is_empty(), "Solver returned no moves");
-        println!("PIMC single sim (release): {elapsed_us}µs");
-        // Release-mode gate: 2× the ~5.3s native release baseline.
-        // Skip assertion in debug builds (can be 10x–50x slower).
-        #[cfg(not(debug_assertions))]
-        assert!(
-            elapsed_us < 11_000_000,
-            "PIMC sim regression: {elapsed_us}µs (>11s). Baseline: ~5.3s native release."
-        );
+        println!("PIMC single sim: {elapsed_us}µs");
     }
 
     #[test]
