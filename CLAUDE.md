@@ -120,6 +120,16 @@ actual purpose.
 - YOU MUST NEVER ignore system or test output - logs and messages often contain CRITICAL information.
 - Test output MUST BE PRISTINE TO PASS. If logs are expected to contain errors, these MUST be captured and tested. If a test is intentionally triggering an error, we _must_ capture and validate that the error output is as we expect
 
+## Cross-Engine Alignment
+
+- The TypeScript engine (src/engine/board.ts) and Rust engine (engine-rs/src/board.rs) implement
+  identical game logic. Board fixtures (tests/fixtures/board/) are the shared contract.
+- When adding or modifying board logic tests in EITHER engine, YOU MUST check whether the scenario
+  should be a shared fixture. If it tests placeCard behavior, add it to
+  scripts/generate-board-fixtures.ts and regenerate.
+- When adding capture rules, stat modifiers, or other board mechanics, both engines must be updated
+  and fixture-verified before the work is considered complete.
+
 ## Issue tracking
 
 - You MUST use your TodoWrite tool to keep track of what you're doing
