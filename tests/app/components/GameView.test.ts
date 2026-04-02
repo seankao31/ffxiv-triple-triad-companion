@@ -5,7 +5,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { game, startGame, selectCard, playCard, currentState, rankedMoves, resetGame } from '../../../src/app/store';
 import GameView from '../../../src/app/components/game/GameView.svelte';
-import { createCard, Owner, Outcome, type Card, type RankedMove } from '../../../src/engine';
+import { createCard, Owner, type Card, type RankedMove } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -17,7 +17,7 @@ function makeOpponentHand() {
 
 function makeAllMoves(hand: readonly Card[]): RankedMove[] {
   return hand.flatMap((card) =>
-    Array.from({ length: 9 }, (_, position) => ({ card, position, outcome: Outcome.Win, robustness: 1 }))
+    Array.from({ length: 9 }, (_, position) => ({ card, position, score: 7, robustness: 1 }))
   );
 }
 

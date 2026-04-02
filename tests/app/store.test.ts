@@ -10,7 +10,7 @@ import {
   updateSolverMode, updateServerEndpoint,
   _resetWorkersForTesting,
 } from '../../src/app/store';
-import { createCard, CardType, Owner, Outcome, resetCardIds, type RankedMove } from '../../src/engine';
+import { createCard, CardType, Owner, resetCardIds, type RankedMove } from '../../src/engine';
 import { lastWorkerInstance, workerInstances, resetWorkers } from './setup';
 
 function makePlayerHand() {
@@ -344,7 +344,7 @@ describe('generation counter', () => {
     oh.forEach((c, i) => updateOpponentCard(i, c));
     startGame();
     const gen = currentGeneration();
-    const move = { card: ph[0]!, position: 0, outcome: Outcome.Win, robustness: 0 };
+    const move = { card: ph[0]!, position: 0, score: 7, robustness: 0 };
     // simulate stale result (previous generation)
     lastWorkerInstance!.onmessage!({ data: { type: 'result', generation: gen - 1, moves: [move] } } as MessageEvent);
     expect(get(rankedMoves)).toEqual([]);
@@ -372,15 +372,15 @@ describe('generation counter', () => {
     )!;
     const gen2 = (newWorker.lastPostedMessage as { generation: number }).generation;
 
-    const move1 = { card: ph[1]!, position: 0, outcome: Outcome.Win, robustness: 0 };
-    const move2 = { card: ph[2]!, position: 1, outcome: Outcome.Draw, robustness: 0 };
+    const move1 = { card: ph[1]!, position: 0, score: 7, robustness: 0 };
+    const move2 = { card: ph[2]!, position: 1, score: 5, robustness: 0 };
     // stale result from gen1 on the old worker's handler — discarded by generation check
     oldWorker.onmessage!({ data: { type: 'result', generation: gen1, moves: [move1] } } as MessageEvent);
     expect(get(rankedMoves)).toEqual([]);
     // current generation result arrives on the new worker
     newWorker.onmessage!({ data: { type: 'result', generation: gen2, moves: [move2] } } as MessageEvent);
     expect(get(rankedMoves)).toHaveLength(1);
-    expect(get(rankedMoves)[0]!.outcome).toBe(Outcome.Draw);
+    expect(get(rankedMoves)[0]!.score).toBe(5);
   });
 });
 
@@ -632,7 +632,7 @@ describe('PIMC parallel dispatch', () => {
     poolWorker.onmessage!({
       data: {
         type: 'sim-result',
-        move: { card, position: 0, outcome: Outcome.Win, robustness: 1 },
+        move: { card, position: 0, score: 7, robustness: 1 },
         generation: simMsg.generation,
         simIndex: 0,
       },
@@ -659,7 +659,7 @@ describe('PIMC parallel dispatch', () => {
         w.onmessage!({
           data: {
             type: 'sim-result',
-            move: { card, position: msg.simIndex % 9, outcome: Outcome.Win, robustness: 1 },
+            move: { card, position: msg.simIndex % 9, score: 7, robustness: 1 },
             generation: gen,
             simIndex: msg.simIndex,
           },
@@ -684,7 +684,7 @@ describe('PIMC parallel dispatch', () => {
     poolWorker.onmessage!({
       data: {
         type: 'sim-result',
-        move: { card, position: 0, outcome: Outcome.Win, robustness: 1 },
+        move: { card, position: 0, score: 7, robustness: 1 },
         generation: staleGen,
         simIndex: 0,
       },
@@ -704,7 +704,7 @@ describe('PIMC parallel dispatch', () => {
     const card = createCard(5, 5, 5, 5);
 
     // Deliver one result for gen1
-    oldPool[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 0 } } as MessageEvent);
+    oldPool[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, score: 7, robustness: 1 }, generation: gen1, simIndex: 0 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(1);
 
     // Bump generation by pushing a new state to history (triggers triggerSolve via currentState).
@@ -722,7 +722,7 @@ describe('PIMC parallel dispatch', () => {
     expect(gen2).toBeGreaterThan(gen1);
 
     // Late gen1 result arrives on a new worker — must be discarded, gen2 pimcProgress must show 0 completed
-    newPoolWorkers[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, outcome: Outcome.Win, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
+    newPoolWorkers[0]!.onmessage!({ data: { type: 'sim-result', move: { card, position: 0, score: 7, robustness: 1 }, generation: gen1, simIndex: 1 } } as MessageEvent);
     expect(get(pimcProgress)!.current).toBe(0); // gen2 has 0 completed, gen1 result was discarded
   });
 
@@ -743,7 +743,7 @@ describe('PIMC parallel dispatch', () => {
 
 describe('server solver mode', () => {
   const mockMoves: RankedMove[] = [
-    { card: { id: 0, top: 5, right: 5, bottom: 5, left: 5, type: CardType.None }, position: 0, outcome: Outcome.Win, robustness: 0.5 },
+    { card: { id: 0, top: 5, right: 5, bottom: 5, left: 5, type: CardType.None }, position: 0, score: 7, robustness: 0.5 },
   ];
 
   const originalFetch = globalThis.fetch;

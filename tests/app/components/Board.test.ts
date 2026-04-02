@@ -5,13 +5,13 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { game, startGame, selectCard, rankedMoves, currentState } from '../../../src/app/store';
 import Board from '../../../src/app/components/game/Board.svelte';
-import { createCard, Owner, Outcome, type Card, type RankedMove } from '../../../src/engine';
+import { createCard, Owner, type Card, type RankedMove } from '../../../src/engine';
 
 // Constructs all 45 ranked moves (5 cards × 9 positions) as wins, mirroring what the solver
 // returns for all-10s vs all-1s hands. Used to populate rankedMoves without invoking the solver.
 function makeAllMoves(hand: readonly Card[]): RankedMove[] {
   return hand.flatMap((card) =>
-    Array.from({ length: 9 }, (_, position) => ({ card, position, outcome: Outcome.Win, robustness: 1 }))
+    Array.from({ length: 9 }, (_, position) => ({ card, position, score: 7, robustness: 1 }))
   );
 }
 

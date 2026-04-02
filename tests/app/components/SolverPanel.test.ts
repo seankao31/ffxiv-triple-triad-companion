@@ -5,13 +5,13 @@ import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
 import { game, startGame, currentState, selectCard, playCard, rankedMoves, solverLoading, pimcProgress } from '../../../src/app/store';
 import SolverPanel from '../../../src/app/components/game/SolverPanel.svelte';
-import { createCard, Owner, Outcome, type Card, type RankedMove } from '../../../src/engine';
+import { createCard, Owner, type Card, type RankedMove } from '../../../src/engine';
 
 // Constructs all 45 ranked moves (5 cards × 9 positions) as wins, mirroring what the solver
 // returns for all-10s vs all-1s hands. Used to populate rankedMoves without invoking the solver.
 function makeAllMoves(hand: readonly Card[]): RankedMove[] {
   return hand.flatMap((card) =>
-    Array.from({ length: 9 }, (_, position) => ({ card, position, outcome: Outcome.Win, robustness: 1 }))
+    Array.from({ length: 9 }, (_, position) => ({ card, position, score: 7, robustness: 1 }))
   );
 }
 
@@ -52,8 +52,8 @@ describe('SolverPanel', () => {
   it('shows outcome label once in the header area, not per row', () => {
     const card = createCard(10, 10, 10, 10);
     rankedMoves.set([
-      { card, position: 0, outcome: Outcome.Win, robustness: 0.8 },
-      { card, position: 1, outcome: Outcome.Win, robustness: 0.5 },
+      { card, position: 0, score: 7, robustness: 0.8 },
+      { card, position: 1, score: 7, robustness: 0.5 },
     ]);
     render(SolverPanel);
     const items = screen.getAllByRole('listitem');
@@ -80,10 +80,10 @@ describe('SolverPanel', () => {
   it('shows only moves with the best outcome when outcomes differ', () => {
     const card = createCard(10, 10, 10, 10);
     rankedMoves.set([
-      { card, position: 0, outcome: Outcome.Win, robustness: 0.8 },
-      { card, position: 1, outcome: Outcome.Win, robustness: 0.5 },
-      { card, position: 2, outcome: Outcome.Draw, robustness: 0.3 },
-      { card, position: 3, outcome: Outcome.Loss, robustness: 0.1 },
+      { card, position: 0, score: 7, robustness: 0.8 },
+      { card, position: 1, score: 7, robustness: 0.5 },
+      { card, position: 2, score: 5, robustness: 0.3 },
+      { card, position: 3, score: 3, robustness: 0.1 },
     ]);
     render(SolverPanel);
     expect(screen.getAllByRole('listitem').length).toBe(2);
@@ -128,7 +128,7 @@ describe('SolverPanel', () => {
   it('shows confidence percentage when move has confidence field', () => {
     const card = createCard(10, 10, 10, 10);
     rankedMoves.set([
-      { card, position: 0, outcome: Outcome.Win, robustness: 0, confidence: 0.72 },
+      { card, position: 0, score: 7, robustness: 0, confidence: 0.72 },
     ]);
     render(SolverPanel);
     expect(screen.getByRole('listitem').textContent).toMatch(/72%/);
@@ -138,7 +138,7 @@ describe('SolverPanel', () => {
     const card = createCard(10, 10, 10, 10);
     // Rust Option<f64>::None serializes to JSON null; JSON.parse preserves null (not undefined).
     rankedMoves.set([
-      { card, position: 0, outcome: Outcome.Draw, robustness: 0.5, confidence: null } as unknown as RankedMove,
+      { card, position: 0, score: 5, robustness: 0.5, confidence: null } as unknown as RankedMove,
     ]);
     render(SolverPanel);
     const text = screen.getByRole('listitem').textContent!;
@@ -148,7 +148,7 @@ describe('SolverPanel', () => {
   it('hides robustness for winning moves in All Open mode', () => {
     const card = createCard(10, 10, 10, 10);
     rankedMoves.set([
-      { card, position: 0, outcome: Outcome.Win, robustness: 0, confidence: null } as unknown as RankedMove,
+      { card, position: 0, score: 7, robustness: 0, confidence: null } as unknown as RankedMove,
     ]);
     render(SolverPanel);
     const text = screen.getByRole('listitem').textContent!;
