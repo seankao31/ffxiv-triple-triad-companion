@@ -257,6 +257,36 @@ mod tests {
     }
 
     #[test]
+    fn weighted_sample_favors_high_stat_cards() {
+        // One strong card (10,10,1,1) vs four weak cards (1,1,1,1).
+        // Correct weight: strong = 10+10=20, weak = 1+1=2. P(strong) ≈ 20/28 = 71%.
+        // With wrong-index bug (stats[0]+stats[2]): strong = 10+1=11, distribution shifts.
+        // With constant weight: uniform 20%. Both mutations drop below 63%.
+        let strong = PIMCCard {
+            top: 10, right: 10, bottom: 1, left: 1,
+            ..pimc_card(3, 1)
+        };
+        let pool: Vec<PIMCCard> = std::iter::once(strong)
+            .chain((0..4).map(|_| pimc_card(3, 1)))
+            .collect();
+
+        let mut strong_count = 0u32;
+        let trials = 5000u32;
+        for seed in 0..trials {
+            let mut rng = SmallRng::seed_from_u64(seed as u64);
+            let sampled = weighted_sample(&pool, 1, &mut rng);
+            if sampled[0].top == 10 {
+                strong_count += 1;
+            }
+        }
+        assert!(
+            strong_count > trials * 63 / 100,
+            "strong card should appear in >63% of samples, got {}%",
+            strong_count * 100 / trials
+        );
+    }
+
+    #[test]
     fn weighted_sample_constrained_respects_tier_caps() {
         let mut pool: Vec<PIMCCard> = vec![pimc_card(5, 10), pimc_card(4, 8), pimc_card(4, 7)];
         for _ in 0..10 {

@@ -530,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Invalid position: 9")]
     fn test_place_card_out_of_range_panics() {
         reset_card_ids();
         let card1 = create_card(1, 2, 3, 4, CardType::None);

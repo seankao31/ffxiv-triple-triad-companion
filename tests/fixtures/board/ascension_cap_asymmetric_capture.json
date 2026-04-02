@@ -1,0 +1,247 @@
+{
+  "name": "ascension_cap_asymmetric_capture",
+  "state": {
+    "board": [
+      {
+        "card": {
+          "id": 3,
+          "top": 1,
+          "right": 1,
+          "bottom": 8,
+          "left": 1,
+          "type": "society"
+        },
+        "owner": "opponent"
+      },
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      },
+      null,
+      {
+        "card": {
+          "id": 7,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 5,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 6,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      }
+    ],
+    "playerHand": [
+      {
+        "id": 8,
+        "top": 8,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "primal"
+      },
+      {
+        "id": 9,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 4,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "player",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": true,
+      "descension": false
+    }
+  },
+  "cardId": 8,
+  "position": 3,
+  "expected": {
+    "board": [
+      {
+        "card": {
+          "id": 3,
+          "top": 1,
+          "right": 1,
+          "bottom": 8,
+          "left": 1,
+          "type": "society"
+        },
+        "owner": "player"
+      },
+      null,
+      {
+        "card": {
+          "id": 0,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 8,
+          "top": 8,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 7,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 1,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      },
+      {
+        "card": {
+          "id": 5,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 6,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "scion"
+        },
+        "owner": "player"
+      },
+      {
+        "card": {
+          "id": 2,
+          "top": 1,
+          "right": 1,
+          "bottom": 1,
+          "left": 1,
+          "type": "primal"
+        },
+        "owner": "opponent"
+      }
+    ],
+    "playerHand": [
+      {
+        "id": 9,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "opponentHand": [
+      {
+        "id": 4,
+        "top": 1,
+        "right": 1,
+        "bottom": 1,
+        "left": 1,
+        "type": "none"
+      }
+    ],
+    "currentTurn": "opponent",
+    "rules": {
+      "plus": false,
+      "same": false,
+      "reverse": false,
+      "fallenAce": false,
+      "ascension": true,
+      "descension": false
+    }
+  }
+}

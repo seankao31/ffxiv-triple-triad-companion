@@ -580,9 +580,103 @@ resetCardIds();
   writeFixture("descension_no_effect_non_scion", state, pCards[1]!.id, 4);
 }
 
+// --- Mutation-discovered boundary cases ---
+
+// 25. reverse_equal_does_not_capture (M2)
+resetCardIds();
+{
+  // Equal values must NOT capture under Reverse (strictly less-than required).
+  // Player top=5 vs opp bottom=5. Reverse: 5<5 → false → no capture.
+  const pCards = [
+    createCard(5, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+  ];
+  const oCards = [
+    createCard(1, 1, 5, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+    createCard(1, 1, 1, 1),
+  ];
+  const state = setup(
+    createInitialState(pCards, oCards, Owner.Opponent, reverseRules),
+    [[oCards[0]!, 0]],
+  );
+  writeFixture("reverse_equal_does_not_capture", state, pCards[0]!.id, 3);
+}
+
+// 26. ascension_cap_asymmetric_capture (M6)
+resetCardIds();
+{
+  // Asymmetric cap test: only attacker hits cap=10, defender stays below.
+  // 3 Primal fillers on board. Player Primal top=8 (+3 → min(10,11)=10).
+  // Opp Society bottom=8, 1 Society on board (itself) → 8+1=9.
+  // With cap=10: 10>9 → capture. With cap=9: 9>9 → no capture (mutation leaks).
+  const oCards = [
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 8, 1, CardType.Society),
+    createCard(1, 1, 1, 1),
+  ];
+  const pCards = [
+    createCard(1, 1, 1, 1, CardType.Scion),
+    createCard(1, 1, 1, 1, CardType.Scion),
+    createCard(1, 1, 1, 1, CardType.Scion),
+    createCard(8, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1),
+  ];
+  const state = setup(
+    createInitialState(pCards, oCards, Owner.Opponent, ascRules),
+    [
+      [oCards[0]!, 2], [pCards[0]!, 6],
+      [oCards[1]!, 5], [pCards[1]!, 7],
+      [oCards[2]!, 8], [pCards[2]!, 4],
+      [oCards[3]!, 0],
+    ],
+  );
+  writeFixture("ascension_cap_asymmetric_capture", state, pCards[3]!.id, 3);
+}
+
+// 27. descension_floor_at_one (M7)
+resetCardIds();
+{
+  // Floor test: defender value pushed below 1 gets floored at 1.
+  // 3 Scions on board. Opp Scion bottom=2 (-3 → max(1,-1)=1).
+  // Player Garlean top=1 (0 Garleans on board → 1-0=1). 1>1? No → no capture.
+  // If floor=0: max(0,-1)=0, 1>0 → capture (mutation leaks).
+  const oCards = [
+    createCard(1, 1, 1, 1, CardType.Scion),
+    createCard(1, 1, 1, 1, CardType.Scion),
+    createCard(1, 1, 2, 1, CardType.Scion),
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1),
+  ];
+  const pCards = [
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1, CardType.Primal),
+    createCard(1, 1, 1, 1, CardType.Garlean),
+    createCard(1, 1, 1, 1),
+  ];
+  const state = setup(
+    createInitialState(pCards, oCards, Owner.Opponent, descRules),
+    [
+      [oCards[0]!, 2], [pCards[0]!, 6],
+      [oCards[1]!, 5], [pCards[1]!, 7],
+      [oCards[2]!, 0], [pCards[2]!, 8],
+      [oCards[3]!, 4],
+    ],
+  );
+  writeFixture("descension_floor_at_one", state, pCards[3]!.id, 3);
+}
+
 // --- Combined rules ---
 
-// 25. combined_plus_and_same_simultaneous
+// 28. combined_plus_and_same_simultaneous
 resetCardIds();
 {
   const pCard = createCard(3, 7, 4, 2);
@@ -611,7 +705,7 @@ resetCardIds();
   writeFixture("combined_plus_and_same_simultaneous", state, pCard.id, 4);
 }
 
-// 26. combo_depth_2_chain
+// 29. combo_depth_2_chain
 resetCardIds();
 {
   const pCard = createCard(5, 1, 5, 1);
