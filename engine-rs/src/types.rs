@@ -66,20 +66,12 @@ pub struct GameState {
     pub rules: RuleSet,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Outcome {
-    Win,
-    Draw,
-    Loss,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RankedMove {
     pub card: Card,
     pub position: u8,
-    pub outcome: Outcome,
+    pub score: u8,
     pub robustness: f64,
     pub confidence: Option<f64>,
 }
@@ -279,5 +271,12 @@ mod tests {
         assert_eq!(ADJACENCY[8].len(), 2);
         assert!(ADJACENCY[8].iter().any(|n| n.position == 7 && n.attacking_edge == Edge::Left));
         assert!(ADJACENCY[8].iter().any(|n| n.position == 5 && n.attacking_edge == Edge::Top));
+    }
+
+    #[test]
+    fn ranked_move_has_score_field() {
+        let card = create_card(5, 5, 5, 5, CardType::None);
+        let m = RankedMove { card, position: 0, score: 7, robustness: 0.5, confidence: None };
+        assert_eq!(m.score, 7);
     }
 }
