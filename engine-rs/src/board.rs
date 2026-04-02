@@ -1571,4 +1571,129 @@ mod tests {
         undo_place(&mut state3_mut, undo3);
         assert_eq!(state3_mut, original3, "Case 3: Same rule undo failed");
     }
+
+    #[test]
+    fn undo_restores_card_at_original_hand_index() {
+        // Place the MIDDLE card (index 1 of 3) from the hand.
+        // Undo must reinsert at index 1, not append to the end.
+        reset_card_ids();
+        let card_a = create_card(1, 1, 1, 1, CardType::None);
+        let card_b = create_card(2, 2, 2, 2, CardType::None);
+        let card_c = create_card(3, 3, 3, 3, CardType::None);
+        let o_card = create_card(5, 5, 5, 5, CardType::None);
+        let mut state = create_initial_state(
+            vec![card_a, card_b, card_c],
+            vec![o_card, o_card, o_card],
+            Owner::Player,
+            no_rules(),
+        );
+        let original = state.clone();
+
+        let undo = place_card_mut(&mut state, card_b, 4);
+        // card_b removed: hand should be [card_a, card_c]
+        assert_eq!(state.player_hand.len(), 2);
+        assert_eq!(state.player_hand[0].id, card_a.id);
+        assert_eq!(state.player_hand[1].id, card_c.id);
+
+        undo_place(&mut state, undo);
+        // Hand must be [card_a, card_b, card_c] — not [card_a, card_c, card_b]
+        assert_eq!(state.player_hand.len(), 3);
+        assert_eq!(state.player_hand[0].id, card_a.id);
+        assert_eq!(state.player_hand[1].id, card_b.id);
+        assert_eq!(state.player_hand[2].id, card_c.id);
+        assert_eq!(state, original);
+    }
+
+    #[test]
+    fn undo_restores_turn() {
+        reset_card_ids();
+        let p_card = create_card(5, 5, 5, 5, CardType::None);
+        let o_card = create_card(3, 3, 3, 3, CardType::None);
+        let mut state = create_initial_state(vec![p_card], vec![o_card], Owner::Player, no_rules());
+
+        assert_eq!(state.current_turn, Owner::Player);
+        let undo = place_card_mut(&mut state, p_card, 4);
+        assert_eq!(state.current_turn, Owner::Opponent);
+        undo_place(&mut state, undo);
+        assert_eq!(state.current_turn, Owner::Player);
+    }
+
+    #[test]
+    fn undo_clears_board_cell() {
+        reset_card_ids();
+        let p_card = create_card(5, 5, 5, 5, CardType::None);
+        let o_card = create_card(3, 3, 3, 3, CardType::None);
+        let mut state = create_initial_state(vec![p_card], vec![o_card], Owner::Player, no_rules());
+
+        assert!(state.board[4].is_none());
+        let undo = place_card_mut(&mut state, p_card, 4);
+        assert!(state.board[4].is_some());
+        undo_place(&mut state, undo);
+        assert!(state.board[4].is_none());
+    }
+
+    #[test]
+    fn undo_with_no_captures() {
+        // Place a card with no adjacent opponents. Undo should restore cleanly.
+        reset_card_ids();
+        let p_card = create_card(5, 5, 5, 5, CardType::None);
+        let o_card = create_card(3, 3, 3, 3, CardType::None);
+        let mut state = create_initial_state(
+            vec![p_card],
+            vec![o_card],
+            Owner::Player,
+            no_rules(),
+        );
+        let original = state.clone();
+
+        let undo = place_card_mut(&mut state, p_card, 0);
+        assert!(undo.flipped.is_empty(), "no captures should mean no flips");
+        undo_place(&mut state, undo);
+        assert_eq!(state, original);
+    }
+
+    #[test]
+    fn undo_combo_cascade_restores_all_owners() {
+        // Same rule triggers at pos 4, flipping pos 1 and pos 3.
+        // Combo cascade from pos 1 then captures pos 0 via standard capture.
+        // Undo must restore owners of pos 0, pos 1, and pos 3.
+        reset_card_ids();
+        let opp0 = create_card(1, 1, 1, 1, CardType::None); // pos 0: will be combo-captured from pos 1
+        let opp1 = create_card(1, 1, 7, 9, CardType::None);  // pos 1: Same-flipped, then combo-attacks pos 0 (left=9 vs opp0 right=1)
+        let opp3 = create_card(1, 3, 1, 1, CardType::None);  // pos 3: Same-flipped
+        let plr4 = create_card(7, 1, 1, 3, CardType::None);  // pos 4: triggers Same (top=7 vs opp1 bottom=7, left=3 vs opp3 right=3)
+        let filler = create_card(1, 1, 1, 1, CardType::None);
+        let mut state = create_initial_state(
+            vec![filler, filler, plr4, filler, filler],
+            vec![opp0, opp1, opp3, filler, filler],
+            Owner::Player,
+            same_rules(),
+        );
+        // Set up board: place fillers and opponent cards
+        state = place_card(&state, filler, 8);
+        state = place_card(&state, opp0, 0);
+        state = place_card(&state, filler, 6);
+        state = place_card(&state, opp1, 1);
+        state = place_card(&state, filler, 2);
+        state = place_card(&state, opp3, 3);
+        // Now it's Player's turn, place plr4 at pos 4
+        let original = state.clone();
+        let mut state_mut = state.clone();
+
+        let undo = place_card_mut(&mut state_mut, plr4, 4);
+
+        // Verify captures happened: pos 1, 3 (Same) and pos 0 (combo)
+        assert_eq!(state_mut.board[1].unwrap().owner, Owner::Player, "pos 1 should be captured by Same");
+        assert_eq!(state_mut.board[3].unwrap().owner, Owner::Player, "pos 3 should be captured by Same");
+        assert_eq!(state_mut.board[0].unwrap().owner, Owner::Player, "pos 0 should be captured by combo cascade");
+        // Undo record should have 3 flips
+        assert_eq!(undo.flipped.len(), 3, "should record 3 ownership changes");
+
+        undo_place(&mut state_mut, undo);
+        // All owners must be restored
+        assert_eq!(state_mut.board[0].unwrap().owner, Owner::Opponent, "pos 0 owner not restored");
+        assert_eq!(state_mut.board[1].unwrap().owner, Owner::Opponent, "pos 1 owner not restored");
+        assert_eq!(state_mut.board[3].unwrap().owner, Owner::Opponent, "pos 3 owner not restored");
+        assert_eq!(state_mut, original, "full state not restored after combo undo");
+    }
 }
