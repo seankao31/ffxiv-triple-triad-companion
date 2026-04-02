@@ -170,7 +170,7 @@ describe('WASM solver', () => {
     const perSimMs = totalMs / 50;
 
     console.log(`PIMC benchmark: 50 sims in ${totalMs.toFixed(1)}ms (${perSimMs.toFixed(1)}ms/sim)`);
-    // Each WASM sim is a full minimax solve from opening position with a fresh TT.
+    // Each WASM sim is a full negamax solve from opening position with a fresh TT.
     // Baseline: ~5524ms/sim (release WASM). Threshold: 16572ms to catch regressions.
     expect(perSimMs).toBeLessThan(16572);
   }, 600_000);
@@ -231,7 +231,7 @@ describe('WASM solver', () => {
   });
 
   it('WasmSolver: TT is populated after solve() and empty after reset()', () => {
-    // Use a mid-game state (5-7 cells filled) so minimax recurses and writes TT entries.
+    // Use a mid-game state (5-7 cells filled) so negamax recurses and writes TT entries.
     const stateJson = JSON.stringify(generateState(makeLCG(42)));
 
     const solver = new WasmSolver();

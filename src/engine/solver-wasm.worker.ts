@@ -1,4 +1,4 @@
-// ABOUTME: Web Worker entry point for the WASM-backed minimax solver.
+// ABOUTME: Web Worker entry point for the WASM-backed negamax solver.
 // ABOUTME: Handles All Open solves and Three Open PIMC simulations via the Rust/WASM engine.
 import init, { WasmSolver, wasm_simulate } from '../../engine-rs/pkg/engine_rs.js';
 import {

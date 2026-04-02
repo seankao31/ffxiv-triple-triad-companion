@@ -54,7 +54,7 @@ impl WasmSolver {
 }
 
 /// WASM PIMC entry point: accepts a JSON-serialized fully-resolved GameState,
-/// runs one minimax simulation with a fresh TT, returns the top RankedMove as JSON (or "null").
+/// runs one negamax simulation with a fresh TT, returns the top RankedMove as JSON (or "null").
 #[wasm_bindgen]
 pub fn wasm_simulate(state_json: &str) -> String {
     let state: types::GameState = serde_json::from_str(state_json)
