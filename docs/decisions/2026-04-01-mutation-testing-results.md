@@ -169,3 +169,26 @@ through store interactions; `bun test` is the authoritative engine coverage.
 4. **Empty-state tests miss guard interactions.** When multiple guards exist in
    sequence, a test that triggers an early guard (like `count === 0`) won't detect
    removal of an earlier guard (like `!typeAbbrev[cardType]`).
+
+---
+
+## Cross-Engine Gap Closure (2026-04-02)
+
+The mutation testing targeted the TypeScript engine only. A follow-up analysis
+found that 5 of the 6 board/pimc gaps (M2, M6, M7, M14, M25/M26) had identical
+vulnerabilities in the Rust engine's tests.
+
+**Fixtures added** (shared JSON, tested by both TS and Rust):
+- `reverse_equal_does_not_capture` (M2)
+- `ascension_cap_asymmetric_capture` (M6)
+- `descension_floor_at_one` (M7)
+
+**Rust-specific tests added:**
+- `#[should_panic(expected = "Invalid position: 9")]` (M14)
+- `weighted_sample_favors_high_stat_cards` — 5000-trial statistical test (M25/M26)
+
+**`place_card_mut`/`undo_place` coverage** — identified as a Rust-only code path
+with 1 test (3 scenarios) vs. 38 tests for the immutable `place_card`. Fixed:
+- All 29 board fixtures now run through `place_card_mut` + `undo_place`
+- 5 targeted undo mechanics tests: card reinsertion index, turn restoration,
+  board cell clearing, no-capture path, combo cascade owner restoration
