@@ -1,5 +1,7 @@
 # Scoring and Sorting Analysis
 
+**Status:** All recommendations addressed (see commits 1df5c29–8d27f6e).
+
 Analysis of how move scoring and sort order are tested across the Rust solver,
 WASM boundary, and UI layers. Includes mutation-style edge case probing.
 
