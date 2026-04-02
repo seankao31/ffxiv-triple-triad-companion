@@ -12,7 +12,7 @@ const FIXTURES_DIR = join(import.meta.dir, '../../tests/fixtures/solver');
 interface ExpectedMove {
   cardId: number;
   position: number;
-  outcome: string;
+  score: number;
   robustness: number;
 }
 
@@ -22,7 +22,7 @@ interface Fixture {
   expected: ExpectedMove[];
 }
 
-type WasmMove = { card: { id: number }; position: number; outcome: string; robustness: number };
+type WasmMove = { card: { id: number }; position: number; score: number; robustness: number };
 
 interface WasmSolverClass {
   new(): WasmSolverInstance;
@@ -124,7 +124,7 @@ describe('WASM solver', () => {
     it(file.replace('.json', ''), () => {
       const fixture: Fixture = JSON.parse(readFileSync(join(FIXTURES_DIR, file), 'utf-8'));
       const resultJson = wasm_solve(JSON.stringify(fixture.state));
-      const result: Array<{ card: { id: number }; position: number; outcome: string; robustness: number }> = JSON.parse(resultJson);
+      const result: Array<{ card: { id: number }; position: number; score: number; robustness: number }> = JSON.parse(resultJson);
 
       expect(result.length).toBe(fixture.expected.length);
       for (let i = 0; i < fixture.expected.length; i++) {
@@ -132,7 +132,7 @@ describe('WASM solver', () => {
         const exp = fixture.expected[i]!;
         expect(got.card.id).toBe(exp.cardId);
         expect(got.position).toBe(exp.position);
-        expect(got.outcome).toBe(exp.outcome);
+        expect(got.score).toBe(exp.score);
         expect(Math.abs(got.robustness - exp.robustness)).toBeLessThan(1e-9);
       }
     });
@@ -226,7 +226,7 @@ describe('WASM solver', () => {
     for (let i = 0; i < solverResult.length; i++) {
       expect(solverResult[i]!.card.id).toBe(wasm_result[i]!.card.id);
       expect(solverResult[i]!.position).toBe(wasm_result[i]!.position);
-      expect(solverResult[i]!.outcome).toBe(wasm_result[i]!.outcome);
+      expect(solverResult[i]!.score).toBe(wasm_result[i]!.score);
     }
   });
 
@@ -278,7 +278,7 @@ describe('WASM solver', () => {
     for (let i = 0; i < afterReset.length; i++) {
       expect(afterReset[i]!.card.id).toBe(reference[i]!.card.id);
       expect(afterReset[i]!.position).toBe(reference[i]!.position);
-      expect(afterReset[i]!.outcome).toBe(reference[i]!.outcome);
+      expect(afterReset[i]!.score).toBe(reference[i]!.score);
     }
   });
 

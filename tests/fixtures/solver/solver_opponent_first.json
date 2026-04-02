@@ -110,55 +110,55 @@
     {
       "cardId": 5,
       "position": 0,
-      "outcome": "win",
-      "robustness": 0
-    },
-    {
-      "cardId": 5,
-      "position": 1,
-      "outcome": "win",
+      "score": 9,
       "robustness": 0
     },
     {
       "cardId": 5,
       "position": 2,
-      "outcome": "win",
-      "robustness": 0
-    },
-    {
-      "cardId": 5,
-      "position": 3,
-      "outcome": "win",
+      "score": 9,
       "robustness": 0
     },
     {
       "cardId": 5,
       "position": 4,
-      "outcome": "win",
-      "robustness": 0
-    },
-    {
-      "cardId": 5,
-      "position": 5,
-      "outcome": "win",
+      "score": 9,
       "robustness": 0
     },
     {
       "cardId": 5,
       "position": 6,
-      "outcome": "win",
-      "robustness": 0
-    },
-    {
-      "cardId": 5,
-      "position": 7,
-      "outcome": "win",
+      "score": 9,
       "robustness": 0
     },
     {
       "cardId": 5,
       "position": 8,
-      "outcome": "win",
+      "score": 9,
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 1,
+      "score": 8,
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 3,
+      "score": 8,
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 5,
+      "score": 8,
+      "robustness": 0
+    },
+    {
+      "cardId": 5,
+      "position": 7,
+      "score": 8,
       "robustness": 0
     }
   ]

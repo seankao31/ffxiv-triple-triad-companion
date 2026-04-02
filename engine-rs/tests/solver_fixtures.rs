@@ -5,31 +5,12 @@ use engine_rs::solver::find_best_move;
 use engine_rs::types::GameState;
 use std::fs;
 
-/// Outcome tier as represented in fixture JSON.
-#[derive(serde::Deserialize, Debug, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum OutcomeTier {
-    Win,
-    Draw,
-    Loss,
-}
-
-impl OutcomeTier {
-    fn matches_score(&self, score: u8) -> bool {
-        match self {
-            OutcomeTier::Win  => score > 5,
-            OutcomeTier::Draw => score == 5,
-            OutcomeTier::Loss => score < 5,
-        }
-    }
-}
-
 #[derive(serde::Deserialize)]
 struct ExpectedMove {
     #[serde(rename = "cardId")]
     card_id: u8,
     position: u8,
-    outcome: OutcomeTier,
+    score: u8,
     robustness: f64,
 }
 
@@ -87,10 +68,10 @@ fn test_solver_fixtures() {
                 "Fixture '{}' move {i}: position mismatch (got {}, expected {})",
                 fixture.name, got.position, exp.position
             );
-            assert!(
-                exp.outcome.matches_score(got.score),
-                "Fixture '{}' move {i}: outcome tier mismatch (score={}, expected {:?})",
-                fixture.name, got.score, exp.outcome
+            assert_eq!(
+                got.score, exp.score,
+                "Fixture '{}' move {i}: score mismatch (got {}, expected {})",
+                fixture.name, got.score, exp.score
             );
             assert!(
                 (got.robustness - exp.robustness).abs() < 1e-9,
