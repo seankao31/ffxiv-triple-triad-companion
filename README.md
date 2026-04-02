@@ -123,11 +123,14 @@ bun run test:engine
 # UI only
 bun run test:app
 
-# Rust tests (fast unit + integration, skips benchmarks)
-cd engine-rs && cargo test --features server -- --skip benchmark
-
-# Rust tests including benchmarks (slow — benchmarks run for ~2 min total)
+# Rust tests (unit + integration)
 cd engine-rs && cargo test --features server
+
+# Rust benchmarks (heavy — on demand only, requires --release)
+cd engine-rs && cargo test --release -- --ignored
+
+# WASM benchmarks (heavy — opening position + PIMC sims)
+bun run bench:wasm
 ```
 
 ## Development
