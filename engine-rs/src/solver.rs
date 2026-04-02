@@ -465,9 +465,9 @@ mod tests {
         state = place_card(&state, p[4], 4);
         let moves = find_best_move(&state);
         assert_eq!(moves.len(), 12);
-        let order = |o: Outcome| match o { Outcome::Win => 0, Outcome::Draw => 1, Outcome::Loss => 2 };
+        let tier = |s: u8| if s > 5 { 0u8 } else if s == 5 { 1 } else { 2 };
         for i in 1..moves.len() {
-            assert!(order(moves[i].outcome) >= order(moves[i - 1].outcome));
+            assert!(tier(moves[i].score) >= tier(moves[i - 1].score));
         }
     }
 
@@ -504,7 +504,7 @@ mod tests {
 
         let moves = find_best_move(&state);
         assert_eq!(moves.len(), 2);
-        assert!(moves.iter().all(|m| m.outcome == Outcome::Draw));
+        assert!(moves.iter().all(|m| m.score == 5), "Expected all draws (score=5)");
         assert_eq!(moves[0].position, 7);
         assert_eq!(moves[1].position, 8);
     }
@@ -516,7 +516,7 @@ mod tests {
         let o: Vec<Card> = (0..5u8).map(|v| create_card(v + 1, v + 1, v + 1, v + 1, CardType::None)).collect();
         let state = create_initial_state(p, o, Owner::Player, no_rules());
         let moves = find_best_move(&state);
-        let win_moves: Vec<_> = moves.iter().filter(|m| m.outcome == Outcome::Win).collect();
+        let win_moves: Vec<_> = moves.iter().filter(|m| m.score > 5).collect();
         assert!(win_moves.len() > 1);
         // Winning moves always have robustness=0 (nothing beats a win)
         for m in &win_moves {
@@ -534,7 +534,7 @@ mod tests {
         let state = create_initial_state(p, o, Owner::Opponent, no_rules());
         let moves = find_best_move(&state);
         assert!(!moves.is_empty());
-        assert!(moves.iter().all(|m| m.outcome == Outcome::Win));
+        assert!(moves.iter().all(|m| m.score > 5), "Expected all wins (score>5)");
     }
 
     #[test]
@@ -563,7 +563,7 @@ mod tests {
 
         let moves = find_best_move(&state);
         assert_eq!(moves.len(), 3);
-        assert!(moves.iter().all(|m| m.outcome == Outcome::Loss));
+        assert!(moves.iter().all(|m| m.score < 5), "Expected all losses (score<5)");
         for i in 1..moves.len() {
             assert!(moves[i].robustness <= moves[i - 1].robustness);
         }
@@ -604,7 +604,7 @@ mod tests {
 
         let moves = find_best_move(&state);
         assert_eq!(moves.len(), 3);
-        assert!(moves.iter().all(|m| m.outcome == Outcome::Loss));
+        assert!(moves.iter().all(|m| m.score < 5), "Expected all losses (score<5)");
         // Positions 6 and 8 have blunder-able opponent responses → robustness > 0
         assert!(moves[0].robustness > 0.0,
             "Best loss move should have non-zero robustness, got {}", moves[0].robustness);
@@ -626,9 +626,9 @@ mod tests {
         solver.reset();
         let solver_moves = solver.solve(&state);
         let direct_moves = find_best_move(&state);
-        let s_out: Vec<Outcome> = solver_moves.iter().map(|m| m.outcome).collect();
-        let d_out: Vec<Outcome> = direct_moves.iter().map(|m| m.outcome).collect();
-        assert_eq!(s_out, d_out);
+        let s_scores: Vec<u8> = solver_moves.iter().map(|m| m.score).collect();
+        let d_scores: Vec<u8> = direct_moves.iter().map(|m| m.score).collect();
+        assert_eq!(s_scores, d_scores);
         let s_pos: Vec<u8> = solver_moves.iter().map(|m| m.position).collect();
         let d_pos: Vec<u8> = direct_moves.iter().map(|m| m.position).collect();
         assert_eq!(s_pos, d_pos);
@@ -715,18 +715,15 @@ mod tests {
         solver.reset();
 
         let opening_moves = solver.solve(&opening);
-        let opening_outcome = opening_moves[0].outcome;
+        let opening_score = opening_moves[0].score;
 
         let state_after_1 = place_card(&opening, opening_moves[0].card, opening_moves[0].position as usize);
         let moves_after_1 = solver.solve(&state_after_1);
-        let outcome_after_1 = moves_after_1[0].outcome;
+        let score_after_1 = moves_after_1[0].score;
 
-        let mirror = |o: Outcome| match o {
-            Outcome::Win  => Outcome::Loss,
-            Outcome::Loss => Outcome::Win,
-            Outcome::Draw => Outcome::Draw,
-        };
-        assert_eq!(outcome_after_1, mirror(opening_outcome));
+        // Scores sum to 10: opponent's score from their perspective = 10 - player's opening score.
+        assert_eq!(score_after_1, 10 - opening_score,
+            "Cross-turn score inconsistency: opening={}, after_1={}", opening_score, score_after_1);
     }
 
     // ---- TT hash collision regression ----
@@ -816,7 +813,7 @@ mod tests {
         assert_eq!(moves.len(), 1);
         assert_eq!(moves[0].position, 4);
         assert_eq!(moves[0].card.id, p[0].id);
-        assert_eq!(moves[0].outcome, Outcome::Win);
+        assert!(moves[0].score > 5, "Expected win (score>5), got {}", moves[0].score);
     }
 
     #[test]
@@ -894,7 +891,7 @@ mod tests {
         // Turn 1: player solves from opening — should predict Win.
         let moves1 = solver.solve(&state0);
         assert!(!moves1.is_empty());
-        assert_eq!(moves1[0].outcome, Outcome::Win);
+        assert!(moves1[0].score > 5, "Expected win from opening");
 
         // Simulate: player plays best move, opponent plays best (first ranked) move.
         let state1 = place_card(&state0, moves1[0].card, moves1[0].position as usize);
@@ -906,8 +903,8 @@ mod tests {
         let moves2 = solver.solve(&state2);
         assert!(!moves2.is_empty());
         assert!(
-            moves2[0].outcome == Outcome::Win || moves2[0].outcome == Outcome::Draw,
-            "TT corruption: turn-2 outcome = {:?}", moves2[0].outcome
+            moves2[0].score > 5 || moves2[0].score == 5,
+            "TT corruption: turn-2 score = {}", moves2[0].score
         );
     }
 
@@ -936,7 +933,7 @@ mod tests {
         let mut solver = Solver::new();
 
         let moves = solver.solve(&state);
-        let loss_move = moves.iter().find(|m| m.outcome == Outcome::Loss);
+        let loss_move = moves.iter().find(|m| m.score < 5);
         let loss_move = match loss_move {
             None => return, // No Loss moves exist — skip (setup didn't produce right scenario)
             Some(m) => m.clone(),
@@ -1035,8 +1032,8 @@ mod tests {
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, no_rules());
 
         let mut solver = Solver::new();
-        let predicted_outcome = solver.solve(&state)[0].outcome;
-        assert_eq!(predicted_outcome, Outcome::Win);
+        let predicted_score = solver.solve(&state)[0].score;
+        assert!(predicted_score > 5, "Expected winning prediction");
 
         let mut cur = state;
         loop {
@@ -1047,12 +1044,9 @@ mod tests {
             cur = place_card(&cur, moves[0].card, moves[0].position as usize);
         }
 
-        let (player_score, opp_score) = crate::types::get_score(&cur);
-        assert!(
-            player_score > opp_score,
-            "Self-play did not achieve predicted Win: player={} opponent={}",
-            player_score, opp_score
-        );
+        let (player_score, _opp_score) = crate::types::get_score(&cur);
+        assert_eq!(player_score as u8, predicted_score,
+            "Self-play score {} differs from prediction {}", player_score, predicted_score);
     }
 
     #[test]
@@ -1074,7 +1068,7 @@ mod tests {
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
 
         let mut solver = Solver::new();
-        let predicted_outcome = solver.solve(&state)[0].outcome;
+        let predicted_score = solver.solve(&state)[0].score;
 
         let mut cur = state;
         loop {
@@ -1085,18 +1079,9 @@ mod tests {
             cur = place_card(&cur, moves[0].card, moves[0].position as usize);
         }
 
-        let (player_score, opp_score) = crate::types::get_score(&cur);
-        let actual_outcome = if player_score > opp_score {
-            Outcome::Win
-        } else if player_score < opp_score {
-            Outcome::Loss
-        } else {
-            Outcome::Draw
-        };
-        assert_eq!(
-            actual_outcome, predicted_outcome,
-            "Self-play outcome {:?} differs from prediction {:?}", actual_outcome, predicted_outcome
-        );
+        let (player_score, _opp_score) = crate::types::get_score(&cur);
+        assert_eq!(player_score as u8, predicted_score,
+            "Self-play score {} differs from prediction {}", player_score, predicted_score);
     }
 
     #[test]
@@ -1123,7 +1108,7 @@ mod tests {
         let moves = find_best_move(&state);
         assert!(!moves.is_empty());
         for m in &moves {
-            assert!(matches!(m.outcome, Outcome::Win | Outcome::Draw | Outcome::Loss));
+            assert!((1..=9).contains(&m.score), "Invalid score: {}", m.score);
         }
     }
 
