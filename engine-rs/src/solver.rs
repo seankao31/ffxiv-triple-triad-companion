@@ -1,9 +1,9 @@
 // ABOUTME: Minimax solver with alpha-beta pruning and transposition table.
-// ABOUTME: Returns moves ranked by outcome (Win > Draw > Loss) from the current player's perspective.
+// ABOUTME: Returns moves ranked by score (higher = better) from the current player's perspective.
 
 use std::collections::HashSet;
 use crate::board::{place_card_mut, undo_place};
-use crate::types::{Card, CardType, GameState, Outcome, Owner, RankedMove};
+use crate::types::{Card, CardType, GameState, Owner, RankedMove};
 
 // Assigns a unique integer to each card based on its values and type for within-hand deduplication.
 // Duplicate cards in one hand are illegal in-game, but this dedup is cheap and aids testing.
@@ -42,16 +42,12 @@ fn board_full(state: &GameState) -> bool {
     state.board.iter().all(|cell| cell.is_some())
 }
 
-// Evaluates terminal state score. Returns 1 for evaluating_for wins, -1 for loss, 0 for draw.
+// Returns mover_score - 5: positive means the player-to-move is winning.
+// Range: -4 to +4 (scores are 1-9 since 0 and 10 are impossible).
 fn terminal_value(state: &GameState, evaluating_for: Owner) -> i32 {
     let (player, opponent) = crate::types::get_score(state);
-    if player > opponent {
-        if evaluating_for == Owner::Player { 1 } else { -1 }
-    } else if player < opponent {
-        if evaluating_for == Owner::Player { -1 } else { 1 }
-    } else {
-        0
-    }
+    let ef_score = if evaluating_for == Owner::Player { player } else { opponent };
+    ef_score as i32 - 5
 }
 
 // 4M entries (64MB). Sized to prevent saturation on the 10-distinct-card opening position.
@@ -83,7 +79,7 @@ struct TTSlot {
     depth: u8,
 }
 
-// Returns 1 for win, 0 for draw, -1 for loss from evaluating_for's perspective.
+// Returns score differential (mover_score - 5) from evaluating_for's perspective.
 fn minimax(
     state: &mut GameState,
     evaluating_for: Owner,
@@ -253,48 +249,50 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
                     let response_value =
                         minimax(state, Owner::Player, i32::MIN, i32::MAX, tt, occupied);
                     undo_place(state, inner_undo);
-                    // "Better" means: better for the current player (original state.current_turn).
-                    // Values are from Player's perspective: higher = better for Player.
-                    if current_is_player {
-                        if response_value > value { better_outcome_count += 1; }
-                    } else {
-                        if response_value < value { better_outcome_count += 1; }
-                    }
+                    // Compare outcome tiers, not raw scores.
+                    // value and response_value are both from Player's perspective.
+                    // "Better for current player" = higher tier from their perspective.
+                    let tier = |v: i32, is_player: bool| {
+                        let eff = if is_player { v } else { -v };
+                        if eff > 0 { 0u8 } else if eff == 0 { 1 } else { 2 }
+                    };
+                    let move_tier = tier(value, current_is_player);
+                    let resp_tier = tier(response_value, current_is_player);
+                    if resp_tier < move_tier { better_outcome_count += 1; }
                 }
             }
 
             undo_place(state, undo);
 
-            // value is from Player's perspective; flip sign when it's Opponent's turn.
+            // value is from Player's perspective; flip when it's Opponent's turn.
             let effective_value = if current_is_player { value } else { -value };
-            let outcome = match effective_value {
-                1  => Outcome::Win,
-                -1 => Outcome::Loss,
-                _  => Outcome::Draw,
-            };
+            // Convert from differential (mover_score - 5) back to raw score (1-9).
+            let score = (effective_value + 5) as u8;
             let robustness = if total_responses > 0 {
                 better_outcome_count as f64 / total_responses as f64
             } else {
                 0.0
             };
 
-            RankedMove { card, position: position as u8, outcome, robustness, confidence: None }
+            RankedMove { card, position: position as u8, score, robustness, confidence: None }
         })
         .collect();
 
     // Sort: wins first, then draws, then losses; within same outcome, higher robustness first
     moves.sort_by(|a, b| {
-        let order = |o: Outcome| match o {
-            Outcome::Win  => 0,
-            Outcome::Draw => 1,
-            Outcome::Loss => 2,
-        };
-        let od = order(a.outcome).cmp(&order(b.outcome));
-        if od != std::cmp::Ordering::Equal {
-            od
-        } else {
-            b.robustness.partial_cmp(&a.robustness).unwrap_or(std::cmp::Ordering::Equal)
+        // Primary: outcome tier (win > draw > loss). >5 = win (0), =5 = draw (1), <5 = loss (2).
+        let tier = |s: u8| if s > 5 { 0u8 } else if s == 5 { 1 } else { 2 };
+        let td = tier(a.score).cmp(&tier(b.score));
+        if td != std::cmp::Ordering::Equal {
+            return td;
         }
+        // Secondary: higher robustness first.
+        let rd = b.robustness.partial_cmp(&a.robustness).unwrap_or(std::cmp::Ordering::Equal);
+        if rd != std::cmp::Ordering::Equal {
+            return rd;
+        }
+        // Tertiary: higher score first (prefer bigger wins / smaller losses).
+        b.score.cmp(&a.score)
     });
 
     moves
@@ -350,7 +348,7 @@ mod tests {
     use super::*;
     use crate::board::place_card;
     use crate::types::{
-        create_card, create_initial_state, get_score, reset_card_ids, Board, CardType, Owner, Outcome,
+        create_card, create_initial_state, get_score, reset_card_ids, Board, CardType, Owner,
         PlacedCard, RuleSet,
     };
 
@@ -384,6 +382,38 @@ mod tests {
         state = place_card(&state, o[3], 7);
         state = place_card(&state, p[4], 5);
         assert_eq!(find_best_move(&state).len(), 0);
+    }
+
+    #[test]
+    fn terminal_value_returns_score_differential() {
+        reset_card_ids();
+        // Board with 8 cells filled. Player's turn, 1 empty cell.
+        // Player has strong card (10s), will capture the weak opponent card below.
+        let board: Board = [
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(1,1,1,1,CardType::None), owner: Owner::Opponent }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(1,1,1,1,CardType::None), owner: Owner::Opponent }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(1,1,1,1,CardType::None), owner: Owner::Opponent }),
+            Some(PlacedCard { card: create_card(10,10,10,10,CardType::None), owner: Owner::Player }),
+            Some(PlacedCard { card: create_card(1,1,1,1,CardType::None), owner: Owner::Opponent }),
+            None,
+        ];
+        let state = GameState {
+            board,
+            player_hand: vec![create_card(10,10,10,10,CardType::None)],
+            opponent_hand: vec![],
+            current_turn: Owner::Player,
+            rules: no_rules(),
+        };
+
+        // Player places at pos 8, captures pos 7 and pos 5 (10 > 1 on both edges).
+        // Final: player owns 7 cards (5 original + placed + 2 captured), opponent owns 2.
+        let moves = find_best_move(&state);
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0].position, 8);
+        assert!(moves[0].score > 5, "Expected winning score (>5), got {}", moves[0].score);
     }
 
     #[test]
