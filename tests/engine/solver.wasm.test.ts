@@ -230,6 +230,19 @@ describe('WASM solver', () => {
     }
   });
 
+  it('wasm_simulate returns the top-ranked move from wasm_solve', () => {
+    const fixture = JSON.parse(readFileSync(join(FIXTURES_DIR, 'solver_late_game_win.json'), 'utf-8'));
+    const stateJson = JSON.stringify(fixture.state);
+
+    const solveResult: WasmMove[] = JSON.parse(wasm_solve(stateJson));
+    const simResult: WasmMove | null = JSON.parse(wasm_simulate(stateJson));
+
+    expect(simResult).not.toBeNull();
+    expect(simResult!.card.id).toBe(solveResult[0]!.card.id);
+    expect(simResult!.position).toBe(solveResult[0]!.position);
+    expect(simResult!.score).toBe(solveResult[0]!.score);
+  });
+
   it('WasmSolver: TT is populated after solve() and empty after reset()', () => {
     // Use a mid-game state (5-7 cells filled) so negamax recurses and writes TT entries.
     const stateJson = JSON.stringify(generateState(makeLCG(42)));
