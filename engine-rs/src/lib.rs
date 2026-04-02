@@ -22,6 +22,7 @@ pub fn wasm_solve(state_json: &str) -> String {
 /// WASM persistent solver: holds a transposition table across calls for the same game.
 /// Call reset() when starting a new game so the TT does not carry stale entries.
 /// For PIMC simulations (parallel, independent) use wasm_simulate instead.
+#[derive(Default)]
 #[wasm_bindgen]
 pub struct WasmSolver {
     inner: Solver,
@@ -31,8 +32,12 @@ pub struct WasmSolver {
 impl WasmSolver {
     #[wasm_bindgen(constructor)]
     pub fn new() -> WasmSolver {
-        WasmSolver { inner: Solver::new() }
+        WasmSolver::default()
     }
+}
+
+#[wasm_bindgen]
+impl WasmSolver {
 
     /// Clears the transposition table. Call at the start of each new game.
     pub fn reset(&mut self) {

@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn flat_tt_lookup_hit_and_miss() {
         // Directly test TTSlot lookup semantics
-        let mut tt = vec![TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 }; 8]; // size=8, mask=7
+        let mut tt = [TTSlot { key: EMPTY_KEY, value: 0, flag: TTFlag::Exact, depth: 0 }; 8]; // size=8, mask=7
         let mask: u64 = 7;
         let key: u64 = 42;
         let idx = (key & mask) as usize; // = 42 & 7 = 2
@@ -915,7 +915,7 @@ mod tests {
         let moves2 = solver.solve(&state2);
         assert!(!moves2.is_empty());
         assert!(
-            moves2[0].score > 5 || moves2[0].score == 5,
+            moves2[0].score >= 5,
             "TT corruption: turn-2 score = {}", moves2[0].score
         );
     }
@@ -948,7 +948,7 @@ mod tests {
         let loss_move = moves.iter().find(|m| m.score < 5);
         let loss_move = match loss_move {
             None => return, // No Loss moves exist — skip (setup didn't produce right scenario)
-            Some(m) => m.clone(),
+            Some(m) => *m,
         };
 
         // Play the predicted-Loss move and self-play to the end.

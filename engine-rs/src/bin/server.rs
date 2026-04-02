@@ -71,15 +71,11 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
     for card in &state.player_hand {
         used_ids.insert(card.id);
     }
-    for opt in &state.opponent_hand {
-        if let Some(card) = opt {
-            used_ids.insert(card.id);
-        }
+    for card in state.opponent_hand.iter().flatten() {
+        used_ids.insert(card.id);
     }
-    for cell in &state.board {
-        if let Some(placed) = cell {
-            used_ids.insert(placed.card.id);
-        }
+    for placed in state.board.iter().flatten() {
+        used_ids.insert(placed.card.id);
     }
 
     let use_explicit = !explicit_ids.is_empty();
