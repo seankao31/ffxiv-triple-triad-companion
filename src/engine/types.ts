@@ -63,17 +63,11 @@ export interface GameState {
   readonly rules: RuleSet;
 }
 
-export enum Outcome {
-  Win = "win",
-  Draw = "draw",
-  Loss = "loss",
-}
-
 export interface RankedMove {
   readonly card: Card;
   readonly position: number; // 0-8 board index
-  readonly outcome: Outcome;
-  readonly robustness: number; // fraction of opponent responses that lead to a strictly better outcome for us (opponent mistakes); 0 for wins since nothing beats a win
+  readonly score: number; // 1-9: cards owned by the current player at game end. >5 = win, =5 = draw, <5 = loss.
+  readonly robustness: number; // fraction of opponent responses that lead to a strictly better outcome tier
   readonly confidence?: number; // fraction of PIMC simulations where this was the top move (undefined for perfect-information games)
 }
 

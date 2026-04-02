@@ -12,7 +12,6 @@ export {
   type Neighbor,
   CardType,
   Owner,
-  Outcome,
   ADJACENCY,
   createCard,
   createInitialState,
