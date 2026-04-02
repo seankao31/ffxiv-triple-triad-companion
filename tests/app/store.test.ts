@@ -674,6 +674,40 @@ describe('PIMC parallel dispatch', () => {
     expect(get(rankedMoves)[0]!.confidence).toBeLessThanOrEqual(1);
   });
 
+  it('sorts PIMC results by confidence descending', () => {
+    setupThreeOpen();
+    const poolWorkers = workerInstances.slice(1);
+    const simMsgs = poolWorkers.flatMap((w) =>
+      w.postedMessages.filter((m: any) => (m as any).type === 'simulate'),
+    ) as Array<{ generation: number; simIndex: number }>;
+    const gen = simMsgs[0]!.generation;
+
+    const card = createCard(5, 5, 5, 5);
+    // Send 50 results: first 30 vote for position 0, next 20 for position 1.
+    let sent = 0;
+    poolWorkers.forEach((w) => {
+      const workerSims = w.postedMessages.filter((m: any) => (m as any).type === 'simulate') as any[];
+      workerSims.forEach((msg) => {
+        const position = sent < 30 ? 0 : 1;
+        w.onmessage!({
+          data: {
+            type: 'sim-result',
+            move: { card, position, score: 7, robustness: 1 },
+            generation: gen,
+            simIndex: msg.simIndex,
+          },
+        } as MessageEvent);
+        sent++;
+      });
+    });
+
+    const moves = get(rankedMoves);
+    expect(moves.length).toBe(2);
+    expect(moves[0]!.confidence).toBeGreaterThan(moves[1]!.confidence!);
+    expect(moves[0]!.position).toBe(0);
+    expect(moves[1]!.position).toBe(1);
+  });
+
   it('discards stale sim-results from previous generation', () => {
     setupThreeOpen();
     const poolWorker = workerInstances[1]!;
