@@ -2,7 +2,7 @@
 <!-- ABOUTME: Ownership is shown via background colour: blue for player, red for opponent. -->
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
-  import { Owner, Outcome } from '../../../engine';
+  import { Owner, type OutcomeTier } from '../../../engine';
   import { typeAbbrev, typeColor } from '../../card-display';
 
   let {
@@ -14,15 +14,15 @@
   }: {
     cell: BoardCellData;
     highlighted?: boolean;
-    evaluation?: Outcome | null;
+    evaluation?: OutcomeTier | null;
     modifier?: number | null;
     onclick: () => void;
   } = $props();
 
-  const evalBg: Record<Outcome, string> = {
-    [Outcome.Win]: 'bg-eval-win/20',
-    [Outcome.Draw]: 'bg-eval-draw/20',
-    [Outcome.Loss]: 'bg-eval-loss/20',
+  const evalBg: Record<OutcomeTier, string> = {
+    win: 'bg-eval-win/20',
+    draw: 'bg-eval-draw/20',
+    loss: 'bg-eval-loss/20',
   };
 
   function displayValue(v: number): string {

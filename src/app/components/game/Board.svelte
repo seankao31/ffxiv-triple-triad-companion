@@ -3,7 +3,7 @@
 <script lang="ts">
   import BoardCell from './BoardCell.svelte';
   import { currentState, rankedMoves, game, playCard } from '../../store';
-  import { Outcome } from '../../../engine';
+  import { tierOf, type OutcomeTier } from '../../../engine';
   import { cardModifier } from '../../card-display';
 
   let suggestedPosition = $derived.by(() => {
@@ -16,10 +16,10 @@
   let evalMap = $derived.by(() => {
     const selected = $game.selectedCard;
     if (!selected) return null;
-    const map = new Map<number, Outcome>();
+    const map = new Map<number, OutcomeTier>();
     for (const move of $rankedMoves) {
       if (move.card.id === selected.id) {
-        map.set(move.position, move.outcome);
+        map.set(move.position, tierOf(move.score));
       }
     }
     return map;

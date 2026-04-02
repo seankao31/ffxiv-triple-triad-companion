@@ -71,6 +71,12 @@ export interface RankedMove {
   readonly confidence?: number; // fraction of PIMC simulations where this was the top move (undefined for perfect-information games)
 }
 
+export type OutcomeTier = "win" | "draw" | "loss";
+
+export function tierOf(score: number): OutcomeTier {
+  return score > 5 ? "win" : score === 5 ? "draw" : "loss";
+}
+
 export interface Neighbor {
   readonly position: number;
   readonly attackingEdge: "top" | "right" | "bottom" | "left";

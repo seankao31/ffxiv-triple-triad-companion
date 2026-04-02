@@ -2,19 +2,19 @@
 <!-- ABOUTME: Highlights the top move with a ring; shows the shared outcome once in the header. -->
 <script lang="ts">
   import { rankedMoves, solverLoading, pimcProgress, currentState, game } from '../../store';
-  import { Outcome, Owner, type Card } from '../../../engine';
+  import { Owner, tierOf, type Card, type OutcomeTier } from '../../../engine';
   import { typeAbbrev, typeColor } from '../../card-display';
 
-  const outcomeLabel: Record<Outcome, string> = {
-    [Outcome.Win]: 'Win',
-    [Outcome.Draw]: 'Draw',
-    [Outcome.Loss]: 'Loss',
+  const outcomeLabel: Record<OutcomeTier, string> = {
+    win: 'Win',
+    draw: 'Draw',
+    loss: 'Loss',
   };
 
-  const outcomeColor: Record<Outcome, string> = {
-    [Outcome.Win]: 'text-eval-win',
-    [Outcome.Draw]: 'text-eval-draw',
-    [Outcome.Loss]: 'text-eval-loss',
+  const outcomeColor: Record<OutcomeTier, string> = {
+    win: 'text-eval-win',
+    draw: 'text-eval-draw',
+    loss: 'text-eval-loss',
   };
 
   function positionLabel(pos: number): string {
@@ -36,8 +36,8 @@
   let selectedCard = $derived($game.selectedCard);
   let bestTierMoves = $derived.by(() => {
     if ($rankedMoves.length === 0) return [];
-    const bestOutcome = $rankedMoves[0]!.outcome;
-    return $rankedMoves.filter(m => m.outcome === bestOutcome);
+    const bestTier = tierOf($rankedMoves[0]!.score);
+    return $rankedMoves.filter(m => tierOf(m.score) === bestTier);
   });
 </script>
 
@@ -48,7 +48,7 @@
   >
     {isOpponentTurn ? "Opponent's Best Moves" : "Best Moves"}
     {#if bestTierMoves.length > 0}
-      <span class="normal-case {outcomeColor[bestTierMoves[0]!.outcome]}">— {outcomeLabel[bestTierMoves[0]!.outcome]}</span>
+      <span class="normal-case {outcomeColor[tierOf(bestTierMoves[0]!.score)]}">— {outcomeLabel[tierOf(bestTierMoves[0]!.score)]}</span>
     {/if}
   </h3>
   {#if $solverLoading}
@@ -74,7 +74,7 @@
         <span class="font-mono text-surface-400 w-8">{positionLabel(move.position)}</span>
         {#if move.confidence != null}
           <span class="text-surface-300 text-xs">{Math.round(move.confidence * 100)}%</span>
-        {:else if move.outcome !== Outcome.Win}
+        {:else if tierOf(move.score) !== 'win'}
           <span class="text-surface-300 text-xs">{Math.round(move.robustness * 100)}%</span>
         {/if}
       </li>
