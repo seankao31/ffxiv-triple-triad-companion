@@ -8,11 +8,11 @@ import GameView from '../../../src/app/components/game/GameView.svelte';
 import { createCard, Owner, type Card, type RankedMove } from '../../../src/engine';
 
 function makePlayerHand() {
-  return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+  return [createCard(10, 8, 6, 4), createCard(9, 7, 5, 3), createCard(8, 6, 10, 2), createCard(7, 10, 4, 8), createCard(6, 5, 9, 7)];
 }
 
 function makeOpponentHand() {
-  return Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+  return [createCard(1, 3, 5, 2), createCard(2, 4, 1, 6), createCard(3, 1, 2, 4), createCard(4, 2, 6, 1), createCard(5, 6, 3, 3)];
 }
 
 function makeAllMoves(hand: readonly Card[]): RankedMove[] {

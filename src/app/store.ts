@@ -337,6 +337,15 @@ export function startGame(): void {
   if (s.ruleset.ascension && s.ruleset.descension) {
     throw new Error('Ascension and Descension cannot both be active.');
   }
+  const statsKey = (c: Card) => `${c.top},${c.right},${c.bottom},${c.left},${c.type}`;
+  const playerKeys = s.playerHand.map((c) => statsKey(c!));
+  if (new Set(playerKeys).size < playerKeys.length) {
+    throw new Error('Duplicate cards are not allowed in a hand.');
+  }
+  const opponentKeys = (s.opponentHand.filter((c) => c !== null) as Card[]).map(statsKey);
+  if (new Set(opponentKeys).size < opponentKeys.length) {
+    throw new Error('Duplicate cards are not allowed in a hand.');
+  }
 
   // Reset card IDs FIRST, then re-create every card so IDs are deterministic
   // regardless of how many createCard() calls happened during setup (e.g. from CardInput).

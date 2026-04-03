@@ -16,11 +16,11 @@ function makeAllMoves(hand: readonly Card[]): RankedMove[] {
 }
 
 function makePlayerHand() {
-  return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+  return [createCard(10, 8, 6, 4), createCard(9, 7, 5, 3), createCard(8, 6, 10, 2), createCard(7, 10, 4, 8), createCard(6, 5, 9, 7)];
 }
 
 function makeOpponentHand() {
-  return Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+  return [createCard(1, 3, 5, 2), createCard(2, 4, 1, 6), createCard(3, 1, 2, 4), createCard(4, 2, 6, 1), createCard(5, 6, 3, 3)];
 }
 
 beforeEach(() => {
@@ -191,9 +191,9 @@ describe('HandPanel type label', () => {
 describe('HandPanel modifier', () => {
   it('shows modifier for typed cards when Ascension is active and same-type cards are on the board', () => {
     resetCardIds();
-    const primal1 = createCard(10, 10, 10, 10, CardType.Primal);
-    const primal2 = createCard(10, 10, 10, 10, CardType.Primal);
-    const ph = [primal1, primal2, createCard(10, 10, 10, 10), createCard(10, 10, 10, 10), createCard(10, 10, 10, 10)];
+    const primal1 = createCard(10, 8, 6, 4, CardType.Primal);
+    const primal2 = createCard(9, 7, 5, 3, CardType.Primal);
+    const ph = [primal1, primal2, createCard(8, 6, 10, 2), createCard(7, 10, 4, 8), createCard(6, 5, 9, 7)];
     const oh = makeOpponentHand();
     game.set({
       phase: 'setup',

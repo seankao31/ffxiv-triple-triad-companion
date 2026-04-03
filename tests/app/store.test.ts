@@ -10,15 +10,34 @@ import {
   updateSolverMode, updateServerEndpoint,
   _resetWorkersForTesting,
 } from '../../src/app/store';
-import { createCard, CardType, Owner, resetCardIds, type RankedMove } from '../../src/engine';
+import { createCard, CardType, Owner, resetCardIds, type Card, type RankedMove } from '../../src/engine';
 import { lastWorkerInstance, workerInstances, resetWorkers } from './setup';
 
 function makePlayerHand() {
-  return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
+  return [
+    createCard(10, 8, 6, 4),
+    createCard(9, 7, 5, 3),
+    createCard(8, 6, 10, 2),
+    createCard(7, 10, 4, 8),
+    createCard(6, 5, 9, 7),
+  ];
 }
 
 function makeOpponentHand() {
-  return Array.from({ length: 5 }, () => createCard(1, 1, 1, 1));
+  return [
+    createCard(1, 3, 5, 2),
+    createCard(2, 4, 1, 6),
+    createCard(3, 1, 2, 4),
+    createCard(4, 2, 6, 1),
+    createCard(5, 6, 3, 3),
+  ];
+}
+
+// 3 unique known opponent cards for Three Open tests (slots 3-4 stay null).
+function makeThreeOpenOpponentCards(): void {
+  updateOpponentCard(0, createCard(5, 5, 5, 5));
+  updateOpponentCard(1, createCard(4, 4, 4, 4));
+  updateOpponentCard(2, createCard(3, 3, 3, 3));
 }
 
 beforeEach(() => {
@@ -107,6 +126,46 @@ describe('startGame', () => {
     updateRuleset({ plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: true });
 
     expect(() => startGame()).toThrow('Ascension and Descension cannot both be active');
+  });
+
+  it('throws if player hand contains duplicate cards', () => {
+    const dup = createCard(5, 3, 7, 2);
+    // Two cards with the same stats in the player hand
+    updatePlayerCard(0, dup);
+    updatePlayerCard(1, createCard(5, 3, 7, 2)); // same stats, different object
+    updatePlayerCard(2, createCard(4, 6, 2, 8));
+    updatePlayerCard(3, createCard(3, 5, 5, 7));
+    updatePlayerCard(4, createCard(6, 4, 3, 9));
+    makeOpponentHand().forEach((c: Card, i: number) => updateOpponentCard(i, c));
+
+    expect(() => startGame()).toThrow('Duplicate cards');
+  });
+
+  it('throws if opponent hand contains duplicate cards', () => {
+    makePlayerHand().forEach((c: Card, i: number) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(4, 5, 6, 3));
+    updateOpponentCard(1, createCard(4, 5, 6, 3)); // duplicate
+    updateOpponentCard(2, createCard(2, 8, 1, 6));
+    updateOpponentCard(3, createCard(5, 5, 5, 5));
+    updateOpponentCard(4, createCard(3, 6, 4, 7));
+
+    expect(() => startGame()).toThrow('Duplicate cards');
+  });
+
+  it('allows same card stats across player and opponent hands', () => {
+    // Cross-hand sharing is legal — only within-hand duplicates are illegal
+    updatePlayerCard(0, createCard(5, 3, 7, 2));
+    updatePlayerCard(1, createCard(4, 6, 2, 8));
+    updatePlayerCard(2, createCard(3, 5, 5, 7));
+    updatePlayerCard(3, createCard(6, 4, 3, 9));
+    updatePlayerCard(4, createCard(7, 2, 8, 1));
+    updateOpponentCard(0, createCard(5, 3, 7, 2)); // same as player card 0
+    updateOpponentCard(1, createCard(8, 3, 5, 4));
+    updateOpponentCard(2, createCard(2, 8, 1, 6));
+    updateOpponentCard(3, createCard(9, 5, 5, 5));
+    updateOpponentCard(4, createCard(3, 6, 4, 7));
+
+    expect(() => startGame()).not.toThrow();
   });
 });
 
@@ -289,9 +348,7 @@ describe('resetGame', () => {
     // Need to set up with threeOpen
     const ph = makePlayerHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     startGame();
     resetGame();
     expect(get(game).threeOpen).toBe(true);
@@ -418,8 +475,8 @@ describe('swap rule', () => {
     handleSwap(given, received);
 
     const oppHand = get(game).opponentHand;
-    // Opponent should now have the given card's stats instead of the received card's stats
-    expect(oppHand).toContainEqual(expect.objectContaining({ top: 10, right: 10, bottom: 10, left: 10 }));
+    // Opponent should now have the given card's stats (playerCards[2]) instead of the received card's
+    expect(oppHand).toContainEqual(expect.objectContaining({ top: 8, right: 6, bottom: 10, left: 2 }));
     // The received card's stats should no longer be in the opponent hand
     expect(oppHand).not.toContainEqual(expect.objectContaining({ top: 5, right: 6, bottom: 7, left: 8 }));
     expect(oppHand.filter((c) => c !== null)).toHaveLength(5);
@@ -437,8 +494,8 @@ describe('swap rule', () => {
 
     // Player hand: index 1 should have received card's stats
     expect(get(game).playerHand[1]).toMatchObject({ top: 5, right: 6, bottom: 7, left: 8 });
-    // Opponent hand: index 3 should have given card's stats
-    expect(get(game).opponentHand[3]).toMatchObject({ top: 10, right: 10, bottom: 10, left: 10 });
+    // Opponent hand: index 3 should have given card's stats (playerCards[1])
+    expect(get(game).opponentHand[3]).toMatchObject({ top: 9, right: 7, bottom: 5, left: 3 });
   });
 
   it('phase transitions to swap when swap is enabled and Start Game is pressed', () => {
@@ -491,9 +548,7 @@ describe('three open rule', () => {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     // leave some opponent slots null
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 remain null
     expect(() => startGame()).not.toThrow();
   });
@@ -517,9 +572,7 @@ describe('three open rule', () => {
   it('startGame fills null opponent slots with placeholder cards', () => {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 are null
     startGame();
     const state = get(currentState)!;
@@ -531,9 +584,7 @@ describe('three open rule', () => {
   it('startGame tracks placeholder card IDs in unknownCardIds', () => {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 are null
     startGame();
     const unknownIds = get(game).unknownCardIds;
@@ -553,9 +604,7 @@ describe('three open rule', () => {
     createCard(1, 1, 1, 1);
     createCard(1, 1, 1, 1);
     // Known opponent cards now get higher IDs (8, 9, 10 if player hand was 0-4)
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 are null
     startGame();
     const unknownIds = get(game).unknownCardIds;
@@ -571,9 +620,7 @@ describe('revealCard', () => {
   function setupThreeOpen() {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 remain null → placeholder IDs 8 and 9
     startGame();
   }
@@ -619,9 +666,7 @@ describe('PIMC parallel dispatch', () => {
   function setupThreeOpen() {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 remain null
     startGame();
   }
@@ -880,9 +925,7 @@ describe('server solver mode', () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ moves: mockMoves }) } as Response);
 
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     // slots 3 and 4 remain null (unknown)
     startGame();
 
@@ -963,9 +1006,7 @@ describe('solver interruption', () => {
   it('terminates PIMC pool workers when a new solve triggers during in-flight PIMC', () => {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     startGame();
     // PIMC in-flight: solverLoading = true, pool workers have sim messages.
     expect(get(solverLoading)).toBe(true);
@@ -986,9 +1027,7 @@ describe('solver interruption', () => {
   it('creates new PIMC pool workers that receive sim messages after termination', () => {
     updateThreeOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
-    updateOpponentCard(0, createCard(5, 5, 5, 5));
-    updateOpponentCard(1, createCard(5, 5, 5, 5));
-    updateOpponentCard(2, createCard(5, 5, 5, 5));
+    makeThreeOpenOpponentCards();
     startGame();
     const oldPool = workerInstances.filter(
       (w) => w.postedMessages.some((m: any) => m.type === 'simulate'),
