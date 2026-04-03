@@ -6,7 +6,7 @@
   import GameView from './components/game/GameView.svelte';
 </script>
 
-{#if $game.phase === 'setup'}
+{#if $game.phase === 'setup' || $game.phase === 'swap'}
   <SetupView />
 {:else}
   <GameView />

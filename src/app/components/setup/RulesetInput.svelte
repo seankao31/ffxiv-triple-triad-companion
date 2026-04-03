@@ -15,39 +15,67 @@
   function updateRules() {
     updateRuleset({ plus, same, reverse, fallenAce, ascension, descension });
   }
+
+  function ruleChanged(setter: (v: boolean) => void) {
+    return (v: boolean) => { setter(v); updateRules(); };
+  }
 </script>
 
 <div class="flex gap-4">
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={plus} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => plus,
+      ruleChanged((v) => plus = v)
+    } class="accent-accent-blue" />
     Plus
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={same} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => same,
+      ruleChanged((v) => same = v)
+    } class="accent-accent-blue" />
     Same
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={reverse} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => reverse,
+      ruleChanged((v) => reverse = v)
+    } class="accent-accent-blue" />
     Reverse
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={fallenAce} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => fallenAce,
+      ruleChanged((v) => fallenAce = v)
+    } class="accent-accent-blue" />
     Fallen Ace
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={ascension} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => ascension,
+      ruleChanged((v) => ascension = v)
+    } class="accent-accent-blue" />
     Ascension
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={descension} onchange={updateRules} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => descension,
+      ruleChanged((v) => descension = v)
+    } class="accent-accent-blue" />
     Descension
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={swap} onchange={() => updateSwap(swap)} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => swap,
+      (v) => { swap = v; updateSwap(swap); }
+    } class="accent-accent-blue" />
     Swap
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
-    <input type="checkbox" bind:checked={threeOpen} onchange={() => updateThreeOpen(threeOpen)} class="accent-accent-blue" />
+    <input type="checkbox" bind:checked={
+      () => threeOpen,
+      (v) => { threeOpen = v; updateThreeOpen(threeOpen); }
+    } class="accent-accent-blue" />
     Three Open
   </label>
 </div>

@@ -78,6 +78,18 @@ describe('SetupView', () => {
     expect(get(game).firstTurn).toBe(Owner.Opponent);
   });
 
+  it('transitions to swap phase when Swap checkbox is checked and Start Game is clicked', async () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+
+    render(SetupView);
+    await fireEvent.click(screen.getByLabelText(/swap/i));
+    await fireEvent.click(screen.getByRole('button', { name: /start game/i }));
+
+    expect(get(game).phase).toBe('swap');
+  });
+
   it('displays preserved player hand values after reset', () => {
     // Simulate the state after resetGame — playerHand preserved, opponentHand cleared
     const playerHand = [
