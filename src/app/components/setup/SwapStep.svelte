@@ -1,18 +1,17 @@
 <!-- ABOUTME: UI step for resolving a Swap rule exchange before the game begins. -->
-<!-- ABOUTME: Lets the player select which card they gave away and enter the card they received. -->
+<!-- ABOUTME: Lets the player select which card they gave away and which opponent card they received. -->
 <script lang="ts">
-  import CardInput from './CardInput.svelte';
   import { game, handleSwap } from '../../store';
   import type { Card } from '../../../engine';
 
   let selectedGiven: Card | null = $state(null);
-  let received: Card | null = $state(null);
+  let selectedReceived: Card | null = $state(null);
 
-  let canConfirm = $derived(selectedGiven !== null && received !== null);
+  let canConfirm = $derived(selectedGiven !== null && selectedReceived !== null);
 
   function confirm() {
-    if (!selectedGiven || !received) return;
-    handleSwap(selectedGiven, received);
+    if (!selectedGiven || !selectedReceived) return;
+    handleSwap(selectedGiven, selectedReceived);
   }
 </script>
 
@@ -23,7 +22,7 @@
     <div>
       <h3 class="text-sm font-semibold text-surface-300 mb-3">Which card did you give away?</h3>
       <div class="flex flex-col gap-2">
-        {#each $game.playerHand as card}
+        {#each $game.playerHand as card (card?.id)}
           {#if card}
             <button
               onclick={() => selectedGiven = card}
@@ -47,7 +46,27 @@
 
     <div>
       <h3 class="text-sm font-semibold text-surface-300 mb-3">Which card did you receive?</h3>
-      <CardInput onchange={(card) => received = card} />
+      <div class="flex flex-col gap-2">
+        {#each $game.opponentHand as card (card?.id)}
+          {#if card}
+            <button
+              onclick={() => selectedReceived = card}
+              class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3 cursor-pointer hover:border-accent-blue
+                {selectedReceived && selectedReceived.id === card.id ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}"
+            >
+              <div></div>
+              <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
+              <div></div>
+              <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
+              <div></div>
+              <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
+              <div></div>
+              <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
+              <div></div>
+            </button>
+          {/if}
+        {/each}
+      </div>
     </div>
   </div>
 

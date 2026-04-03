@@ -308,9 +308,10 @@ export function handleSwap(given: Card, received: Card): void {
     const base = c.id === given.id ? received : c;
     return createCard(base.top, base.right, base.bottom, base.left, base.type);
   });
-  const freshOpponentHand = (s.opponentHand as Card[]).map((c) =>
-    createCard(c.top, c.right, c.bottom, c.left, c.type),
-  );
+  const freshOpponentHand = (s.opponentHand as Card[]).map((c) => {
+    const base = c.id === received.id ? given : c;
+    return createCard(base.top, base.right, base.bottom, base.left, base.type);
+  });
   // Send newGame before updating state so the Worker resets its TT before
   // the solve request (triggered by the currentState subscription) arrives.
   solverWorker.postMessage({ type: 'newGame' });
@@ -321,7 +322,7 @@ export function handleSwap(given: Card, received: Card): void {
       g.firstTurn,
       g.ruleset,
     );
-    return { ...g, playerHand: freshPlayerHand, phase: 'play', history: [initial] };
+    return { ...g, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'play', history: [initial] };
   });
 }
 

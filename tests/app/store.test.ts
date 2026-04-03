@@ -393,30 +393,52 @@ describe('swap rule', () => {
   });
 
   it('handleSwap replaces given card with received card in playerHand', () => {
-    const cards = makePlayerHand();
-    cards.forEach((c, i) => updatePlayerCard(i, c));
-    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    const playerCards = makePlayerHand();
+    playerCards.forEach((c, i) => updatePlayerCard(i, c));
+    const oppCards = [createCard(2, 3, 4, 5), createCard(3, 4, 5, 6), createCard(4, 5, 6, 7), createCard(5, 6, 7, 8), createCard(6, 7, 8, 9)];
+    oppCards.forEach((c, i) => updateOpponentCard(i, c));
 
-    const given = cards[2]!;
-    const received = createCard(7, 7, 7, 7);
+    const given = playerCards[2]!;
+    const received = oppCards[3]!;
     handleSwap(given, received);
 
     const hand = get(game).playerHand;
-    expect(hand).not.toContain(given);
-    expect(hand).toContainEqual(expect.objectContaining({ top: 7, right: 7, bottom: 7, left: 7 }));
+    expect(hand).toContainEqual(expect.objectContaining({ top: 5, right: 6, bottom: 7, left: 8 }));
     expect(hand.filter((c) => c !== null)).toHaveLength(5);
   });
 
-  it('handleSwap preserves hand order (replaced card stays at same index)', () => {
-    const cards = makePlayerHand();
-    cards.forEach((c, i) => updatePlayerCard(i, c));
-    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+  it('handleSwap replaces received card with given card in opponentHand', () => {
+    const playerCards = makePlayerHand();
+    playerCards.forEach((c, i) => updatePlayerCard(i, c));
+    const oppCards = [createCard(2, 3, 4, 5), createCard(3, 4, 5, 6), createCard(4, 5, 6, 7), createCard(5, 6, 7, 8), createCard(6, 7, 8, 9)];
+    oppCards.forEach((c, i) => updateOpponentCard(i, c));
 
-    const given = cards[1]!;
-    const received = createCard(3, 3, 3, 3);
+    const given = playerCards[2]!;
+    const received = oppCards[3]!;
     handleSwap(given, received);
 
-    expect(get(game).playerHand[1]).toMatchObject({ top: 3, right: 3, bottom: 3, left: 3 });
+    const oppHand = get(game).opponentHand;
+    // Opponent should now have the given card's stats instead of the received card's stats
+    expect(oppHand).toContainEqual(expect.objectContaining({ top: 10, right: 10, bottom: 10, left: 10 }));
+    // The received card's stats should no longer be in the opponent hand
+    expect(oppHand).not.toContainEqual(expect.objectContaining({ top: 5, right: 6, bottom: 7, left: 8 }));
+    expect(oppHand.filter((c) => c !== null)).toHaveLength(5);
+  });
+
+  it('handleSwap preserves hand order on both sides', () => {
+    const playerCards = makePlayerHand();
+    playerCards.forEach((c, i) => updatePlayerCard(i, c));
+    const oppCards = [createCard(2, 3, 4, 5), createCard(3, 4, 5, 6), createCard(4, 5, 6, 7), createCard(5, 6, 7, 8), createCard(6, 7, 8, 9)];
+    oppCards.forEach((c, i) => updateOpponentCard(i, c));
+
+    const given = playerCards[1]!;
+    const received = oppCards[3]!;
+    handleSwap(given, received);
+
+    // Player hand: index 1 should have received card's stats
+    expect(get(game).playerHand[1]).toMatchObject({ top: 5, right: 6, bottom: 7, left: 8 });
+    // Opponent hand: index 3 should have given card's stats
+    expect(get(game).opponentHand[3]).toMatchObject({ top: 10, right: 10, bottom: 10, left: 10 });
   });
 
   it('phase transitions to swap when swap is enabled and Start Game is pressed', () => {
@@ -436,17 +458,18 @@ describe('swap rule', () => {
   });
 
   it('handleSwap produces cards with IDs 0–9 even after extra createCard calls pollute the counter', () => {
-    const cards = makePlayerHand();
-    cards.forEach((c, i) => updatePlayerCard(i, c));
-    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    const playerCards = makePlayerHand();
+    playerCards.forEach((c, i) => updatePlayerCard(i, c));
+    const oppCards = makeOpponentHand();
+    oppCards.forEach((c, i) => updateOpponentCard(i, c));
 
-    // Simulate _nextCardId pollution (as if CardInput called createCard while user was typing)
+    // Simulate _nextCardId pollution (as if UI rendered extra createCard calls)
     createCard(1, 1, 1, 1);
     createCard(1, 1, 1, 1);
     createCard(1, 1, 1, 1);
 
-    const given = cards[2]!;
-    const received = createCard(7, 7, 7, 7);
+    const given = playerCards[2]!;
+    const received = oppCards[3]!;
     handleSwap(given, received);
 
     const state = get(game);
