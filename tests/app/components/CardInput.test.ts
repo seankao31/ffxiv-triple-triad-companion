@@ -3,7 +3,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import CardInput from '../../../src/app/components/setup/CardInput.svelte';
-import { CardType } from '../../../src/engine';
+import { CardType, createCard } from '../../../src/engine';
 
 describe('CardInput', () => {
   it('renders four value inputs and a type selector', () => {
@@ -214,5 +214,21 @@ describe('CardInput', () => {
     // Click the root div (not an input or select)
     await fireEvent.click(root);
     expect(document.activeElement).toBe(screen.getByLabelText('Top'));
+  });
+
+  it('displays initial values when card prop is provided', () => {
+    const card = createCard(5, 3, 7, 2, CardType.Primal);
+    render(CardInput, { props: { onchange: vi.fn(), card } });
+    expect(screen.getByLabelText('Top')).toHaveValue('5');
+    expect(screen.getByLabelText('Right')).toHaveValue('3');
+    expect(screen.getByLabelText('Bottom')).toHaveValue('7');
+    expect(screen.getByLabelText('Left')).toHaveValue('2');
+    expect(screen.getByRole('combobox')).toHaveValue('primal');
+  });
+
+  it('displays A for value 10 when card prop has stat of 10', () => {
+    const card = createCard(10, 5, 5, 5);
+    render(CardInput, { props: { onchange: vi.fn(), card } });
+    expect(screen.getByLabelText('Top')).toHaveValue('A');
   });
 });

@@ -6,12 +6,14 @@
 
   let {
     label,
+    hand = [null, null, null, null, null],
     onchange,
     onadvance = () => {},
     onback = () => {},
     allowUnknown = false,
   }: {
     label: string;
+    hand?: (Card | null)[];
     onchange: (index: number, card: Card | null) => void;
     onadvance?: () => void;
     onback?: () => void;
@@ -34,6 +36,7 @@
   <div class="flex flex-col gap-4">
     {#each Array(5) as _, i}
       <CardInput
+        card={hand[i] ?? null}
         onchange={(card) => onchange(i, card)}
         onadvance={i < 4 ? () => cardRefs[i + 1]?.focusFirst() : onadvance}
         onback={i > 0 ? () => cardRefs[i - 1]?.focusLast() : onback}

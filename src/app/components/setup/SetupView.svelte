@@ -52,6 +52,7 @@
     <div class="flex gap-12">
       <HandInput
         label="Your Hand"
+        hand={$game.playerHand}
         onchange={updatePlayerCard}
         onadvance={() => opponentHandRef?.focusFirst()}
         bind:this={playerHandRef}

@@ -5,7 +5,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import { game } from '../../../src/app/store';
 import SetupView from '../../../src/app/components/setup/SetupView.svelte';
-import { createCard, Owner } from '../../../src/engine';
+import { createCard, CardType, Owner } from '../../../src/engine';
 
 function makePlayerHand() {
   return Array.from({ length: 5 }, () => createCard(10, 10, 10, 10));
@@ -76,5 +76,29 @@ describe('SetupView', () => {
     const opponentRadio = screen.getByLabelText(/opponent/i);
     await fireEvent.click(opponentRadio);
     expect(get(game).firstTurn).toBe(Owner.Opponent);
+  });
+
+  it('displays preserved player hand values after reset', () => {
+    // Simulate the state after resetGame — playerHand preserved, opponentHand cleared
+    const playerHand = [
+      createCard(5, 3, 7, 2, CardType.Primal),
+      createCard(10, 1, 4, 6),
+      createCard(8, 8, 8, 8),
+      createCard(3, 9, 2, 5),
+      createCard(7, 4, 6, 1),
+    ];
+    game.update((s) => ({ ...s, playerHand, opponentHand: [null, null, null, null, null] }));
+
+    render(SetupView);
+
+    // "Your Hand" section should show the first card's stats
+    const topInputs = screen.getAllByLabelText('Top');
+    // First 5 inputs are player hand, next 5 are opponent hand
+    expect(topInputs[0]).toHaveValue('5');  // card 1 top
+    expect(topInputs[1]).toHaveValue('A');  // card 2 top (10 → A)
+    expect(topInputs[2]).toHaveValue('8');  // card 3 top
+
+    // Opponent hand inputs should be empty
+    expect(topInputs[5]).toHaveValue('');
   });
 });

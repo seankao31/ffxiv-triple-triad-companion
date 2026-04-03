@@ -8,15 +8,19 @@
     onadvance = () => {},
     onback = () => {},
     allowUnknown = false,
+    card = null,
   }: {
     onchange: (card: Card | null) => void;
     onadvance?: () => void;
     onback?: () => void;
     allowUnknown?: boolean;
+    card?: Card | null;
   } = $props();
 
-  let values = $state<(number | null)[]>([null, null, null, null]);
-  let type = $state<CardType>(CardType.None);
+  let values = $state<(number | null)[]>(
+    card ? [card.top, card.right, card.bottom, card.left] : [null, null, null, null],
+  );
+  let type = $state<CardType>(card?.type ?? CardType.None);
   let inputEls: HTMLInputElement[] = $state([]);
   let isUnknown = $state(false);
 
