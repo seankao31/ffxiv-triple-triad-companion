@@ -46,7 +46,7 @@
   function emit() {
     if (isUnknown) { onchange(null); return; }
     const [t, r, b, l] = values;
-    if (t !== null && r !== null && b !== null && l !== null) {
+    if (t != null && r != null && b != null && l != null) {
       onchange(createCard(t, r, b, l, type));
     } else {
       onchange(null);

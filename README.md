@@ -118,6 +118,9 @@ See `docs/decisions/` for full rationale on each.
 # All TypeScript tests (engine + UI)
 bun run test
 
+# All tests including E2E (requires WASM pre-built)
+bun run test:all
+
 # Engine only
 bun run test:engine
 

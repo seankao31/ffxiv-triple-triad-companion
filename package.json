@@ -11,6 +11,7 @@
     "test:engine": "bun test tests/engine",
     "test:app": "bunx vitest run",
     "test": "bun run test:engine && bun run test:app",
+    "test:all": "bun run test && bun run test:e2e",
     "bench:wasm": "bun test tests/bench",
     "test:e2e": "playwright test"
   },
@@ -31,6 +32,6 @@
     "vitest": "^4.1.2"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "6.0.2"
   }
 }
