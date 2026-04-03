@@ -106,7 +106,7 @@ Each move row shows a percentage: **confidence** (PIMC/Three Open) or **robustne
 
 ## `startGame` Validates Outside `game.update()`
 
-**Decision:** `startGame()` reads the current store value with `get(game)`, validates that all hand slots are non-null, and throws before calling `game.update()`.
+**Decision:** `startGame()` reads the current store value with `get(game)`, validates preconditions (all hand slots non-null, no within-hand duplicate cards, no conflicting rules), and throws before calling `game.update()`.
 
 **Why:** Svelte's `writable.update()` swallows errors thrown inside its callback — the error never reaches the caller. By validating outside the update, the thrown error propagates normally, allowing `SetupView` to catch it and display an error message. The store read and subsequent update are not subject to race conditions because JavaScript is single-threaded.
 
