@@ -11,9 +11,11 @@
     "test:engine": "bun test tests/engine",
     "test:app": "bunx vitest run",
     "test": "bun run test:engine && bun run test:app",
-    "bench:wasm": "bun test tests/bench"
+    "bench:wasm": "bun test tests/bench",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.2.2",
     "@testing-library/jest-dom": "^6.9.1",
