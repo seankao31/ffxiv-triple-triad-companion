@@ -73,4 +73,43 @@ describe('SwapStep', () => {
     expect(get(game).phase).toBe('play');
     expect(get(game).history).toHaveLength(1);
   });
+
+  it('Confirm Swap enables after clicking one player card and one opponent card', async () => {
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    // Buttons: 5 player + 5 opponent + 1 confirm = 11
+    // Player cards are buttons 0–4, opponent cards are 5–9
+    const playerCards = buttons.filter(b => b !== confirm).slice(0, 5);
+    const opponentCards = buttons.filter(b => b !== confirm).slice(5, 10);
+
+    expect(confirm).toBeDisabled();
+
+    // Click only a player card — still disabled
+    await fireEvent.click(playerCards[0]!);
+    expect(confirm).toBeDisabled();
+
+    // Click an opponent card — now enabled
+    await fireEvent.click(opponentCards[2]!);
+    expect(confirm).toBeEnabled();
+  });
+
+  it('clicking Confirm Swap transitions to play phase with swapped hands', async () => {
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    const playerCards = buttons.filter(b => b !== confirm).slice(0, 5);
+    const opponentCards = buttons.filter(b => b !== confirm).slice(5, 10);
+
+    // Select player card 0 (A/A/A/A) and opponent card 2 (3/4/5/6)
+    await fireEvent.click(playerCards[0]!);
+    await fireEvent.click(opponentCards[2]!);
+    await fireEvent.click(confirm);
+
+    expect(get(game).phase).toBe('play');
+    // Player hand should have the received card (3/4/5/6) at index 0
+    expect(get(game).playerHand[0]).toMatchObject({ top: 3, right: 4, bottom: 5, left: 6 });
+    // Opponent hand should have the given card (A/A/A/A) at index 2
+    expect(get(game).opponentHand[2]).toMatchObject({ top: 10, right: 10, bottom: 10, left: 10 });
+  });
 });
