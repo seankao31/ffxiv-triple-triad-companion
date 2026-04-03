@@ -17,9 +17,11 @@
     card?: Card | null;
   } = $props();
 
+  // svelte-ignore state_referenced_locally — card prop is intentionally used as initial value only
   let values = $state<(number | null)[]>(
     card ? [card.top, card.right, card.bottom, card.left] : [null, null, null, null],
   );
+  // svelte-ignore state_referenced_locally
   let type = $state<CardType>(card?.type ?? CardType.None);
   let inputEls: HTMLInputElement[] = $state([]);
   let isUnknown = $state(false);
