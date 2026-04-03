@@ -110,6 +110,7 @@ See `docs/decisions/` for full rationale on each.
 | WASM build | wasm-pack |
 | Engine tests | `bun test tests/engine` (TypeScript) / `cargo test` (Rust) |
 | UI tests | `bunx vitest run` (happy-dom + @testing-library/svelte) |
+| E2E tests | Playwright (Chromium) |
 
 ## Running Tests
 
@@ -128,6 +129,9 @@ cd engine-rs && cargo test --features server
 
 # Rust benchmarks (heavy — on demand only, requires --release)
 cd engine-rs && cargo test --release -- --ignored
+
+# E2E tests (Playwright, requires WASM pre-built)
+bun run test:e2e
 
 # WASM benchmarks (heavy — opening position + PIMC sims)
 bun run bench:wasm
