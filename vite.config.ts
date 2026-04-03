@@ -1,7 +1,6 @@
-/// <reference types="vitest/config" />
 // ABOUTME: Vite build configuration for the Svelte app.
 // ABOUTME: Configures Svelte plugin, Tailwind CSS, Vitest test environment, and WASM loading.
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
