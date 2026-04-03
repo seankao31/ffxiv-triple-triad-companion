@@ -1,7 +1,7 @@
 // ABOUTME: PIMC sampling logic for server-side Three Open solving.
 // ABOUTME: Weighted reservoir sampling with star-tier budget constraints, Rayon-parallel simulation.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ pub fn weighted_sample<R: Rng>(pool: &[PIMCCard], count: usize, rng: &mut R) -> 
         .enumerate()
         .map(|(i, c)| {
             let w = card_weight(c).max(1e-9);
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             (r.powf(1.0 / w), i)
         })
         .collect();
@@ -85,7 +85,7 @@ pub fn weighted_sample_constrained<R: Rng>(
 
     // Shuffle to remove positional bias introduced by tier ordering.
     for i in (1..result.len()).rev() {
-        let j = rng.gen_range(0..=i);
+        let j = rng.random_range(0..=i);
         result.swap(i, j);
     }
     Some(result)
@@ -123,7 +123,7 @@ pub fn run_pimc(
     let sim_results: Vec<Option<RankedMove>> = (0..sim_count)
         .into_par_iter()
         .map(|_| {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let sampled =
                 weighted_sample_constrained(pool, unknown_ids.len(), max_five_stars, max_four_stars, &mut rng)
                     .unwrap_or_else(|| weighted_sample(pool, unknown_ids.len(), &mut rng));
