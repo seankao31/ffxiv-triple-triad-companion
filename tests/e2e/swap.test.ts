@@ -71,8 +71,9 @@ test('swap + three open: swap with unknown opponent card by entering stats', asy
   // Should transition to play phase.
   await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
 
-  // Player hand should contain the received card (9/8/7/6).
-  await expect(page.getByRole('button', { name: '9 8 7 6' })).toBeVisible();
+  // Player hand should contain the received card (top=9, right=8, bottom=7, left=6).
+  // HandPanel DOM order is top/left/right/bottom → accessible name "9 6 8 7".
+  await expect(page.getByRole('button', { name: '9 6 8 7' })).toBeVisible();
 });
 
 test('swap flow: enable swap, exchange cards, and start game with swapped hands', async ({ page }) => {
