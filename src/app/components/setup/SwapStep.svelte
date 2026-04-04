@@ -5,6 +5,7 @@
   import { game, handleSwap, updateOpponentCard } from '../../store';
   import type { Card } from '../../../engine';
   import CardInput from './CardInput.svelte';
+  import CardFace from '../CardFace.svelte';
 
   let selectedGiven: Card | null = $state(null);
   let selectedReceived: Card | null = $state(null);
@@ -48,15 +49,7 @@
               class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3 cursor-pointer hover:border-accent-blue
                 {selectedGiven && selectedGiven.id === card.id ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}"
             >
-              <div></div>
-              <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
-              <div></div>
+              <CardFace {card} showType={false} />
             </button>
           {/if}
         {/each}
@@ -75,15 +68,7 @@
               class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3 cursor-pointer hover:border-accent-blue
                 {selectedReceived && selectedReceived.id === card.id ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}"
             >
-              <div></div>
-              <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
-              <div></div>
-              <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
-              <div></div>
+              <CardFace {card} showType={false} />
             </button>
           {:else}
             <button
