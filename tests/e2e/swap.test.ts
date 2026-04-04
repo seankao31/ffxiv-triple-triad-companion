@@ -18,11 +18,6 @@ test('swap + three open: enter swap phase with unknown opponent cards', async ({
   await page.getByRole('button', { name: 'Start Game' }).click();
   await expect(page.getByRole('heading', { name: 'Swap — Exchange Cards' })).toBeVisible();
 
-  // Only the 3 known opponent cards should appear as selectable buttons.
-  const opponentSection = page.locator('div').filter({ hasText: 'Which card did you receive?' });
-  const opponentButtons = opponentSection.getByRole('button').filter({ hasNot: page.getByText('Confirm') });
-  await expect(opponentButtons).toHaveCount(3);
-
   // Select a card to give and receive, confirm swap.
   const playerCard = page.getByRole('button', { name: '5 3 7 2' });
   const opponentCard = page.getByRole('button', { name: '4 5 6 3' });

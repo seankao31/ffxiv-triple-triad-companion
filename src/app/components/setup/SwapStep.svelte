@@ -47,7 +47,7 @@
     <div>
       <h3 class="text-sm font-semibold text-surface-300 mb-3">Which card did you receive?</h3>
       <div class="flex flex-col gap-2">
-        {#each $game.opponentHand as card (card?.id)}
+        {#each $game.opponentHand as card, i (card?.id ?? -(i + 1))}
           {#if card}
             <button
               onclick={() => selectedReceived = card}
