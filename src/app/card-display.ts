@@ -1,5 +1,5 @@
 // ABOUTME: Shared card display helpers for type labels and modifier calculation.
-// ABOUTME: Used by BoardCell, HandPanel, and SolverPanel.
+// ABOUTME: Used by CardFace, HandPanel, and SolverPanel.
 import { CardType, type GameState, type RuleSet } from '../engine';
 
 export const typeAbbrev: Partial<Record<CardType, string>> = {
