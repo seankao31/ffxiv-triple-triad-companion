@@ -3,6 +3,37 @@
 import { test, expect } from '@playwright/test';
 import { fillHands, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
+test('swap + three open: enter swap phase with unknown opponent cards', async ({ page }) => {
+  await page.goto('/');
+
+  // Enable both Swap and Three Open.
+  await page.getByRole('checkbox', { name: 'Swap' }).click();
+  await page.getByRole('checkbox', { name: 'Three Open' }).click();
+
+  // Fill player hand (5 cards) + only 3 opponent cards (leave 2 unknown).
+  const threeOpponentCards = DEFAULT_OPPONENT.slice(0, 3);
+  await fillHands(page, DEFAULT_PLAYER, threeOpponentCards);
+
+  // Start game — should enter swap phase.
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await expect(page.getByRole('heading', { name: 'Swap — Exchange Cards' })).toBeVisible();
+
+  // Only the 3 known opponent cards should appear as selectable buttons.
+  const opponentSection = page.locator('div').filter({ hasText: 'Which card did you receive?' });
+  const opponentButtons = opponentSection.getByRole('button').filter({ hasNot: page.getByText('Confirm') });
+  await expect(opponentButtons).toHaveCount(3);
+
+  // Select a card to give and receive, confirm swap.
+  const playerCard = page.getByRole('button', { name: '5 3 7 2' });
+  const opponentCard = page.getByRole('button', { name: '4 5 6 3' });
+  await playerCard.click();
+  await opponentCard.click();
+  await page.getByRole('button', { name: /confirm swap/i }).click();
+
+  // Should transition to play phase.
+  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+});
+
 test('swap flow: enable swap, exchange cards, and start game with swapped hands', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /setup/i })).toBeVisible();
