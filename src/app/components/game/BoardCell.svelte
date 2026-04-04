@@ -3,7 +3,7 @@
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
   import { Owner, type OutcomeTier } from '../../../engine';
-  import { typeAbbrev, typeColor } from '../../card-display';
+  import CardFace from '../CardFace.svelte';
 
   let {
     cell,
@@ -24,10 +24,6 @@
     draw: 'bg-eval-draw/20',
     loss: 'bg-eval-loss/20',
   };
-
-  function displayValue(v: number): string {
-    return v === 10 ? 'A' : String(v);
-  }
 </script>
 
 <button
@@ -42,26 +38,8 @@
         : 'bg-surface-800 hover:bg-surface-700'}"
 >
   {#if cell}
-    {@const abbr = typeAbbrev[cell.card.type]}
-    {@const colorClass = typeColor[cell.card.type]}
-    <div class="grid grid-cols-3 gap-0 text-xs font-bold font-mono w-full h-full p-1 relative">
-      {#if modifier}
-        <div class="absolute top-0.5 left-1 text-[10px] font-semibold {modifier > 0 ? 'text-eval-win' : 'text-eval-loss'}">
-          {modifier > 0 ? '+' : ''}{modifier}
-        </div>
-      {/if}
-      {#if abbr}
-        <div class="absolute top-0.5 right-1 text-[10px] font-semibold {colorClass}">{abbr}</div>
-      {/if}
-      <div></div>
-      <div class="flex items-center justify-center">{displayValue(cell.card.top)}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{displayValue(cell.card.left)}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{displayValue(cell.card.right)}</div>
-      <div></div>
-      <div class="flex items-center justify-center">{displayValue(cell.card.bottom)}</div>
-      <div></div>
+    <div class="text-xs font-bold font-mono w-full h-full p-1">
+      <CardFace card={cell.card} {modifier} />
     </div>
   {:else}
     <span class="text-surface-500 text-2xl">·</span>
