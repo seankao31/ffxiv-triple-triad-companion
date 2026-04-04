@@ -534,6 +534,69 @@ describe('swap rule', () => {
     const ids = allCards.map((c) => c.id).sort((a, b) => a - b);
     expect(ids).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
+
+  it('handleSwap works when opponent hand has null slots (Three Open + Swap)', () => {
+    updateSwap(true);
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeThreeOpenOpponentCards(); // fills slots 0-2, leaves 3-4 null
+    startGame(); // enters swap phase
+    expect(get(game).phase).toBe('swap');
+
+    const s = get(game);
+    const given = s.playerHand[0]!;
+    const received = s.opponentHand[0]!; // one of the 3 known cards
+    expect(() => handleSwap(given, received)).not.toThrow();
+    expect(get(game).phase).toBe('play');
+  });
+
+  it('handleSwap populates unknownCardIds for null opponent slots (Three Open + Swap)', () => {
+    updateSwap(true);
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeThreeOpenOpponentCards(); // fills slots 0-2, leaves 3-4 null
+    startGame();
+
+    const s = get(game);
+    const given = s.playerHand[0]!;
+    const received = s.opponentHand[0]!;
+    handleSwap(given, received);
+
+    const after = get(game);
+    // 2 null slots → 2 unknown card IDs
+    expect(after.unknownCardIds.size).toBe(2);
+    // All 5 opponent hand entries should be non-null Card objects
+    expect(after.opponentHand.every((c) => c !== null)).toBe(true);
+    // The placeholder IDs should match specific opponent hand entries
+    for (const id of after.unknownCardIds) {
+      expect(after.opponentHand.some((c) => c!.id === id)).toBe(true);
+    }
+  });
+
+  it('handleSwap produces cards with IDs 0–9 when Three Open has null slots', () => {
+    updateSwap(true);
+    updateThreeOpen(true);
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeThreeOpenOpponentCards(); // fills slots 0-2, leaves 3-4 null
+    startGame();
+
+    // Simulate ID counter pollution
+    createCard(1, 1, 1, 1);
+    createCard(1, 1, 1, 1);
+
+    const s = get(game);
+    const given = s.playerHand[2]!;
+    const received = s.opponentHand[1]!;
+    handleSwap(given, received);
+
+    const after = get(game);
+    const allCards = [
+      ...after.playerHand.filter((c): c is Card => c !== null),
+      ...after.opponentHand.filter((c): c is Card => c !== null),
+    ];
+    const ids = allCards.map((c) => c.id).sort((a, b) => a - b);
+    expect(ids).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
 });
 
 describe('three open rule', () => {
