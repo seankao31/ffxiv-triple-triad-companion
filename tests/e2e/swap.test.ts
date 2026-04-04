@@ -29,6 +29,52 @@ test('swap + three open: enter swap phase with unknown opponent cards', async ({
   await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
 });
 
+test('swap + three open: swap with unknown opponent card by entering stats', async ({ page }) => {
+  await page.goto('/');
+
+  // Enable both Swap and Three Open.
+  await page.getByRole('checkbox', { name: 'Swap' }).click();
+  await page.getByRole('checkbox', { name: 'Three Open' }).click();
+
+  // Fill player hand (5 cards) + only 3 opponent cards (leave 2 unknown).
+  const threeOpponentCards = DEFAULT_OPPONENT.slice(0, 3);
+  await fillHands(page, DEFAULT_PLAYER, threeOpponentCards);
+
+  // Start game — enter swap phase.
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await expect(page.getByRole('heading', { name: 'Swap — Exchange Cards' })).toBeVisible();
+
+  // Unknown opponent slots should appear as "?" buttons.
+  const unknownButtons = page.getByRole('button', { name: '?' });
+  await expect(unknownButtons.first()).toBeVisible();
+
+  // Select a player card to give away.
+  await page.getByRole('button', { name: '5 3 7 2' }).click();
+
+  // Click an unknown "?" opponent card — should open a CardInput for entering stats.
+  await unknownButtons.first().click();
+  await expect(page.getByRole('textbox', { name: 'Top' })).toBeVisible();
+
+  // Enter stats: 9/8/7/6 (top/right/bottom/left).
+  await page.keyboard.press('9');
+  await page.keyboard.press('8');
+  await page.keyboard.press('7');
+  await page.keyboard.press('6');
+
+  // After entering all 4 stats, the card should be revealed and selected.
+  // Confirm Swap should now be enabled.
+  await expect(page.getByRole('button', { name: /confirm swap/i })).toBeEnabled();
+
+  // Confirm the swap.
+  await page.getByRole('button', { name: /confirm swap/i }).click();
+
+  // Should transition to play phase.
+  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+
+  // Player hand should contain the received card (9/8/7/6).
+  await expect(page.getByRole('button', { name: '9 8 7 6' })).toBeVisible();
+});
+
 test('swap flow: enable swap, exchange cards, and start game with swapped hands', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /setup/i })).toBeVisible();
