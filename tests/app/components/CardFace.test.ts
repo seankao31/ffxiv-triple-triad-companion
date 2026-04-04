@@ -63,6 +63,12 @@ describe('CardFace modifier', () => {
     expect(screen.getByText('-1')).toBeInTheDocument();
   });
 
+  it('shows zero modifier', () => {
+    const card = createCard(5, 5, 5, 5);
+    render(CardFace, { props: { card, modifier: 0 } });
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
   it('does not show modifier when null', () => {
     const card = createCard(5, 5, 5, 5);
     render(CardFace, { props: { card } });
