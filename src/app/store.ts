@@ -308,7 +308,14 @@ export function handleSwap(given: Card, received: Card): void {
     const base = c.id === given.id ? received : c;
     return createCard(base.top, base.right, base.bottom, base.left, base.type);
   });
-  const freshOpponentHand = (s.opponentHand as Card[]).map((c) => {
+  // Re-create known opponent cards; assign placeholder IDs for Three Open unknowns.
+  const unknownCardIds = new Set<number>();
+  const freshOpponentHand = s.opponentHand.map((c) => {
+    if (c === null) {
+      const placeholder = createCard(1, 1, 1, 1);
+      unknownCardIds.add(placeholder.id);
+      return placeholder;
+    }
     const base = c.id === received.id ? given : c;
     return createCard(base.top, base.right, base.bottom, base.left, base.type);
   });
@@ -322,7 +329,7 @@ export function handleSwap(given: Card, received: Card): void {
       g.firstTurn,
       g.ruleset,
     );
-    return { ...g, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'play', history: [initial] };
+    return { ...g, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'play', history: [initial], unknownCardIds };
   });
 }
 
