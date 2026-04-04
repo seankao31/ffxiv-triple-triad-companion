@@ -4,8 +4,9 @@
   import { tick } from 'svelte';
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
   import { Owner, type Card } from '../../../engine';
-  import { typeAbbrev, typeColor, cardModifier } from '../../card-display';
+  import { cardModifier } from '../../card-display';
   import CardInput from '../setup/CardInput.svelte';
+  import CardFace from '../CardFace.svelte';
 
   let { owner }: { owner: Owner } = $props();
 
@@ -60,34 +61,10 @@
         class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
           {isActive ? 'cursor-pointer hover:border-accent-blue' : 'cursor-default opacity-70'}
           {card === $game.selectedCard ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}
-          {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}"
+          {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}
+          {isUnknown ? 'border-dashed' : ''}"
       >
-        {#if isUnknown}
-          <div class="col-span-3 row-span-3 flex items-center justify-center text-lg text-surface-400">?</div>
-        {:else}
-          {@const abbr = typeAbbrev[card.type]}
-          {@const colorClass = typeColor[card.type]}
-          {@const mod = cardModifier(card.type, $currentState, $game.ruleset)}
-          <div class="relative col-span-3 row-span-3 grid grid-cols-3">
-            {#if mod}
-              <div class="absolute top-0 left-0.5 text-[10px] font-semibold {mod > 0 ? 'text-eval-win' : 'text-eval-loss'}">
-                {mod > 0 ? '+' : ''}{mod}
-              </div>
-            {/if}
-            {#if abbr}
-              <div class="absolute top-0 right-0.5 text-[10px] font-semibold {colorClass}">{abbr}</div>
-            {/if}
-            <div></div>
-            <div class="flex items-center justify-center">{card.top === 10 ? 'A' : card.top}</div>
-            <div></div>
-            <div class="flex items-center justify-center">{card.left === 10 ? 'A' : card.left}</div>
-            <div></div>
-            <div class="flex items-center justify-center">{card.right === 10 ? 'A' : card.right}</div>
-            <div></div>
-            <div class="flex items-center justify-center">{card.bottom === 10 ? 'A' : card.bottom}</div>
-            <div></div>
-          </div>
-        {/if}
+        <CardFace {card} unknown={isUnknown} modifier={cardModifier(card.type, $currentState, $game.ruleset)} />
       </button>
     {/if}
   {/each}
