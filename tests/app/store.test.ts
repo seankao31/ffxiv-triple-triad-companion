@@ -1,5 +1,5 @@
 // ABOUTME: Tests for the central game store — phase transitions, move placement, and undo.
-// ABOUTME: Covers startGame, playCard, undoMove, selectCard, and hand/ruleset updates.
+// ABOUTME: Covers startGame, playCard, undoMove, selectCard, handleSwap, and hand/ruleset updates.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {

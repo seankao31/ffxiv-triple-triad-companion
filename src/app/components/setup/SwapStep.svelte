@@ -1,5 +1,5 @@
 <!-- ABOUTME: UI step for resolving a Swap rule exchange before the game begins. -->
-<!-- ABOUTME: Lets the player select which card they gave away and which opponent card they received. -->
+<!-- ABOUTME: Lets the player select which card they gave away and which opponent card they received. Unknown opponent cards (Three Open) show a "?" button that expands to inline stat entry. -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { game, handleSwap, updateOpponentCard } from '../../store';

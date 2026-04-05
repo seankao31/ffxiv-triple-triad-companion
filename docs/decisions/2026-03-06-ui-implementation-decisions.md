@@ -22,7 +22,7 @@ Decisions made during design and implementation of the Phase 2 Live Solver UI.
 
 **Why:** Card entry is inherently a form — 10 cards × (4 values + 1 type) = 50 fields. Trying to make that feel natural inside the play view adds layout and UX complexity without payoff. Keeping setup separate means both phases can be clean and focused. The downside (going back to setup to change a card) is minor in practice.
 
-This structure also works for future imperfect-information modes (Three Open, Swap). Three Open just means some opponent card slots are marked "unknown" instead of filled in — an extension to the same setup form, not a different architecture. Swap is a mid-game action handled in the play phase.
+This structure also works for future imperfect-information modes (Three Open, Swap). Three Open just means some opponent card slots are marked "unknown" instead of filled in — an extension to the same setup form, not a different architecture. Swap adds a dedicated `swap` phase (between setup and play) where the player records which cards were exchanged before the game begins.
 
 ---
 
@@ -43,10 +43,10 @@ This structure also works for future imperfect-information modes (Three Open, Sw
 **Why the switch:** From a fresh opening position with 10 distinct cards, the solver takes ~21 seconds — blocking the main thread and freezing the UI. Moving to a Worker keeps the UI responsive during the search. Symmetric/identical hands still run in ~14ms via deduplication, so quick positions remain fast.
 
 **Worker protocol:** Two message types:
-- `newGame` (sent before `game.update()` in `startGame`): calls `solver.reset()` to clear the TT. No hand data needed — the TT hash uses `card.id` directly.
+- `newGame` (sent before `game.update()` in `startGame` and `handleSwap`): calls `solver.reset()` to clear the TT. No hand data needed — the TT hash uses `card.id` directly.
 - `solve` (triggered by the `currentState` subscription): calls `solver.solve(state)` and posts back `{ type: 'result', moves }`.
 
-**Message ordering matters:** `newGame` must be posted before `game.update()` so the Worker's message queue is `[newGame, solve]` — not `[solve (wrong TT), newGame]`. This is because `currentState.subscribe` fires synchronously during `game.update()`.
+**Message ordering matters:** `newGame` must be posted before `game.update()` so the Worker's message queue is `[newGame, solve]` — not `[solve (wrong TT), newGame]`. This is because `currentState.subscribe` fires synchronously during `game.update()`. Both `startGame` and `handleSwap` follow this pattern.
 
 **TT persistence:** `createSolver()` returns a closure holding its own `tt` (Map). `reset()` clears the TT; `solve()` accumulates results across calls. The transposition table grows across turns, so positions explored on turn N are cached for free on turn N+1. `ttSize()` exposes TT entry count for test verification.
 
