@@ -7,3 +7,17 @@
   scripts/generate-board-fixtures.ts and regenerate.
 - When adding capture rules, stat modifiers, or other board mechanics, both engines must be updated
   and fixture-verified before the work is considered complete.
+
+## Linear
+
+**Initiative:** Triple Triad Companion
+**Team:** Engineering
+
+| Project | Scope |
+|---------|-------|
+| Core Engine | TS + Rust game logic, capture rules, board mechanics, native server |
+| PIMC Sampling Consolidation | Migrate sampling from TS to Rust/WASM |
+| Deck Optimizer | Hand selection from card pool |
+| Solver AI Enhancement | Opponent modeling |
+| UI | Interface improvements |
+| Post-Game Analysis | Replay/analysis |
