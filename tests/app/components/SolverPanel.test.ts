@@ -32,6 +32,7 @@ beforeEach(() => {
     swap: false,
     threeOpen: false,
     playerHand: ph,
+    setupPlayerHand: [null, null, null, null, null],
     opponentHand: oh,
     firstTurn: Owner.Player,
     history: [],

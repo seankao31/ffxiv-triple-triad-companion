@@ -25,6 +25,9 @@ export type AppState = {
   // Tracked here (not in RuleSet) because it affects setup and solve strategy, not capture logic.
   threeOpen: boolean;
   playerHand: (Card | null)[];
+  // Snapshot of playerHand at game start, before swap modifies it.
+  // Restored on reset so the user sees their original cards, not swapped ones.
+  setupPlayerHand: (Card | null)[];
   opponentHand: (Card | null)[];
   firstTurn: Owner;
   history: GameState[];
@@ -40,6 +43,7 @@ const initialAppState: AppState = {
   swap: false,
   threeOpen: false,
   playerHand: [null, null, null, null, null],
+  setupPlayerHand: [null, null, null, null, null],
   opponentHand: [null, null, null, null, null],
   firstTurn: Owner.Player,
   history: [],
@@ -366,7 +370,7 @@ export function startGame(): void {
     const freshOpponentHand = s.opponentHand.map((c) =>
       c ? createCard(c.top, c.right, c.bottom, c.left, c.type) : null,
     );
-    game.update((g) => ({ ...g, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'swap' }));
+    game.update((g) => ({ ...g, setupPlayerHand: freshPlayerHand, playerHand: freshPlayerHand, opponentHand: freshOpponentHand, phase: 'swap' }));
     return;
   }
 
@@ -422,6 +426,8 @@ export function resetGame(): void {
   game.update((s) => ({
     ...s,
     phase: 'setup' as Phase,
+    playerHand: s.setupPlayerHand.some((c) => c !== null) ? s.setupPlayerHand : s.playerHand,
+    setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     history: [],
     selectedCard: null,
