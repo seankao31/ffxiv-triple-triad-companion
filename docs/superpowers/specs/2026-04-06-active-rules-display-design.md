@@ -21,7 +21,7 @@ New `ActiveRules.svelte` component, rendered in `GameView.svelte` between the he
    - `descension` → "Descension"
    - `swap` → "Swap"
    - `threeOpen` → "Three Open"
-2. If list is non-empty, join with ` · ` (middle dot separator)
+2. If list is non-empty, show "Active rules: " prefix followed by names joined with ` · ` (middle dot separator)
 3. If list is empty, show "No active rules"
 
 Only active rules are displayed — inactive rules are omitted entirely.

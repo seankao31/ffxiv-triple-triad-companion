@@ -44,18 +44,18 @@ describe('ActiveRules', () => {
   it('renders active capture rules joined by middle dot', () => {
     setRules({ plus: true, same: true });
     render(ActiveRules);
-    expect(screen.getByText('Plus · Same')).toBeInTheDocument();
+    expect(screen.getByText('Active rules: Plus · Same')).toBeInTheDocument();
   });
 
   it('renders Fallen Ace with proper casing', () => {
     setRules({ fallenAce: true });
     render(ActiveRules);
-    expect(screen.getByText('Fallen Ace')).toBeInTheDocument();
+    expect(screen.getByText('Active rules: Fallen Ace')).toBeInTheDocument();
   });
 
   it('includes format rules when active', () => {
     setRules({ reverse: true, swap: true, threeOpen: true });
     render(ActiveRules);
-    expect(screen.getByText('Reverse · Swap · Three Open')).toBeInTheDocument();
+    expect(screen.getByText('Active rules: Reverse · Swap · Three Open')).toBeInTheDocument();
   });
 });
