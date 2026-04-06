@@ -1,4 +1,4 @@
-// ABOUTME: Tests for GameView — game layout, undo button state, and reset button.
+// ABOUTME: Tests for GameView — game layout, undo button state, reset button, and active rules display.
 // ABOUTME: Verifies undo is disabled at initial state and enabled after a move.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
