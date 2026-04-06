@@ -1,6 +1,7 @@
 <!-- ABOUTME: Play phase view — board, both hands, solver suggestions, undo, and score display. -->
 <!-- ABOUTME: Composes Board, HandPanel, and SolverPanel into the main game layout. -->
 <script lang="ts">
+  import ActiveRules from './ActiveRules.svelte';
   import Board from './Board.svelte';
   import HandPanel from './HandPanel.svelte';
   import SolverPanel from './SolverPanel.svelte';
@@ -35,6 +36,8 @@
       </button>
     </div>
   </div>
+
+  <ActiveRules />
 
   <div class="flex gap-10 flex-1 items-start justify-center pt-6">
     <HandPanel owner={Owner.Player} />
