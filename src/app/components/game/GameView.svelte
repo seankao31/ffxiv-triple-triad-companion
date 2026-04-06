@@ -1,5 +1,5 @@
 <!-- ABOUTME: Play phase view — board, both hands, solver suggestions, undo, and score display. -->
-<!-- ABOUTME: Composes Board, HandPanel, and SolverPanel into the main game layout. -->
+<!-- ABOUTME: Composes ActiveRules, Board, HandPanel, and SolverPanel into the main game layout. -->
 <script lang="ts">
   import ActiveRules from './ActiveRules.svelte';
   import Board from './Board.svelte';

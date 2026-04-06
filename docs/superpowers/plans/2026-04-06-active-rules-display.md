@@ -18,7 +18,7 @@
 - Create: `src/app/components/game/ActiveRules.svelte`
 - Create: `tests/app/components/ActiveRules.test.ts`
 
-- [ ] **Step 1: Write failing tests for ActiveRules**
+- [x] **Step 1: Write failing tests for ActiveRules**
 
 Create `tests/app/components/ActiveRules.test.ts`:
 
@@ -86,12 +86,12 @@ describe('ActiveRules', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/ActiveRules.test.ts`
 Expected: FAIL — `ActiveRules.svelte` does not exist yet.
 
-- [ ] **Step 3: Create ActiveRules.svelte**
+- [x] **Step 3: Create ActiveRules.svelte**
 
 Create `src/app/components/game/ActiveRules.svelte`:
 
@@ -126,12 +126,12 @@ Create `src/app/components/game/ActiveRules.svelte`:
 </div>
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/ActiveRules.test.ts`
 Expected: All 4 tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/game/ActiveRules.svelte tests/app/components/ActiveRules.test.ts
@@ -146,7 +146,7 @@ git commit -m 'feat(ENG-37): add ActiveRules component with tests'
 - Modify: `src/app/components/game/GameView.svelte`
 - Modify: `tests/app/components/GameView.test.ts`
 
-- [ ] **Step 1: Write failing test for rules display in GameView**
+- [x] **Step 1: Write failing test for rules display in GameView**
 
 Add to `tests/app/components/GameView.test.ts`, inside the existing `describe('GameView', ...)` block:
 
@@ -158,12 +158,12 @@ it('displays active rules above the board', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bunx vitest run tests/app/components/GameView.test.ts`
 Expected: FAIL — GameView doesn't render ActiveRules yet.
 
-- [ ] **Step 3: Add ActiveRules to GameView**
+- [x] **Step 3: Add ActiveRules to GameView**
 
 In `src/app/components/game/GameView.svelte`, add the import and render it between the header `div` and the play area `div`:
 
@@ -182,17 +182,17 @@ Add `<ActiveRules />` between the header bar (the `div` with `flex items-center 
   <div class="flex gap-10 flex-1 items-start justify-center pt-6">
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/GameView.test.ts`
 Expected: All 5 tests PASS (4 existing + 1 new).
 
-- [ ] **Step 5: Run full UI test suite**
+- [x] **Step 5: Run full UI test suite**
 
 Run: `bunx vitest run tests/app/`
 Expected: All tests PASS — no regressions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/app/components/game/GameView.svelte tests/app/components/GameView.test.ts
