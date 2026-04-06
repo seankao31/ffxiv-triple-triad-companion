@@ -50,6 +50,7 @@ beforeEach(() => {
     swap: false,
     threeOpen: false,
     playerHand: [null, null, null, null, null],
+    setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
     firstTurn: Owner.Player,
     history: [],
@@ -334,6 +335,41 @@ describe('resetGame', () => {
     game.update((g) => ({ ...g, unknownCardIds: new Set([99]) }));
     resetGame();
     expect(get(game).unknownCardIds.size).toBe(0);
+  });
+
+  it('restores original playerHand after swap + reset (not the swapped hand)', () => {
+    updateSwap(true);
+    const playerCards = makePlayerHand();
+    playerCards.forEach((c, i) => updatePlayerCard(i, c));
+    const oppCards = makeOpponentHand();
+    oppCards.forEach((c, i) => updateOpponentCard(i, c));
+
+    // Record original stats before game start
+    const originalStats = playerCards.map((c) => ({
+      top: c.top, right: c.right, bottom: c.bottom, left: c.left,
+    }));
+
+    startGame(); // enters swap phase
+
+    const s = get(game);
+    const given = s.playerHand[2]!;    // stats: 8,6,10,2
+    const received = s.opponentHand[3]!; // stats: 4,2,6,1
+    handleSwap(given, received);
+
+    // Sanity: playerHand[2] now has received card's stats
+    expect(get(game).playerHand[2]!.top).toBe(4);
+
+    resetGame();
+
+    // After reset, playerHand should have original stats — not the swapped card
+    const resetHand = get(game).playerHand;
+    expect(resetHand).toHaveLength(5);
+    for (let i = 0; i < 5; i++) {
+      expect(resetHand[i]!.top).toBe(originalStats[i]!.top);
+      expect(resetHand[i]!.right).toBe(originalStats[i]!.right);
+      expect(resetHand[i]!.bottom).toBe(originalStats[i]!.bottom);
+      expect(resetHand[i]!.left).toBe(originalStats[i]!.left);
+    }
   });
 
   it('preserves swap setting', () => {
