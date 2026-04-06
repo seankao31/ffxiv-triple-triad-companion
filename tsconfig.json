@@ -27,5 +27,6 @@
 
     // Global type augmentations for testing
     "types": ["bun", "@testing-library/jest-dom"]
-  }
+  },
+  "exclude": ["dist"]
 }
