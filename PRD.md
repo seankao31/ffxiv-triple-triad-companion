@@ -1,8 +1,8 @@
-# Project Triad: The Ultimate Triple Triad Companion
+# FFXIV Triple Triad Companion
 
 ## 1 Executive Summary
 
-Project Triad is a high-performance web application designed to be the "Stockfish" of FFXIV Triple Triad. It provides real-time move optimization, deck-building heuristics, and post-game analysis using a hybrid Rust/WASM engine for near-instant calculations.
+FFXIV Triple Triad Companion is a high-performance web application designed to be the "Stockfish" of FFXIV Triple Triad. It provides real-time move optimization, deck-building heuristics, and post-game analysis using a hybrid Rust/WASM engine for near-instant calculations.
 
 ## 2 Target Objectives
 

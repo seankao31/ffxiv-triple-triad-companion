@@ -33,7 +33,7 @@ test('three open: start game with unknown opponent cards', async ({ page }) => {
 
   // Start game — should succeed despite 2 empty opponent slots.
   await page.getByRole('button', { name: 'Start Game' }).click();
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // Opponent hand should show 2 unknown cards as "?" buttons.
   await expect(page.getByRole('button', { name: '?' })).toHaveCount(2);
@@ -54,7 +54,7 @@ test('three open: reveal unknown card and place it', async ({ page }) => {
   await fillPlayerAndPartialOpponent(page, DEFAULT_PLAYER, []);
 
   await page.getByRole('button', { name: 'Start Game' }).click();
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // All 5 opponent cards should be unknown.
   await expect(page.getByRole('button', { name: '?' })).toHaveCount(5);

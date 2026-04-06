@@ -43,7 +43,7 @@ test('reset after swap restores original player hand, not swapped hand', async (
   await page.getByRole('button', { name: '5 3 7 2' }).click();
   await page.getByRole('button', { name: '7 3 5 4' }).click();
   await page.getByRole('button', { name: /confirm swap/i }).click();
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // Reset back to setup.
   await page.getByRole('button', { name: 'Reset' }).click();

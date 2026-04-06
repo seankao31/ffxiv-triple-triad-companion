@@ -1,4 +1,4 @@
-# Project Triad
+# FFXIV Triple Triad Companion
 
 A real-time move optimizer for FFXIV Triple Triad — think "Stockfish for card games." Enter your hand and your opponent's cards, toggle the active rules, and get optimal move suggestions as you play.
 

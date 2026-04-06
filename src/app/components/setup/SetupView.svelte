@@ -26,7 +26,7 @@
   <SwapStep />
 {:else}
   <div class="flex flex-col items-center gap-8 p-8">
-    <h1 class="text-3xl font-bold">Project Triad — Setup</h1>
+    <h1 class="text-3xl font-bold">FFXIV Triple Triad Companion — Setup</h1>
 
     <div class="flex flex-col items-center gap-4 w-full">
       <RulesetInput />
