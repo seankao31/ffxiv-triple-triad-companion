@@ -67,4 +67,10 @@ describe('GameView', () => {
     await fireEvent.click(resetButton);
     expect(get(game).phase).toBe('setup');
   });
+
+  it('displays active rules above the board', () => {
+    game.update((s) => ({ ...s, ruleset: { ...s.ruleset, plus: true, same: true } }));
+    render(GameView);
+    expect(screen.getByText('Plus · Same')).toBeInTheDocument();
+  });
 });
