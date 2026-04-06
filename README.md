@@ -1,181 +1,67 @@
 # Project Triad
 
-The "Stockfish" of FFXIV Triple Triad — a real-time move optimizer and companion app. See `PRD.md` for full product requirements.
+A real-time move optimizer for FFXIV Triple Triad — think "Stockfish for card games." Enter your hand and your opponent's cards, toggle the active rules, and get optimal move suggestions as you play.
 
-## Current Status
+## Features
 
-**Phase 1 (Engine) — Complete.** The core TypeScript game engine is implemented, tested, and merged to `main`.
+- **Full rule support** — Plus, Same, Reverse, Fallen Ace, Ascension, Descension, and Combo cascades
+- **Real-time solver** — Rust/WASM negamax engine runs entirely in-browser, no server required
+- **Three Open mode** — handles up to 2 unknown opponent cards via Monte Carlo sampling (PIMC) across 4 parallel WASM workers
+- **Swap rule** — supports the Swap regional rule where players exchange a card before play begins
+- **Move rankings** — moves ranked by outcome (Win > Draw > Loss) with robustness tie-breaking
+- **Undo support** — step back through the game to explore alternative lines
+- **Optional native server** — faster PIMC via multi-threaded Rust server for power users
 
-**Phase 2 (UI) — Complete.** Svelte 5 + Tailwind CSS v4 frontend with a Live Solver view. Two-phase app: setup (card entry) → play (board + solver suggestions).
+## Screenshots
 
-**Phase 3 (Three Open + PIMC + Swap) — Complete.** Three Open mode allows up to 2 unknown opponent cards, solved via Rust/WASM PIMC (4 parallel workers, 50 simulations, star-constrained weighted sampling). Swap rule support added.
+<!-- TODO: Add screenshot of the setup screen (card entry + rule selection) -->
 
-## Architecture
+<!-- TODO: Add screenshot of the game board with solver suggestions visible -->
 
-Engine-first. The TypeScript engine is a pure library with no UI dependencies. The Rust engine (`engine-rs/`) compiles to WASM for in-browser solving and optionally as a native binary for a faster solver server.
+## Quick Start
 
-```
-src/
-  engine/
-    types.ts      — Card, BoardCell, GameState, RuleSet, enums, helpers, ADJACENCY
-    board.ts      — placeCard: Plus → Same → Combo cascade → Standard capture; all 6 capture rules
-    solver.ts     — minimax + alpha-beta + adaptive TT + robustness; createSolver() and findBestMove()
-    pimc.ts       — PIMC sampling helpers: buildCandidatePool, computeStarBudgets
-    index.ts      — public API barrel export
-  app/
-    main.ts       — Svelte app entry point
-    App.svelte    — root component, phase-based view switching
-    store.ts      — central Svelte store (phase, hands, history, solver mode, PIMC progress)
-    app.css       — Tailwind CSS entry
-    components/
-      setup/      — SetupView, HandInput, CardInput, RulesetInput, SwapStep, ServerSettings
-      game/       — GameView, Board, BoardCell, HandPanel, SolverPanel
-  data/
-    cards.json    — 464 cards scraped from ffxivcollect.com API
-engine-rs/
-  src/
-    lib.rs        — wasm-bindgen exports: wasm_solve, wasm_simulate
-    types.rs      — Rust port of all engine types (Card, GameState, RuleSet, RankedMove, …)
-    board.rs      — Rust board logic with in-place mutation + UndoRecord for minimax
-    solver.rs     — Rust minimax with alpha-beta, flat-array TT (128K entries), robustness
-    pimc.rs       — Server-side PIMC: weighted reservoir sampling, Rayon parallelism
-    bin/server.rs — Axum HTTP server at POST /api/solve (optional, server feature only)
-  Cargo.toml      — dual-target: cdylib (WASM) + rlib; server feature gates Axum/Rayon deps
-  tests/          — Rust integration tests (board fixtures, solver fixtures)
-pkg/              — wasm-pack output (gitignored; must be built before dev/build — see below)
-scripts/
-  scrape-cards.ts — one-off script to refresh card data
-tests/
-  engine/
-    board.test.ts      — 38 tests: placement, all capture rules
-    solver.test.ts     — 25 fast tests + self-play consistency + TT tests
-    solver.cross.test.ts — 1000-state property test: TypeScript vs WASM output must match
-  app/
-    store.test.ts      — 111 tests: phase transitions, placement, undo, PIMC, server mode
-    components/        — CardInput, SetupView, Board, HandPanel, SolverPanel
-    setup.ts           — Vitest global setup (jest-dom matchers)
-  scripts/
-    scrape-cards.test.ts — 5 tests: card transform and type mapping
-docs/
-  plans/
-    2026-03-04-triple-triad-engine-design.md     — engine architecture design
-    2026-03-05-svelte-ui-design.md               — Phase 2 UI design
-    2026-03-15-card-id-design.md                 — card ID scheme for TT hashing
-    2026-03-17-rust-wasm-solver-design.md        — Rust/WASM design spec
-    2026-03-17-rust-wasm-implementation-plan.md  — 10-step implementation plan
-  decisions/
-    2026-03-05-engine-implementation-decisions.md — engine decisions
-    2026-03-06-ui-implementation-decisions.md     — UI decisions
-    2026-03-07-solver-correctness-fixes.md        — solver bug fixes
+**Prerequisites:** [Bun](https://bun.sh/) and the [Rust toolchain](https://rustup.rs/) with `cargo install wasm-pack`.
+
+```bash
+# Clone and install
+git clone git@github.com:seankao31/ffxiv-triple-triad-companion.git && cd ffxiv-triple-triad-companion
+bun install
+
+# Build the WASM solver (required once, and after engine changes)
+cd engine-rs && wasm-pack build --target web --out-dir ../pkg && cd ..
+
+# Start the dev server
+bun run dev
 ```
 
-## Engine Public API
+Open [localhost:5173](http://localhost:5173). Enter both hands, pick your rules, and hit Play.
 
-```typescript
-import {
-  createCard, createInitialState, placeCard, findBestMove,
-  getScore, Owner, Outcome, CardType,
-  type Card, type GameState, type RuleSet, type RankedMove,
-} from "./src/engine";
+<!-- TODO: Add a short GIF or screenshot showing the setup → play flow -->
 
-const state = createInitialState(playerHand, opponentHand, Owner.Player, {
-  plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false,
-});
-const moves = findBestMove(state);  // RankedMove[], sorted Win > Draw > Loss, then by robustness
-const next  = placeCard(state, moves[0].card, moves[0].position);
+## How It Works
+
+```
+┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Svelte 5   │────▶│  WASM Workers    │────▶│  Rust Negamax   │
+│   Frontend   │◀────│  (4 parallel)    │◀────│  + Alpha-Beta   │
+└──────────────┘     └──────────────────┘     └─────────────────┘
 ```
 
-## Key Design Decisions
-
-- **Immutable state** — every operation returns a new `GameState`; enables free undo/redo and clean solver search
-- **RuleSet on GameState** — all six rules (Plus, Same, Reverse, Fallen Ace, Ascension, Descension) stored on state so all `placeCard` calls are consistent
-- **TT with bounds** — transposition table stores `(value, Exact|LowerBound|UpperBound)` for correct alpha-beta integration
-- **Robustness** — tie-breaking metric: fraction of opponent responses that are *mistakes* (lead to a strictly better outcome for us); always 0 for winning moves
-- **First turn configurable** — `createInitialState` accepts optional `firstTurn` (default: `Owner.Player`)
-- **Rust/WASM dual-target** — `engine-rs/` compiles to WASM (default, zero setup) or native binary (optional server); same crate, feature-gated Axum/Rayon deps
-- **In-place mutation** — Rust solver uses `place_card_mut` + `UndoRecord` to avoid allocation during minimax; ~3–5× speedup over immutable clone
-- **PIMC for Three Open** — unknown opponent cards are sampled from the full card pool using Efraimidis–Spirakis weighted reservoir sampling with star-tier budget constraints
-
-See `docs/decisions/` for full rationale on each.
+1. **Setup** — enter both players' cards (by name or stats), select active rules
+2. **Play** — place cards on the 3×3 board; the solver evaluates every legal move in the background
+3. **Solver** — Rust negamax with alpha-beta pruning and a 4M-entry transposition table, compiled to WASM
+4. **Incomplete information** — when opponent cards are unknown, Perfect Information Monte Carlo (PIMC) sampling runs 50 simulated games across 4 workers to estimate move quality
 
 ## Tech Stack
 
 | Concern | Tool |
 |---------|------|
 | Runtime | Bun |
-| Language | TypeScript (strict, noUncheckedIndexedAccess) + Rust (2021 edition) |
-| Framework | Svelte 5 |
-| Styling | Tailwind CSS v4 |
+| Languages | TypeScript + Rust |
+| UI | Svelte 5 + Tailwind CSS v4 |
+| Solver | Rust → WASM (via wasm-pack) |
 | Bundler | Vite |
-| WASM build | wasm-pack |
-| Engine tests | `bun test tests/engine` (TypeScript) / `cargo test` (Rust) |
-| UI tests | `bunx vitest run` (happy-dom + @testing-library/svelte) |
-| E2E tests | Playwright (Chromium) |
-
-## Running Tests
-
-```bash
-# All TypeScript tests (engine + UI)
-bun run test
-
-# All tests including E2E (requires WASM pre-built)
-bun run test:all
-
-# Engine only
-bun run test:engine
-
-# UI only
-bun run test:app
-
-# Rust tests (unit + integration)
-cd engine-rs && cargo test --features server
-
-# Rust benchmarks (heavy — on demand only, requires --release)
-cd engine-rs && cargo test --release -- --ignored
-
-# E2E tests (Playwright, requires WASM pre-built)
-bun run test:e2e
-
-# WASM benchmarks (heavy — opening position + PIMC sims)
-bun run bench:wasm
-```
 
 ## Development
 
-```bash
-bun run dev     # Vite dev server at localhost:5173 (requires pkg/ — see WASM build step below)
-bun run build   # Production build to dist/
-bun run check   # Svelte type checking
-```
-
-### Building the WASM module
-
-`pkg/` is gitignored and must be built before running the app. Run this once after cloning, and again after changes to `engine-rs/`:
-
-```bash
-cd engine-rs && wasm-pack build --target web --out-dir ../pkg
-```
-
-Requires: [Rust toolchain](https://rustup.rs/) + `cargo install wasm-pack`
-
-### Running the native solver server (optional)
-
-The native server runs PIMC with Rayon thread-pool parallelism, which is faster than 4 browser workers. Select "Native server" in the setup screen and point it at the running server.
-
-```bash
-# Build
-cd engine-rs && cargo build --release --features server --bin server
-
-# Run (listens on http://127.0.0.1:8080)
-./engine-rs/target/release/server
-```
-
-Requires: Rust toolchain (no wasm-pack needed for the server binary).
-
-## What's Next
-
-See `PRD.md` for the full product vision. Potential next steps:
-
-- **Deck Builder** (PRD §3.3) — collection manager + optimization algorithm
-- **Post-Game Analysis** (PRD §3.4) — game replay with move classification
-- **Hidden game support** — full deck optimizer data as sampling weights for the unknown pool
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full development guide — project structure, test commands, cross-engine alignment, and the optional native solver server.
