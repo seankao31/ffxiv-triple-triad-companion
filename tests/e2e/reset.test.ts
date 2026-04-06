@@ -29,3 +29,31 @@ test('reset preserves player hand and clears opponent hand', async ({ page }) =>
   await expect(topInputs[5]!).toHaveValue('');
   await expect(topInputs[6]!).toHaveValue('');
 });
+
+test('reset after swap restores original player hand, not swapped hand', async ({ page }) => {
+  await page.goto('/');
+
+  // Enable Swap rule.
+  await page.getByRole('checkbox', { name: 'Swap' }).click();
+
+  await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
+  await page.getByRole('button', { name: 'Start Game' }).click();
+
+  // Swap phase: give player card 0 (5 3 7 2), receive opponent card 1 (7 3 5 4).
+  await page.getByRole('button', { name: '5 3 7 2' }).click();
+  await page.getByRole('button', { name: '7 3 5 4' }).click();
+  await page.getByRole('button', { name: /confirm swap/i }).click();
+  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+
+  // Reset back to setup.
+  await page.getByRole('button', { name: 'Reset' }).click();
+  await expect(page.getByRole('heading', { name: /setup/i })).toBeVisible();
+
+  // Player hand should show original card stats, not the swapped opponent card.
+  const topInputs = await page.getByLabel('Top').all();
+  await expect(topInputs[0]!).toHaveValue('5'); // original, not '7' from swap
+  await expect(topInputs[1]!).toHaveValue('4');
+  await expect(topInputs[2]!).toHaveValue('3');
+  await expect(topInputs[3]!).toHaveValue('6');
+  await expect(topInputs[4]!).toHaveValue('7');
+});
