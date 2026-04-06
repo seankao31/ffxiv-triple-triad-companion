@@ -1,5 +1,5 @@
 <!-- ABOUTME: Displays which rules are active during a game as an inline text list. -->
-<!-- ABOUTME: Shows "No active rules" when no capture or format rules are enabled. -->
+<!-- ABOUTME: Shows "Active rules: ..." prefix when rules are on, or "No active rules" when none are enabled. -->
 <script lang="ts">
   import { game } from '../../store';
   import type { RuleSet } from '../../../engine';
@@ -25,5 +25,5 @@
 </script>
 
 <div class="text-sm text-surface-400 text-center">
-  {activeRules.length > 0 ? activeRules.join(' · ') : 'No active rules'}
+  {activeRules.length > 0 ? `Active rules: ${activeRules.join(' · ')}` : 'No active rules'}
 </div>
