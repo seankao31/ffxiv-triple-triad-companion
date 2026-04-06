@@ -26,7 +26,7 @@ test('swap + three open: enter swap phase with unknown opponent cards', async ({
   await page.getByRole('button', { name: /confirm swap/i }).click();
 
   // Should transition to play phase.
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 });
 
 test('swap + three open: swap with unknown opponent card by entering stats', async ({ page }) => {
@@ -69,7 +69,7 @@ test('swap + three open: swap with unknown opponent card by entering stats', asy
   await page.getByRole('button', { name: /confirm swap/i }).click();
 
   // Should transition to play phase.
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // Player hand should contain the received card (top=9, right=8, bottom=7, left=6).
   // HandPanel DOM order is top/left/right/bottom → accessible name "9 6 8 7".
@@ -114,7 +114,7 @@ test('swap flow: enable swap, exchange cards, and start game with swapped hands'
   await confirmBtn.click();
 
   // Should transition to play phase.
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // Player hand should contain the received card (7/3/5/4) instead of the given card (5/3/7/2).
   await expect(page.getByRole('heading', { name: /your hand/i })).toBeVisible();

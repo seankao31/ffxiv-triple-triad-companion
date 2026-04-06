@@ -11,7 +11,7 @@ test('full game flow from setup to completion', async ({ page }) => {
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Project Triad' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
   // Player goes first → 5 player turns (1,3,5,7,9), 4 opponent turns (2,4,6,8).
   // Always click the first empty cell (nth(0)) — earlier placements shrink the "·" list.
