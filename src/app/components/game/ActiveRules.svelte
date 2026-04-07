@@ -11,6 +11,7 @@
     ['fallenAce', 'Fallen Ace'],
     ['ascension', 'Ascension'],
     ['descension', 'Descension'],
+    ['order', 'Order'],
   ];
 
   let activeRules = $derived.by(() => {

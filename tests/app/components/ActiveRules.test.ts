@@ -59,4 +59,10 @@ describe('ActiveRules', () => {
     render(ActiveRules);
     expect(screen.getByText('Active rules: Reverse · Swap · Three Open')).toBeInTheDocument();
   });
+
+  it('renders Order when it is the only active rule', () => {
+    setRules({ order: true });
+    render(ActiveRules);
+    expect(screen.getByText('Active rules: Order')).toBeInTheDocument();
+  });
 });
