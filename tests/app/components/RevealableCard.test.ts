@@ -23,6 +23,17 @@ describe('RevealableCard', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Top'));
   });
 
+  it('does not call onreveal when CardInput emits null (incomplete input)', async () => {
+    const onreveal = vi.fn();
+    render(RevealableCardTest, { props: { revealing: true, onreveal } });
+
+    // Type one digit then backspace — CardInput emits null
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '3' });
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: 'Backspace' });
+
+    expect(onreveal).not.toHaveBeenCalled();
+  });
+
   it('calls onreveal when CardInput emits a complete card', async () => {
     const onreveal = vi.fn();
     render(RevealableCardTest, { props: { revealing: true, onreveal } });
