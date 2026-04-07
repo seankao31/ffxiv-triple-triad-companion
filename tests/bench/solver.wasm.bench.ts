@@ -50,7 +50,7 @@ describe('WASM solver benchmarks', () => {
         { id: 9, top: 3, right: 2, bottom: 4, left: 10, type: 'none' },
       ],
       currentTurn: 'player',
-      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
     const stateJson = JSON.stringify(state);
 
@@ -86,7 +86,7 @@ describe('WASM solver benchmarks', () => {
       playerHand: p,
       opponentHand: o,
       currentTurn: 'player',
-      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const solver = new WasmSolver();

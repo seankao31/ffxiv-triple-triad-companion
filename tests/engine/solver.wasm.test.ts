@@ -100,7 +100,7 @@ function generateState(rng: () => number): unknown {
     playerHand,
     opponentHand,
     currentTurn: numFilled % 2 === 0 ? 'player' : 'opponent',
-    rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+    rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
   };
 }
 
@@ -242,7 +242,7 @@ describe('WASM solver', () => {
       playerHand: p,
       opponentHand: o,
       currentTurn: 'player',
-      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const solver = new WasmSolver();
@@ -281,7 +281,7 @@ describe('WASM solver', () => {
       playerHand: p,
       opponentHand: o,
       currentTurn: 'player',
-      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const solver = new WasmSolver();

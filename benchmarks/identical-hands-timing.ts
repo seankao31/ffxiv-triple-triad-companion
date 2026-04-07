@@ -29,7 +29,7 @@ const HAND = [
 const PLAYER_HAND = HAND.map((c, i) => ({ id: i, ...c }));
 const OPPONENT_HAND = HAND.map((c, i) => ({ id: i + 5, ...c }));
 
-const PLUS_RULES = { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false };
+const PLUS_RULES = { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false };
 
 type Card = typeof PLAYER_HAND[0];
 type RankedMove = { card: Card; position: number; outcome: string; robustness: number };
