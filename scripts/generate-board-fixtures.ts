@@ -751,11 +751,10 @@ resetCardIds();
 resetCardIds();
 {
   const pCard = createCard(1, 1, 1, 9);
-  const filler = createCard(1, 1, 1, 1);
   const oWeak = createCard(2, 2, 2, 2);
   const oFiller = createCard(3, 3, 3, 3);
-  const p = [pCard, filler, filler, filler, filler];
-  const o = [oWeak, oFiller, filler, filler, filler];
+  const p = [pCard, createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
+  const o = [oWeak, oFiller, createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
   // Opponent goes first, places weak card at position 3
   const stateOppFirst = createInitialState(p, o, Owner.Opponent, orderRules);
   const afterOpp = setup(stateOppFirst, [[oWeak, 3]]);
@@ -770,14 +769,15 @@ resetCardIds();
   const oCard1 = createCard(1, 1, 5, 1);
   const oCard2 = createCard(1, 7, 1, 1);
   const pCard = createCard(3, 1, 1, 1);
-  const filler = createCard(1, 1, 1, 1);
   // With Order rule, fillers that are played in setup must be at the front of the hand.
   // Two player fillers are played during setup (positions 8 and 6), so they go first.
-  const p = [filler, filler, pCard, filler, filler];
-  const o = [oCard1, oCard2, filler, filler, filler];
+  const pFill1 = createCard(1, 1, 1, 1);
+  const pFill2 = createCard(1, 1, 1, 1);
+  const p = [pFill1, pFill2, pCard, createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
+  const o = [oCard1, oCard2, createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
   const state = setup(
     createInitialState(p, o, Owner.Player, orderPlusRules),
-    [[filler, 8], [oCard1, 1], [filler, 6], [oCard2, 3]],
+    [[pFill1, 8], [oCard1, 1], [pFill2, 6], [oCard2, 3]],
   );
   // pCard is now at index 0 of remaining player hand. Place at position 4.
   // top(3)+bottom(5)=8, left(1)+right(7)=8 → Plus triggers on both.
