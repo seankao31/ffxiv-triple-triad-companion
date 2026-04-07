@@ -39,7 +39,7 @@
 
   <ActiveRules />
 
-  <div class="flex gap-10 flex-1 items-start justify-center pt-6">
+  <div data-testid="game-layout" class="flex gap-10 flex-1 items-start justify-center pt-6">
     <HandPanel owner={Owner.Player} />
     <Board />
     <HandPanel owner={Owner.Opponent} />
