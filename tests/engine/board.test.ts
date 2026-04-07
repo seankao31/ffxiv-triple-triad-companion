@@ -163,7 +163,7 @@ describe("same rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player at pos 8
@@ -195,7 +195,7 @@ describe("same rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     let s = placeCard(state, filler, 8);
@@ -223,7 +223,7 @@ describe("same rule", () => {
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -260,7 +260,7 @@ describe("plus rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard1, opCard2, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player at pos 8
@@ -291,7 +291,7 @@ describe("plus rule", () => {
       [filler, filler, pCard, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player at pos 8
@@ -319,7 +319,7 @@ describe("plus rule", () => {
       [pCard1, filler, pCard2, filler, filler],
       [opCard, filler, filler, filler, filler],
       Owner.Player,
-      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player places pCard1 at pos 1
@@ -361,7 +361,7 @@ describe("combo cascade", () => {
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
       Owner.Player,
-      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player at pos 8
@@ -399,7 +399,7 @@ describe("combo cascade", () => {
       [filler, filler, plr4, filler, filler],
       [opp0, opp1, opp3, filler, filler],
       Owner.Player,
-      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     );
 
     // Turn 1: Player at pos 8
@@ -501,7 +501,7 @@ describe("full game", () => {
     const p = createCard(5, 5, 5, 5);
     const o = createCard(3, 3, 3, 3);
 
-    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o], Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false });
+    const state = createInitialState([p, p, p, p, p], [o, o, o, o, o], Owner.Player, { plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
 
     // Turn 1 (P): pos 0. No occupied neighbors.
     let s = placeCard(state, p, 0);
@@ -618,7 +618,7 @@ describe("getScore", () => {
       playerHand:   [card, card],        // 2 in hand
       opponentHand: [card, card, card],  // 3 in hand
       currentTurn: Owner.Player,
-      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const score = getScore(state);
@@ -659,7 +659,7 @@ describe("combined rules", () => {
       playerHand:   [pCard],
       opponentHand: [],
       currentTurn: Owner.Player,
-      rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const s = placeCard(state, pCard, 4);
@@ -700,7 +700,7 @@ describe("combo cascade depth", () => {
       playerHand:   [pCard],
       opponentHand: [],
       currentTurn: Owner.Player,
-      rules: { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false },
+      rules: { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     };
 
     const s = placeCard(state, pCard, 4);
@@ -720,7 +720,7 @@ describe("Reverse rule", () => {
     // Under Reverse: attacker captures when attacker < defender.
     // Card with top=3 placed above opponent card with top=5 (defender's bottom=5):
     // 3 < 5 → should capture.
-    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false, order: false };
     const p = [createCard(3, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const o = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Place opponent at position 0 (top-left), then player above — but row 0 is top row.
@@ -743,7 +743,7 @@ describe("Reverse rule", () => {
 
   it("does not capture when values are equal under Reverse", () => {
     // Reverse requires strictly less than. Equal values should NOT capture.
-    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false, order: false };
     const pCards = [createCard(5, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     let state = createInitialState(pCards, oCards, Owner.Opponent, rules);
@@ -754,7 +754,7 @@ describe("Reverse rule", () => {
   });
 
   it("captures when attacker value is strictly less than defender value", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: false, ascension: false, descension: false, order: false };
     const pCards = [createCard(3, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 7, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Opponent places card with bottom=7 at pos 0; player places card with top=3 at pos 3.
@@ -771,7 +771,7 @@ describe("Reverse rule", () => {
 
 describe("Fallen Ace rule", () => {
   it("A (10) still captures 1 under Fallen Ace (basic rule unchanged)", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false, order: false };
     const pCards = [createCard(10, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Player top=10 vs opponent bottom=1: 10>1 → capture. Fallen Ace does not prevent this.
@@ -782,7 +782,7 @@ describe("Fallen Ace rule", () => {
   });
 
   it("1 captures A (10) under Fallen Ace", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false, order: false };
     const pCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 10, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Opponent bottom=10 (A). Player top=1 attacks it. Normally 1>10 is false. Under Fallen Ace, 1 also captures A.
@@ -793,7 +793,7 @@ describe("Fallen Ace rule", () => {
   });
 
   it("normal captures still apply under Fallen Ace", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: true, ascension: false, descension: false, order: false };
     const pCards = [createCard(7, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 5, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Player top=7 vs opponent bottom=5: 7>5 → capture (unchanged by Fallen Ace)
@@ -804,7 +804,7 @@ describe("Fallen Ace rule", () => {
   });
 
   it("A (10) captures 1 under Reverse + Fallen Ace", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false, order: false };
     const pCards = [createCard(10, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Under Reverse alone: 10 vs 1 → 10<1? No → no capture. Fallen Ace adds: 10 also captures 1.
@@ -815,7 +815,7 @@ describe("Fallen Ace rule", () => {
   });
 
   it("1 captures A (10) under Reverse + Fallen Ace (normal Reverse rule)", () => {
-    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false };
+    const rules: RuleSet = { plus: false, same: false, reverse: true, fallenAce: true, ascension: false, descension: false, order: false };
     const pCards = [createCard(1, 1, 1, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     const oCards = [createCard(1, 1, 10, 1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
     // Under Reverse: 1 vs 10 → 1<10 → capture. Fallen Ace doesn't change this.
@@ -827,7 +827,7 @@ describe("Fallen Ace rule", () => {
 });
 
 describe("Ascension rule", () => {
-  const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false };
+  const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false, order: false };
 
   it("boosts attacking card based on same-type count on board", () => {
     // 2 Primals on board + player Primal (top=5) vs opp Garlean (bottom=5).
@@ -996,7 +996,7 @@ describe("Ascension rule", () => {
 });
 
 describe("Descension rule", () => {
-  const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: true };
+  const rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: true, order: false };
 
   it("penalizes attacking card based on same-type count on board", () => {
     // 2 Scions on board (opp filler + player filler). Player Scion (top=6) vs opp Garlean (bottom=5).

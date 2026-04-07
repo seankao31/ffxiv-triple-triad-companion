@@ -53,6 +53,7 @@ export interface RuleSet {
   readonly fallenAce: boolean;
   readonly ascension: boolean;
   readonly descension: boolean;
+  readonly order: boolean;
 }
 
 export interface GameState {
@@ -104,7 +105,7 @@ export function createInitialState(
   playerHand: readonly Card[],
   opponentHand: readonly Card[],
   firstTurn: Owner = Owner.Player,
-  rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false },
+  rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
 ): GameState {
   return {
     board: [null, null, null, null, null, null, null, null, null],

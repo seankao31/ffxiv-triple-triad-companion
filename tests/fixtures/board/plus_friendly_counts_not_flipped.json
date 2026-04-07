@@ -111,7 +111,8 @@
       "reverse": false,
       "fallenAce": false,
       "ascension": false,
-      "descension": false
+      "descension": false,
+      "order": false
     }
   },
   "cardId": 3,
@@ -229,7 +230,8 @@
       "reverse": false,
       "fallenAce": false,
       "ascension": false,
-      "descension": false
+      "descension": false,
+      "order": false
     }
   }
 }

@@ -1076,7 +1076,7 @@ mod tests {
             create_card(3,2,4,10,CardType::None),
         ];
         let rules = RuleSet { plus: true, same: false, reverse: false,
-            fallen_ace: false, ascension: false, descension: false };
+            fallen_ace: false, ascension: false, descension: false, order: false };
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
 
         let mut solver = Solver::new();
@@ -1111,7 +1111,7 @@ mod tests {
             create_card(3,2,4,10,CardType::None),
         ];
         let rules = RuleSet { plus: true, same: false, reverse: false,
-            fallen_ace: false, ascension: false, descension: false };
+            fallen_ace: false, ascension: false, descension: false, order: false };
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
         // Use a mid-game position (3 cards placed) for speed.
         let state = place_card(&state, p[0], 0);
@@ -1138,7 +1138,7 @@ mod tests {
             create_card(3,2,4,10,CardType::None),
         ];
         let rules = RuleSet { plus: false, same: true, reverse: false,
-            fallen_ace: false, ascension: false, descension: false };
+            fallen_ace: false, ascension: false, descension: false, order: false };
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
         let state = place_card(&state, p[0], 0);
         let state = place_card(&state, o[0], 1);
@@ -1180,7 +1180,7 @@ mod tests {
         let p: Vec<Card> = (0..5).map(|i| create_card(i as u8 + 1, i as u8 + 1, i as u8 + 1, i as u8 + 1, CardType::None)).collect();
         let o: Vec<Card> = (0..5).map(|i| create_card(10 - i as u8, 10 - i as u8, 10 - i as u8, 10 - i as u8, CardType::None)).collect();
         let rules = RuleSet { plus: false, same: false, reverse: true,
-            fallen_ace: false, ascension: false, descension: false };
+            fallen_ace: false, ascension: false, descension: false, order: false };
         let state = create_initial_state(p.clone(), o.clone(), Owner::Player, rules);
         let state = place_card(&state, p[0], 4);
         let state = place_card(&state, o[0], 5);

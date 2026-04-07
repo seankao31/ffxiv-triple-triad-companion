@@ -8,7 +8,7 @@ import { Owner } from '../../../src/engine';
 
 function setRules(overrides: Partial<{
   plus: boolean; same: boolean; reverse: boolean;
-  fallenAce: boolean; ascension: boolean; descension: boolean;
+  fallenAce: boolean; ascension: boolean; descension: boolean; order: boolean;
   swap: boolean; threeOpen: boolean;
 }> = {}) {
   game.set({
@@ -20,6 +20,7 @@ function setRules(overrides: Partial<{
       fallenAce: overrides.fallenAce ?? false,
       ascension: overrides.ascension ?? false,
       descension: overrides.descension ?? false,
+      order: overrides.order ?? false,
     },
     swap: overrides.swap ?? false,
     threeOpen: overrides.threeOpen ?? false,
