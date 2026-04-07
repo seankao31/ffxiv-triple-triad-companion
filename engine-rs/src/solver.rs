@@ -137,9 +137,16 @@ fn negamax(
         state.opponent_hand.clone()
     };
 
+    // Order rule: only the first card in hand is legal.
+    let cards_to_try: &[Card] = if state.rules.order {
+        &hand_cards[..1]
+    } else {
+        &hand_cards
+    };
+
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
-    'outer: for card in hand_cards.iter() {
+    'outer: for card in cards_to_try.iter() {
         let ck = stats_key(card);
         if !seen_cards.insert(ck) { continue; }
 
@@ -204,7 +211,14 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
     let mut evaluated: Vec<(Card, usize, i32)> = Vec::new();
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
-    for card in hand_cards.iter() {
+    // Order rule: only the first card in hand is legal.
+    let cards_to_try: &[Card] = if state.rules.order {
+        &hand_cards[..1]
+    } else {
+        &hand_cards
+    };
+
+    for card in cards_to_try.iter() {
         let ck = stats_key(card);
         if !seen_cards.insert(ck) { continue; }
 
@@ -231,10 +245,17 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
                 state.opponent_hand.clone()
             };
 
+            // Order rule: opponent can only play their first card.
+            let opp_cards_to_try: &[Card] = if state.rules.order {
+                &opp_hand[..1]
+            } else {
+                &opp_hand
+            };
+
             let mut total_responses: u32 = 0;
             let mut better_outcome_count: u32 = 0;
 
-            for opp_card in opp_hand.iter() {
+            for opp_card in opp_cards_to_try.iter() {
                 for i in 0..9usize {
                     if state.board[i].is_some() { continue; }
                     total_responses += 1;
@@ -1144,6 +1165,68 @@ mod tests {
         let state = place_card(&state, o[0], 1);
         let moves = find_best_move(&state);
         assert!(!moves.is_empty());
+    }
+
+    // ---- Order rule ----
+
+    #[test]
+    fn solver_order_rule_only_uses_first_card() {
+        reset_card_ids();
+        let rules = RuleSet { order: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(3, 3, 3, 3, CardType::None),  // index 0: weak
+            create_card(10, 10, 10, 10, CardType::None), // index 1: strong (but forbidden)
+            create_card(1,1,1,1,CardType::None),
+            create_card(1,1,1,1,CardType::None),
+            create_card(1,1,1,1,CardType::None),
+        ];
+        let o = vec![
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        let moves = find_best_move(&state);
+        // Every returned move must use p[0] (the 3,3,3,3 card)
+        assert!(!moves.is_empty());
+        for m in &moves {
+            assert_eq!(m.card.id, p[0].id,
+                "Order rule: solver suggested card id {} but only card id {} (index 0) is legal",
+                m.card.id, p[0].id);
+        }
+    }
+
+    #[test]
+    fn solver_order_self_play_score_matches_prediction() {
+        reset_card_ids();
+        let rules = RuleSet { order: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(10,5,3,8,CardType::None), create_card(7,6,4,9,CardType::None),
+            create_card(2,8,6,3,CardType::None),  create_card(5,4,7,1,CardType::None),
+            create_card(9,3,2,6,CardType::None),
+        ];
+        let o = vec![
+            create_card(4,7,5,2,CardType::None),  create_card(8,3,9,6,CardType::None),
+            create_card(1,5,8,4,CardType::None),  create_card(6,9,1,7,CardType::None),
+            create_card(3,2,4,10,CardType::None),
+        ];
+        let state = create_initial_state(p, o, Owner::Player, rules);
+
+        let mut solver = Solver::new();
+        let predicted_score = solver.solve(&state)[0].score;
+
+        let mut cur = state;
+        loop {
+            let moves = solver.solve(&cur);
+            if moves.is_empty() { break; }
+            cur = place_card(&cur, moves[0].card, moves[0].position as usize);
+        }
+
+        let (player_score, _) = get_score(&cur);
+        assert_eq!(player_score as u8, predicted_score,
+            "Order self-play score {} differs from prediction {}", player_score, predicted_score);
     }
 
     #[test]
