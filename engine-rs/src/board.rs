@@ -205,6 +205,11 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
 
+    assert!(
+        !state.rules.order || card_index == 0,
+        "Order rule: must play the first card in hand"
+    );
+
     // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
     let mut type_counts: HashMap<CardType, u8> = HashMap::new();
     for placed in state.board.iter().flatten() {
@@ -355,6 +360,11 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
         .iter()
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
+
+    assert!(
+        !state.rules.order || card_hand_index == 0,
+        "Order rule: must play the first card in hand"
+    );
 
     // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
     let mut type_counts: HashMap<CardType, u8> = HashMap::new();
@@ -1695,5 +1705,52 @@ mod tests {
         assert_eq!(state_mut.board[1].unwrap().owner, Owner::Opponent, "pos 1 owner not restored");
         assert_eq!(state_mut.board[3].unwrap().owner, Owner::Opponent, "pos 3 owner not restored");
         assert_eq!(state_mut, original, "full state not restored after combo undo");
+    }
+
+    #[test]
+    #[should_panic(expected = "Order rule")]
+    fn order_rule_rejects_non_first_card() {
+        reset_card_ids();
+        let rules = RuleSet { order: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        // Try to play p[1] (index 1) instead of p[0] — should panic
+        place_card(&state, p[1], 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "Order rule")]
+    fn order_rule_rejects_non_first_card_mut() {
+        reset_card_ids();
+        let rules = RuleSet { order: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        place_card_mut(&mut state, p[1], 4);
     }
 }
