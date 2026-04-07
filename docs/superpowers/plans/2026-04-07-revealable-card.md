@@ -27,7 +27,7 @@
 - Create: `tests/app/components/RevealableCard.test.ts`
 - Create: `src/app/components/shared/RevealableCard.svelte`
 
-- [ ] **Step 1: Write failing test — renders children when not revealing**
+- [x] **Step 1: Write failing test — renders children when not revealing**
 
 ```ts
 // tests/app/components/RevealableCard.test.ts
@@ -63,12 +63,12 @@ We need a thin test wrapper because Svelte 5 snippets can't be passed as props f
 </RevealableCard>
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: FAIL — module not found (RevealableCard.svelte doesn't exist yet)
 
-- [ ] **Step 3: Write minimal RevealableCard component**
+- [x] **Step 3: Write minimal RevealableCard component**
 
 ```svelte
 <!-- src/app/components/shared/RevealableCard.svelte -->
@@ -90,12 +90,12 @@ Expected: FAIL — module not found (RevealableCard.svelte doesn't exist yet)
 {/if}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Write failing test — shows CardInput when revealing**
+- [x] **Step 5: Write failing test — shows CardInput when revealing**
 
 Add to the test file:
 
@@ -107,12 +107,12 @@ Add to the test file:
   });
 ```
 
-- [ ] **Step 6: Run test to verify it fails**
+- [x] **Step 6: Run test to verify it fails**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: FAIL — 'Top' label not found
 
-- [ ] **Step 7: Add CardInput rendering**
+- [x] **Step 7: Add CardInput rendering**
 
 Update `RevealableCard.svelte` — replace the `<!-- CardInput placeholder -->` comment:
 
@@ -143,12 +143,12 @@ Update `RevealableCard.svelte` — replace the `<!-- CardInput placeholder -->` 
 {/if}
 ```
 
-- [ ] **Step 8: Run test to verify it passes**
+- [x] **Step 8: Run test to verify it passes**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: PASS
 
-- [ ] **Step 9: Write failing test — auto-focuses Top field**
+- [x] **Step 9: Write failing test — auto-focuses Top field**
 
 Add to the test file:
 
@@ -160,12 +160,12 @@ Add to the test file:
   });
 ```
 
-- [ ] **Step 10: Run test to verify it fails**
+- [x] **Step 10: Run test to verify it fails**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: FAIL — active element is not the Top input
 
-- [ ] **Step 11: Add auto-focus logic using $effect**
+- [x] **Step 11: Add auto-focus logic using $effect**
 
 Update the script section in `RevealableCard.svelte` — add an `$effect` after the `cardInput` state declaration:
 
@@ -177,12 +177,12 @@ Update the script section in `RevealableCard.svelte` — add an `$effect` after 
   });
 ```
 
-- [ ] **Step 12: Run test to verify it passes**
+- [x] **Step 12: Run test to verify it passes**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: PASS
 
-- [ ] **Step 13: Write failing test — calls onreveal when CardInput emits a valid card**
+- [x] **Step 13: Write failing test — calls onreveal when CardInput emits a valid card**
 
 Add to the test file:
 
@@ -209,12 +209,12 @@ Update the import at the top of the test file to include `fireEvent`:
 import { render, screen, fireEvent } from '@testing-library/svelte';
 ```
 
-- [ ] **Step 14: Run test to verify it passes**
+- [x] **Step 14: Run test to verify it passes**
 
 Run: `bunx vitest run tests/app/components/RevealableCard.test.ts`
 Expected: PASS (the `handleChange` + `onreveal` callback is already wired up from Step 7)
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```
 git add src/app/components/shared/RevealableCard.svelte tests/app/components/RevealableCard.test.ts tests/app/components/RevealableCardTest.svelte
@@ -228,12 +228,12 @@ git commit -m 'feat(ENG-42): add RevealableCard component with tests'
 **Files:**
 - Modify: `src/app/components/setup/SwapStep.svelte`
 
-- [ ] **Step 1: Run existing SwapStep tests to confirm they pass**
+- [x] **Step 1: Run existing SwapStep tests to confirm they pass**
 
 Run: `bunx vitest run tests/app/components/SwapStep.test.ts`
 Expected: PASS (all 6 tests)
 
-- [ ] **Step 2: Refactor SwapStep**
+- [x] **Step 2: Refactor SwapStep**
 
 Replace the `CardInput` import and reveal machinery with `RevealableCard`. The full updated file:
 
@@ -325,12 +325,12 @@ Key changes:
 - `handleRevealCard` signature simplified: no longer checks for `null` (RevealableCard only emits valid cards)
 - Template: `{#if revealingIndex === i}` block replaced with `<RevealableCard>` wrapper around the existing card/unknown buttons
 
-- [ ] **Step 3: Run SwapStep tests**
+- [x] **Step 3: Run SwapStep tests**
 
 Run: `bunx vitest run tests/app/components/SwapStep.test.ts`
 Expected: PASS (all 6 tests)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```
 git add src/app/components/setup/SwapStep.svelte
@@ -344,12 +344,12 @@ git commit -m 'refactor(ENG-42): SwapStep uses RevealableCard'
 **Files:**
 - Modify: `src/app/components/game/HandPanel.svelte`
 
-- [ ] **Step 1: Run existing HandPanel tests to confirm they pass**
+- [x] **Step 1: Run existing HandPanel tests to confirm they pass**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 Expected: PASS (all 11 tests)
 
-- [ ] **Step 2: Refactor HandPanel**
+- [x] **Step 2: Refactor HandPanel**
 
 Replace the `CardInput` import and reveal machinery with `RevealableCard`. The full updated file:
 
@@ -423,12 +423,12 @@ Key changes:
 - `handleReveal` signature simplified: no longer checks `card` for null
 - Template: `{#if isRevealing}` block replaced with `<RevealableCard>` wrapper
 
-- [ ] **Step 3: Run HandPanel tests**
+- [x] **Step 3: Run HandPanel tests**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 Expected: PASS (all 11 tests)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```
 git add src/app/components/game/HandPanel.svelte
@@ -439,14 +439,14 @@ git commit -m 'refactor(ENG-42): HandPanel uses RevealableCard'
 
 ### Task 4: Full test suite verification
 
-- [ ] **Step 1: Run all UI tests**
+- [x] **Step 1: Run all UI tests**
 
 Run: `bunx vitest run`
 Expected: All 193+ tests PASS
 
-- [ ] **Step 2: Run type check**
+- [x] **Step 2: Run type check**
 
 Run: `bunx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 3: Commit if any fixes were needed, otherwise done**
+- [x] **Step 3: Commit if any fixes were needed, otherwise done**
