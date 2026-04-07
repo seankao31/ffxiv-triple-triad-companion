@@ -39,7 +39,7 @@ const OPPONENT_HAND = [
   { id: 9, top: 3,  right: 2, bottom: 4, left: 10, type: 'none' },
 ];
 
-const NO_RULES = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false };
+const NO_RULES = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false };
 const PLUS_RULES = { ...NO_RULES, plus: true };
 
 type Card = typeof PLAYER_HAND[0];
