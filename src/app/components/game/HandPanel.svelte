@@ -1,11 +1,10 @@
 <!-- ABOUTME: Displays one player's remaining hand cards during gameplay. -->
 <!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. -->
 <script lang="ts">
-  import { tick } from 'svelte';
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
   import { Owner, type Card } from '../../../engine';
   import { cardModifier } from '../../card-display';
-  import CardInput from '../setup/CardInput.svelte';
+  import RevealableCard from '../shared/RevealableCard.svelte';
   import CardFace from '../CardFace.svelte';
 
   let { owner }: { owner: Owner } = $props();
@@ -19,23 +18,19 @@
   let isActive = $derived($currentState?.currentTurn === owner);
   let bestCard = $derived($rankedMoves[0]?.card ?? null);
 
-  // ID of the unknown card currently being revealed; null when no reveal form is open.
   let revealingCardId: number | null = $state(null);
-  let revealCardInput: { focusFirst: () => void } | null = $state(null);
 
-  async function handleClick(card: Card) {
+  function handleClick(card: Card) {
     if (!isActive) return;
     if ($game.unknownCardIds.has(card.id)) {
       revealingCardId = card.id;
-      await tick();
-      revealCardInput?.focusFirst();
       return;
     }
     selectCard(card);
   }
 
-  function handleReveal(card: Card | null) {
-    if (!card || revealingCardId === null) return;
+  function handleReveal(card: Card) {
+    if (revealingCardId === null) return;
     revealCard(revealingCardId, {
       top: card.top, right: card.right, bottom: card.bottom, left: card.left,
     });
@@ -52,10 +47,7 @@
   </h3>
   {#each hand as card}
     {@const isUnknown = $game.unknownCardIds.has(card.id)}
-    {@const isRevealing = revealingCardId === card.id}
-    {#if isRevealing}
-      <CardInput onchange={handleReveal} bind:this={revealCardInput} />
-    {:else}
+    <RevealableCard revealing={revealingCardId === card.id} onreveal={handleReveal}>
       <button
         onclick={() => handleClick(card)}
         class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
@@ -66,6 +58,6 @@
       >
         <CardFace {card} unknown={isUnknown} modifier={cardModifier(card.type, $currentState, $game.ruleset)} />
       </button>
-    {/if}
+    </RevealableCard>
   {/each}
 </div>
