@@ -54,6 +54,7 @@ pub struct RuleSet {
     pub fallen_ace: bool,
     pub ascension: bool,
     pub descension: bool,
+    pub order: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
