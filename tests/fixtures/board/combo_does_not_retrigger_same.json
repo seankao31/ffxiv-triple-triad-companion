@@ -116,8 +116,10 @@
       "fallenAce": false,
       "ascension": false,
       "descension": false,
-      "order": false
-    }
+      "order": false,
+      "chaos": false
+    },
+    "forcedCardId": null
   },
   "cardId": 4,
   "position": 4,
@@ -239,7 +241,9 @@
       "fallenAce": false,
       "ascension": false,
       "descension": false,
-      "order": false
-    }
+      "order": false,
+      "chaos": false
+    },
+    "forcedCardId": null
   }
 }

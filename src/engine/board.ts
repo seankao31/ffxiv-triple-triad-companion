@@ -211,5 +211,6 @@ export function placeCard(
       state.currentTurn === Owner.Opponent ? newHand : state.opponentHand,
     currentTurn: nextTurn,
     rules: state.rules,
+    forcedCardId: null,
   };
 }

@@ -78,7 +78,7 @@ describe('boardTypeCount', () => {
 });
 
 describe('cardModifier', () => {
-  const noRules = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false };
+  const noRules = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false };
 
   it('returns null for CardType.None even when None-type cards are on the board', () => {
     resetCardIds();
