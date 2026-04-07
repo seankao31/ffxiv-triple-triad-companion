@@ -205,6 +205,8 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
 
+    // Panics on violation — TS engine throws a catchable Error for the same check.
+    // If external callers are added, consider returning Result instead of panicking.
     assert!(
         !state.rules.order || card_index == 0,
         "Order rule: must play the first card in hand"
@@ -361,6 +363,7 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
         .position(|c| c.id == card.id)
         .expect("Card is not in the current player's hand");
 
+    // See comment on place_card's assert — same asymmetry with TS engine.
     assert!(
         !state.rules.order || card_hand_index == 0,
         "Order rule: must play the first card in hand"

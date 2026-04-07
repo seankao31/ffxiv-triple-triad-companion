@@ -263,6 +263,8 @@ currentState.subscribe((state) => {
     lastSolvedState = state;
     triggerSolve(state);
     // Order rule: auto-select the forced (index 0) card for the current player.
+    // This implicitly repairs selectedCard after undo/swap/new-game transitions.
+    // If store transitions grow more complex, consider setting selectedCard explicitly.
     const g = get(game);
     if (g.ruleset.order) {
       const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
