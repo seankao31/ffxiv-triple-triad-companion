@@ -26,7 +26,7 @@
 {:else}
   {@const abbr = showType ? typeAbbrev[card.type] : undefined}
   {@const colorClass = typeColor[card.type]}
-  <div class="relative col-span-3 row-span-3 grid grid-cols-3">
+  <div class="relative col-span-3 row-span-3 grid grid-cols-3 h-full">
     {#if modifier != null}
       <div class="absolute top-0 left-0.5 text-[10px] font-semibold {modifier > 0 ? 'text-eval-win' : 'text-eval-loss'}">
         {modifier > 0 ? '+' : ''}{modifier}
