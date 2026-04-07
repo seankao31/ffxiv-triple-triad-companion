@@ -2,7 +2,7 @@
 // ABOUTME: Covers standard, Plus, Same, and Combo cascade rules.
 
 import { describe, expect, it, test } from "bun:test";
-import { type Board, type GameState, type RuleSet, CardType, createCard, createInitialState, getScore, Owner } from "../../src/engine/types";
+import { type Board, type GameState, type RuleSet, CardType, createCard, createInitialState, getScore, Owner, resetCardIds } from "../../src/engine/types";
 import { placeCard } from "../../src/engine/board";
 
 describe("placeCard", () => {
@@ -1101,6 +1101,46 @@ describe("Descension rule", () => {
     state = placeCard(state, pCards[1]!, 4);  // player None at pos 4 (top=5 attacks pos 1's bottom=4)
     // typeCounts[None]=2. 5-2=3 > 4-2=2 → capture.
     expect(state.board[1]?.owner).toBe(Owner.Player);
+  });
+});
+
+describe("Order rule", () => {
+  const orderRules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: true };
+
+  it("allows placing card at index 0 of the hand", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state = createInitialState(p, o, Owner.Player, orderRules);
+
+    // p[0] is at index 0 — should succeed
+    const result = placeCard(state, p[0]!, 4);
+    expect(result.board[4]).toEqual({ card: p[0], owner: Owner.Player });
+    expect(result.playerHand).toEqual([p[1], p[2], p[3], p[4]]);
+    expect(result.currentTurn).toBe(Owner.Opponent);
+  });
+
+  it("throws when playing a card not at index 0", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state = createInitialState(p, o, Owner.Player, orderRules);
+
+    // p[1] is at index 1, not 0 — should throw
+    expect(() => placeCard(state, p[1]!, 4)).toThrow("Order rule");
+  });
+
+  it("applies captures normally with Order active", () => {
+    resetCardIds();
+    const p = [createCard(1, 1, 1, 9), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    // Opponent goes first, places card at position 3
+    const stateOppFirst = createInitialState(p, o, Owner.Opponent, orderRules);
+    const afterOppPlace = placeCard(stateOppFirst, o[0]!, 3);
+    // Now player's turn, p[0] has left=9, placing at position 4 attacks position 3's right=2
+    // 9 > 2 → capture
+    const result = placeCard(afterOppPlace, p[0]!, 4);
+    expect(result.board[3]!.owner).toBe(Owner.Player); // captured
   });
 });
 

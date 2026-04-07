@@ -160,6 +160,10 @@ export function placeCard(
     throw new Error("Card is not in the current player's hand");
   }
 
+  if (state.rules.order && cardIndex !== 0) {
+    throw new Error("Order rule: must play the first card in hand");
+  }
+
   // Snapshot per-type card counts from board BEFORE placing (i++ timing: placed card excluded).
   const typeCounts = new Map<CardType, number>();
   for (const cell of state.board) {
