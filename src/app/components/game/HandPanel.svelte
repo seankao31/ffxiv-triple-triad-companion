@@ -1,5 +1,5 @@
 <!-- ABOUTME: Displays one player's remaining hand cards during gameplay. -->
-<!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. -->
+<!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. Dims non-forced cards under Order rule. -->
 <script lang="ts">
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
   import { Owner, type Card } from '../../../engine';
