@@ -11,3 +11,12 @@ test('setup view with filled hands', async ({ page }) => {
 
   await expect(page).toHaveScreenshot('setup-filled-hands.png', SCREENSHOT_OPTS);
 });
+
+test('hand panels at game start', async ({ page }) => {
+  await page.goto('/');
+  await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
+  await page.getByRole('button', { name: 'Start Game' }).click();
+
+  const layout = page.getByTestId('game-layout');
+  await expect(layout).toHaveScreenshot('hand-panels-game-start.png', SCREENSHOT_OPTS);
+});
