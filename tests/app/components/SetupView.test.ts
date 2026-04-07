@@ -54,6 +54,17 @@ describe('SetupView', () => {
     expect(get(game).phase).toBe('play');
   });
 
+  it('transitions to play phase when Enter is pressed with complete hands', async () => {
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+
+    render(SetupView);
+    await fireEvent.submit(screen.getByRole('form'));
+
+    expect(get(game).phase).toBe('play');
+  });
+
   it('does not transition when hands are incomplete', async () => {
     render(SetupView);
     await fireEvent.click(screen.getByRole('button', { name: /start game/i }));

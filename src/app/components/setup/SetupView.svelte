@@ -25,7 +25,11 @@
 {#if $game.phase === 'swap'}
   <SwapStep />
 {:else}
-  <div class="flex flex-col items-center gap-8 p-8">
+  <form
+    aria-label="Game setup"
+    onsubmit={(e) => { e.preventDefault(); handleStart(); }}
+    class="flex flex-col items-center gap-8 p-8"
+  >
     <h1 class="text-3xl font-bold">FFXIV Triple Triad Companion — Setup</h1>
 
     <div class="flex flex-col items-center gap-4 w-full">
@@ -71,10 +75,10 @@
     {/if}
 
     <button
-      onclick={handleStart}
+      type="submit"
       class="px-8 py-3 text-lg font-semibold tracking-wide bg-accent-blue hover:bg-accent-blue/80 rounded"
     >
       Start Game
     </button>
-  </div>
+  </form>
 {/if}
