@@ -27,7 +27,7 @@
 
 </script>
 
-<div class="grid grid-cols-3 gap-2">
+<div data-testid="board" class="grid grid-cols-3 gap-2">
   {#each Array(9) as _, i}
     <BoardCell
       cell={$currentState?.board[i] ?? null}
