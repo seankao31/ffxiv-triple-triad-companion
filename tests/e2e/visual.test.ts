@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import { fillHands, placeCard, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
-const SCREENSHOT_OPTS = { maxDiffPixelRatio: 0.01 };
+const SCREENSHOT_OPTS = { maxDiffPixels: 100 };
 
 test('setup view with filled hands', async ({ page }) => {
   await page.goto('/');
