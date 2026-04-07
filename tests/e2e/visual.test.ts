@@ -20,3 +20,20 @@ test('hand panels at game start', async ({ page }) => {
   const layout = page.getByTestId('game-layout');
   await expect(layout).toHaveScreenshot('hand-panels-game-start.png', SCREENSHOT_OPTS);
 });
+
+test('board mid-game with placed cards', async ({ page }) => {
+  await page.goto('/');
+  await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
+  await page.getByRole('button', { name: 'Start Game' }).click();
+
+  // Place 6 cards (3 player, 3 opponent) — always click first empty cell.
+  await placeCard(page, '5 3 7 2', 0);  // Player turn 1
+  await placeCard(page, '4 5 6 3', 0);  // Opponent turn 2
+  await placeCard(page, '4 6 2 8', 0);  // Player turn 3
+  await placeCard(page, '7 3 5 4', 0);  // Opponent turn 4
+  await placeCard(page, '3 5 5 7', 0);  // Player turn 5
+  await placeCard(page, '2 8 1 6', 0);  // Opponent turn 6
+
+  const layout = page.getByTestId('game-layout');
+  await expect(layout).toHaveScreenshot('board-mid-game.png', SCREENSHOT_OPTS);
+});
