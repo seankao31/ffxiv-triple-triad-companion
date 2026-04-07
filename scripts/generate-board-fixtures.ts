@@ -59,6 +59,7 @@ const noRules: RuleSet = {
   ascension: false,
   descension: false,
   order: false,
+  chaos: false,
 };
 const sameRules: RuleSet = { ...noRules, same: true };
 const plusRules: RuleSet = { ...noRules, plus: true };
@@ -701,7 +702,8 @@ resetCardIds();
     playerHand: [pCard],
     opponentHand: [],
     currentTurn: Owner.Player,
-    rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+    rules: { plus: true, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
+    forcedCardId: null,
   };
   writeFixture("combined_plus_and_same_simultaneous", state, pCard.id, 4);
 }
@@ -730,7 +732,8 @@ resetCardIds();
     playerHand: [pCard],
     opponentHand: [],
     currentTurn: Owner.Player,
-    rules: { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+    rules: { plus: false, same: true, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
+    forcedCardId: null,
   };
   writeFixture("combo_depth_2_chain", state, pCard.id, 4);
 }

@@ -18,7 +18,7 @@ function makeOpponentHand() {
 beforeEach(() => {
   game.set({
     phase: 'setup',
-    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
     swap: false,
     threeOpen: false,
     allOpen: false,

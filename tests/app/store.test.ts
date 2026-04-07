@@ -46,7 +46,7 @@ beforeEach(() => {
   _resetWorkersForTesting();
   game.set({
     phase: 'setup',
-    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
     swap: false,
     threeOpen: false,
     allOpen: false,
@@ -129,8 +129,8 @@ describe('setup', () => {
   });
 
   it('updates ruleset', () => {
-    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
-    expect(get(game).ruleset).toEqual({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
+    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false });
+    expect(get(game).ruleset).toEqual({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false });
   });
 
   it('defaults firstTurn to Player', () => {
@@ -177,7 +177,7 @@ describe('startGame', () => {
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
     updateAllOpen(true);
-    updateRuleset({ plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: true, order: false });
+    updateRuleset({ plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: true, order: false, chaos: false });
 
     expect(() => startGame()).toThrow('Ascension and Descension cannot both be active');
   });
@@ -396,7 +396,7 @@ describe('resetGame', () => {
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
     updateAllOpen(true);
-    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
+    updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false });
     updateFirstTurn(Owner.Opponent);
     startGame();
   }

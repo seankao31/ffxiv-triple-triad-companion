@@ -54,6 +54,7 @@ export interface RuleSet {
   readonly ascension: boolean;
   readonly descension: boolean;
   readonly order: boolean;
+  readonly chaos: boolean;
 }
 
 export interface GameState {
@@ -62,6 +63,7 @@ export interface GameState {
   readonly opponentHand: readonly Card[];
   readonly currentTurn: Owner;
   readonly rules: RuleSet;
+  readonly forcedCardId: number | null;
 }
 
 export interface RankedMove {
@@ -105,7 +107,7 @@ export function createInitialState(
   playerHand: readonly Card[],
   opponentHand: readonly Card[],
   firstTurn: Owner = Owner.Player,
-  rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+  rules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
 ): GameState {
   return {
     board: [null, null, null, null, null, null, null, null, null],
@@ -113,6 +115,7 @@ export function createInitialState(
     opponentHand,
     currentTurn: firstTurn,
     rules,
+    forcedCardId: null,
   };
 }
 

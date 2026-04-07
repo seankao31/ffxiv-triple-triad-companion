@@ -28,7 +28,7 @@ beforeEach(() => {
   const oh = makeOpponentHand();
   game.set({
     phase: 'setup',
-    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+    ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
     swap: false,
     threeOpen: false,
     allOpen: true,
@@ -52,7 +52,7 @@ describe('unknown card reveal', () => {
     const oh = makeOpponentHand();
     game.set({
       phase: 'setup',
-      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
       swap: false,
       threeOpen: true,
       allOpen: false,
@@ -171,7 +171,7 @@ describe('HandPanel type label', () => {
     const oh = makeOpponentHand();
     game.set({
       phase: 'setup',
-      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
       swap: false,
       threeOpen: false,
       allOpen: true,
@@ -203,7 +203,7 @@ describe('HandPanel modifier', () => {
     const oh = makeOpponentHand();
     game.set({
       phase: 'setup',
-      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false, order: false },
+      ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false, order: false, chaos: false },
       swap: false,
       threeOpen: false,
       allOpen: true,
