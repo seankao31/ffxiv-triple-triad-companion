@@ -1115,8 +1115,8 @@ describe("Order rule", () => {
 
     // p[0] is at index 0 — should succeed
     const result = placeCard(state, p[0]!, 4);
-    expect(result.board[4]).toEqual({ card: p[0], owner: Owner.Player });
-    expect(result.playerHand).toEqual([p[1], p[2], p[3], p[4]]);
+    expect(result.board[4]).toEqual({ card: p[0]!, owner: Owner.Player });
+    expect(result.playerHand).toEqual([p[1]!, p[2]!, p[3]!, p[4]!]);
     expect(result.currentTurn).toBe(Owner.Opponent);
   });
 
