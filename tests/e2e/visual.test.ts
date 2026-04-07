@@ -37,3 +37,27 @@ test('board mid-game with placed cards', async ({ page }) => {
   const layout = page.getByTestId('game-layout');
   await expect(layout).toHaveScreenshot('board-mid-game.png', SCREENSHOT_OPTS);
 });
+
+test('solver suggestion with best move highlight', async ({ page }) => {
+  await page.goto('/');
+  await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
+  await page.getByRole('button', { name: 'Start Game' }).click();
+
+  // Place 6 cards to reduce search space (solver evaluates ~6 moves).
+  await placeCard(page, '5 3 7 2', 0);  // Player turn 1
+  await placeCard(page, '4 5 6 3', 0);  // Opponent turn 2
+  await placeCard(page, '4 6 2 8', 0);  // Player turn 3
+  await placeCard(page, '7 3 5 4', 0);  // Opponent turn 4
+  await placeCard(page, '3 5 5 7', 0);  // Player turn 5
+  await placeCard(page, '2 8 1 6', 0);  // Opponent turn 6
+
+  // Wait for solver to return — gold ring appears on best-move card.
+  const layout = page.getByTestId('game-layout');
+  await layout.locator('button.ring-accent-gold').waitFor({ timeout: 10_000 });
+
+  // Select the best-move card to trigger eval overlays on empty board cells.
+  await layout.locator('button.ring-accent-gold').click();
+  await layout.locator('[data-eval]').first().waitFor();
+
+  await expect(layout).toHaveScreenshot('solver-suggestion.png', SCREENSHOT_OPTS);
+});
