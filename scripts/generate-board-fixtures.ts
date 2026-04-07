@@ -735,4 +735,53 @@ resetCardIds();
   writeFixture("combo_depth_2_chain", state, pCard.id, 4);
 }
 
+// --- Order rule ---
+const orderRules: RuleSet = { ...noRules, order: true };
+
+// 30. order_basic_placement (card at index 0 placed successfully, no captures)
+resetCardIds();
+{
+  const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+  const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+  const state = createInitialState(p, o, Owner.Player, orderRules);
+  writeFixture("order_basic_placement", state, p[0]!.id, 4);
+}
+
+// 31. order_with_standard_capture (Order + normal capture)
+resetCardIds();
+{
+  const pCard = createCard(1, 1, 1, 9);
+  const filler = createCard(1, 1, 1, 1);
+  const oWeak = createCard(2, 2, 2, 2);
+  const oFiller = createCard(3, 3, 3, 3);
+  const p = [pCard, filler, filler, filler, filler];
+  const o = [oWeak, oFiller, filler, filler, filler];
+  // Opponent goes first, places weak card at position 3
+  const stateOppFirst = createInitialState(p, o, Owner.Opponent, orderRules);
+  const afterOpp = setup(stateOppFirst, [[oWeak, 3]]);
+  // Player plays p[0] (left=9) at position 4. Attacks position 3's right=2. 9>2 → capture.
+  writeFixture("order_with_standard_capture", afterOpp, pCard.id, 4);
+}
+
+// 32. order_with_plus (Order + Plus rule active)
+resetCardIds();
+{
+  const orderPlusRules: RuleSet = { ...noRules, order: true, plus: true };
+  const oCard1 = createCard(1, 1, 5, 1);
+  const oCard2 = createCard(1, 7, 1, 1);
+  const pCard = createCard(3, 1, 1, 1);
+  const filler = createCard(1, 1, 1, 1);
+  // With Order rule, fillers that are played in setup must be at the front of the hand.
+  // Two player fillers are played during setup (positions 8 and 6), so they go first.
+  const p = [filler, filler, pCard, filler, filler];
+  const o = [oCard1, oCard2, filler, filler, filler];
+  const state = setup(
+    createInitialState(p, o, Owner.Player, orderPlusRules),
+    [[filler, 8], [oCard1, 1], [filler, 6], [oCard2, 3]],
+  );
+  // pCard is now at index 0 of remaining player hand. Place at position 4.
+  // top(3)+bottom(5)=8, left(1)+right(7)=8 → Plus triggers on both.
+  writeFixture("order_with_plus", state, pCard.id, 4);
+}
+
 console.log("\nDone.");
