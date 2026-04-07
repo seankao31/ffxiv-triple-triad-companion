@@ -262,6 +262,14 @@ currentState.subscribe((state) => {
     if (state === lastSolvedState) return;
     lastSolvedState = state;
     triggerSolve(state);
+    // Order rule: auto-select the forced (index 0) card for the current player.
+    const g = get(game);
+    if (g.ruleset.order) {
+      const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
+      if (hand.length > 0 && !g.unknownCardIds.has(hand[0]!.id)) {
+        selectCard(hand[0]!);
+      }
+    }
   } else {
     lastSolvedState = null;
     rankedMoves.set([]);

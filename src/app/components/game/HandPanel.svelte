@@ -20,8 +20,12 @@
 
   let revealingCardId: number | null = $state(null);
 
+  let isOrderActive = $derived($game.ruleset.order);
+  let forcedCard = $derived(isOrderActive && isActive ? hand[0] ?? null : null);
+
   function handleClick(card: Card) {
     if (!isActive) return;
+    if (isOrderActive && hand.indexOf(card) !== 0) return;
     if ($game.unknownCardIds.has(card.id)) {
       revealingCardId = card.id;
       return;
@@ -45,13 +49,15 @@
       <span class="w-2 h-2 rounded-full bg-accent-blue inline-block" title="Active turn"></span>
     {/if}
   </h3>
-  {#each hand as card}
+  {#each hand as card (card.id)}
     {@const isUnknown = $game.unknownCardIds.has(card.id)}
+    {@const isForced = forcedCard !== null && card === forcedCard}
+    {@const isDimmed = isOrderActive && isActive && !isForced}
     <RevealableCard revealing={revealingCardId === card.id} onreveal={handleReveal}>
       <button
         onclick={() => handleClick(card)}
         class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
-          {isActive ? 'cursor-pointer hover:border-accent-blue' : 'cursor-default opacity-70'}
+          {isActive && !isDimmed ? 'cursor-pointer hover:border-accent-blue' : 'cursor-default opacity-70'}
           {card === $game.selectedCard ? 'border-accent-blue bg-accent-blue-dim shadow-lg shadow-accent-blue/20' : 'border-surface-600 bg-surface-800'}
           {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}
           {isUnknown ? 'border-dashed' : ''}"
