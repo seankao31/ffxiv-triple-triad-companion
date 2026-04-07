@@ -1147,6 +1147,62 @@ describe("Order rule", () => {
   });
 });
 
+describe("Chaos rule", () => {
+  const chaosRules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: true };
+
+  it("allows placing the forced card", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state: GameState = { ...createInitialState(p, o, Owner.Player, chaosRules), forcedCardId: p[0]!.id };
+
+    const result = placeCard(state, p[0]!, 4);
+    expect(result.board[4]).toEqual({ card: p[0]!, owner: Owner.Player });
+    expect(result.forcedCardId).toBeNull();
+  });
+
+  it("throws when playing a card that is not the forced card", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state: GameState = { ...createInitialState(p, o, Owner.Player, chaosRules), forcedCardId: p[0]!.id };
+
+    expect(() => placeCard(state, p[1]!, 4)).toThrow("Chaos rule");
+  });
+
+  it("allows any card when forcedCardId is null (opponent turn / future turn)", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state = createInitialState(p, o, Owner.Player, chaosRules);
+    // forcedCardId is null — any card should be allowed
+    const result = placeCard(state, p[1]!, 4);
+    expect(result.board[4]).toEqual({ card: p[1]!, owner: Owner.Player });
+  });
+
+  it("applies captures normally with Chaos active", () => {
+    resetCardIds();
+    const p = [createCard(1, 1, 1, 9), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const stateOppFirst = createInitialState(p, o, Owner.Opponent, chaosRules);
+    const afterOppPlace = placeCard(stateOppFirst, o[0]!, 3);
+    // Player's turn, forced to play p[0]. left=9, placing at 4 attacks position 3's right=2. 9>2 → capture.
+    const state: GameState = { ...afterOppPlace, forcedCardId: p[0]!.id };
+    const result = placeCard(state, p[0]!, 4);
+    expect(result.board[3]!.owner).toBe(Owner.Player);
+  });
+
+  it("clears forcedCardId in the resulting state", () => {
+    resetCardIds();
+    const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+    const state: GameState = { ...createInitialState(p, o, Owner.Player, chaosRules), forcedCardId: p[0]!.id };
+
+    const result = placeCard(state, p[0]!, 4);
+    expect(result.forcedCardId).toBeNull();
+  });
+});
+
 describe("createCard", () => {
   it("assigns unique IDs to consecutive cards", () => {
     const a = createCard(1, 1, 1, 1);

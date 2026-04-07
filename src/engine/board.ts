@@ -164,6 +164,10 @@ export function placeCard(
     throw new Error("Order rule: must play the first card in hand");
   }
 
+  if (state.rules.chaos && state.forcedCardId !== null && card.id !== state.forcedCardId) {
+    throw new Error("Chaos rule: must play the forced card");
+  }
+
   // Snapshot per-type card counts from board BEFORE placing (i++ timing: placed card excluded).
   const typeCounts = new Map<CardType, number>();
   for (const cell of state.board) {
