@@ -265,11 +265,15 @@ currentState.subscribe((state) => {
   if (state) {
     if (state === lastSolvedState) return;
     lastSolvedState = state;
+    // Chaos rule: don't solve until the user selects the forced card (player turn only).
+    const g = get(game);
+    if (g.ruleset.chaos && state.currentTurn === Owner.Player && state.forcedCardId === null) {
+      return;
+    }
     triggerSolve(state);
     // Order rule: auto-select the forced (index 0) card for the current player.
     // This implicitly repairs selectedCard after undo/swap/new-game transitions.
     // If store transitions grow more complex, consider setting selectedCard explicitly.
-    const g = get(game);
     if (g.ruleset.order) {
       const hand = state.currentTurn === Owner.Player ? state.playerHand : state.opponentHand;
       if (hand.length > 0 && !g.unknownCardIds.has(hand[0]!.id)) {
@@ -438,7 +442,19 @@ export function startGame(): void {
 }
 
 export function selectCard(card: Card | null): void {
-  game.update((s) => ({ ...s, selectedCard: card }));
+  game.update((s) => {
+    const newState = { ...s, selectedCard: card };
+    // Chaos rule: selecting a card sets forcedCardId on the current game state (player turn only).
+    if (s.ruleset.chaos && card !== null && s.history.length > 0) {
+      const currentState = s.history.at(-1)!;
+      if (currentState.currentTurn === Owner.Player) {
+        const updatedState: GameState = { ...currentState, forcedCardId: card.id };
+        const history = [...s.history.slice(0, -1), updatedState];
+        return { ...newState, history };
+      }
+    }
+    return newState;
+  });
 }
 
 export function playCard(position: number): void {
@@ -456,7 +472,10 @@ export function undoMove(): void {
   game.update((s) => {
     // Guard: keep the initial state intact — undoing past it is Reset's job.
     if (s.history.length <= 1) return s;
-    const history = s.history.slice(0, -1);
+    const trimmed = s.history.slice(0, -1);
+    // Clear forcedCardId on the restored state so Chaos solver gating resets properly.
+    const last = trimmed.at(-1)!;
+    const history = [...trimmed.slice(0, -1), { ...last, forcedCardId: null }];
     return { ...s, history };
   });
 }
