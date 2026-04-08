@@ -787,4 +787,31 @@ resetCardIds();
   writeFixture("order_with_plus", state, pCard.id, 4);
 }
 
+// --- Chaos rule ---
+const chaosRules: RuleSet = { ...noRules, chaos: true };
+
+// 33. chaos_forced_card_placement (forced card placed, standard capture applies)
+resetCardIds();
+{
+  const pCard = createCard(1, 1, 1, 9);
+  const oWeak = createCard(2, 2, 2, 2);
+  const p = [pCard, createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
+  const o = [oWeak, createCard(3, 3, 3, 3), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1), createCard(1, 1, 1, 1)];
+  const stateOppFirst = createInitialState(p, o, Owner.Opponent, chaosRules);
+  const afterOpp = setup(stateOppFirst, [[oWeak, 3]]);
+  // Player forced to play pCard (left=9) at position 4. Attacks position 3's right=2. 9>2 → capture.
+  const stateWithForced: GameState = { ...afterOpp, forcedCardId: pCard.id };
+  writeFixture("chaos_forced_card_placement", stateWithForced, pCard.id, 4);
+}
+
+// 34. chaos_no_forced_card_allows_any (forcedCardId=null, Chaos active, any card legal)
+resetCardIds();
+{
+  const p = [createCard(7, 3, 5, 2), createCard(4, 8, 1, 6), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+  const o = [createCard(2, 2, 2, 2), createCard(3, 3, 3, 3), createCard(1,1,1,1), createCard(1,1,1,1), createCard(1,1,1,1)];
+  const state = createInitialState(p, o, Owner.Player, chaosRules);
+  // forcedCardId is null — second card in hand should be legal
+  writeFixture("chaos_no_forced_card_allows_any", state, p[1]!.id, 4);
+}
+
 console.log("\nDone.");
