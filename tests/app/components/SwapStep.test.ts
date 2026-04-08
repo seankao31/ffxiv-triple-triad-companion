@@ -112,6 +112,46 @@ describe('SwapStep', () => {
     expect(headings[1]).toHaveTextContent(/give away/i);
   });
 
+  it('highlights player give-away selection with blue when playerSide is left', async () => {
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    const playerCards = buttons.filter(b => b !== confirm).slice(0, 5);
+    await fireEvent.click(playerCards[0]!);
+    expect(playerCards[0]!.classList.contains('border-accent-blue')).toBe(true);
+  });
+
+  it('highlights player give-away selection with red when playerSide is right', async () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    // When playerSide is right, opponent renders first (0-4), player second (5-9)
+    const playerCards = buttons.filter(b => b !== confirm).slice(5, 10);
+    await fireEvent.click(playerCards[0]!);
+    expect(playerCards[0]!.classList.contains('border-accent-red')).toBe(true);
+  });
+
+  it('highlights opponent receive selection with red when playerSide is left', async () => {
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    const opponentCards = buttons.filter(b => b !== confirm).slice(5, 10);
+    await fireEvent.click(opponentCards[0]!);
+    expect(opponentCards[0]!.classList.contains('border-accent-red')).toBe(true);
+  });
+
+  it('highlights opponent receive selection with blue when playerSide is right', async () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    render(SwapStep);
+    const buttons = screen.getAllByRole('button');
+    const confirm = screen.getByRole('button', { name: /confirm swap/i });
+    // When playerSide is right, opponent renders first (0-4), player second (5-9)
+    const opponentCards = buttons.filter(b => b !== confirm).slice(0, 5);
+    await fireEvent.click(opponentCards[0]!);
+    expect(opponentCards[0]!.classList.contains('border-accent-blue')).toBe(true);
+  });
+
   it('clicking Confirm Swap transitions to play phase with swapped hands', async () => {
     render(SwapStep);
     const buttons = screen.getAllByRole('button');
