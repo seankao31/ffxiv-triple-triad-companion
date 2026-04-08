@@ -1,4 +1,4 @@
-// ABOUTME: Tests for HandPanel — renders remaining cards, highlights best move, handles selection.
+// ABOUTME: Tests for HandPanel — fixed hand slots, ghost slots for played cards, highlights best move, handles selection.
 // ABOUTME: Uses asymmetric hands for fast solver termination.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
