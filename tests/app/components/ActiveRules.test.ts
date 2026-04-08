@@ -67,4 +67,10 @@ describe('ActiveRules', () => {
     render(ActiveRules);
     expect(screen.getByText('Active rules: Order')).toBeInTheDocument();
   });
+
+  it('renders Chaos when it is the only active rule', () => {
+    setRules({ chaos: true });
+    render(ActiveRules);
+    expect(screen.getByText('Active rules: Chaos')).toBeInTheDocument();
+  });
 });
