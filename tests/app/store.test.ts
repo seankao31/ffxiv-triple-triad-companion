@@ -1319,8 +1319,8 @@ describe('Chaos rule', () => {
       [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4], [5, 5, 5, 5], [6, 6, 6, 6],
     ] as const;
     for (let i = 0; i < 5; i++) {
-      updatePlayerCard(i, createCard(cards[i][0], cards[i][1], cards[i][2], cards[i][3]));
-      updateOpponentCard(i, createCard(oppCards[i][0], oppCards[i][1], oppCards[i][2], oppCards[i][3]));
+      updatePlayerCard(i, createCard(cards[i]![0], cards[i]![1], cards[i]![2], cards[i]![3]));
+      updateOpponentCard(i, createCard(oppCards[i]![0], oppCards[i]![1], oppCards[i]![2], oppCards[i]![3]));
     }
     updateRuleset(chaosRules);
     startGame();
