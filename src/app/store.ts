@@ -24,6 +24,9 @@ export type AppState = {
   // Three Open allows up to 2 opponent hand slots to be unknown at game start.
   // Tracked here (not in RuleSet) because it affects setup and solve strategy, not capture logic.
   threeOpen: boolean;
+  // All Open reveals all 5 opponent hand cards at game start.
+  // Mutually exclusive with threeOpen; neither checked = all opponent cards hidden.
+  allOpen: boolean;
   playerHand: (Card | null)[];
   // Snapshot of playerHand at game start, before swap modifies it.
   // Restored on reset so the user sees their original cards, not swapped ones.
@@ -42,6 +45,7 @@ const initialAppState: AppState = {
   ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
   swap: false,
   threeOpen: false,
+  allOpen: false,
   playerHand: [null, null, null, null, null],
   setupPlayerHand: [null, null, null, null, null],
   opponentHand: [null, null, null, null, null],
@@ -309,7 +313,11 @@ export function updateSwap(swap: boolean): void {
 }
 
 export function updateThreeOpen(threeOpen: boolean): void {
-  game.update((s) => ({ ...s, threeOpen }));
+  game.update((s) => ({ ...s, threeOpen, allOpen: threeOpen ? false : s.allOpen }));
+}
+
+export function updateAllOpen(allOpen: boolean): void {
+  game.update((s) => ({ ...s, allOpen, threeOpen: allOpen ? false : s.threeOpen }));
 }
 
 export function handleSwap(given: Card, received: Card): void {

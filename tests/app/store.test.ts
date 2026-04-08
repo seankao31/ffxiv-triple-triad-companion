@@ -6,7 +6,7 @@ import {
   game, currentState, rankedMoves, solverLoading, pimcProgress,
   startGame, playCard, undoMove, selectCard, resetGame,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
-  updateSwap, handleSwap, updateThreeOpen, revealCard,
+  updateSwap, handleSwap, updateThreeOpen, updateAllOpen, revealCard,
   updateSolverMode, updateServerEndpoint,
   _resetWorkersForTesting,
 } from '../../src/app/store';
@@ -49,6 +49,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     swap: false,
     threeOpen: false,
+    allOpen: false,
     playerHand: [null, null, null, null, null],
     setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
@@ -77,6 +78,31 @@ describe('setup', () => {
     const card = createCard(3, 3, 3, 3);
     updateOpponentCard(2, card);
     expect(get(game).opponentHand[2]).toEqual(card);
+  });
+
+  it('defaults allOpen to false', () => {
+    expect(get(game).allOpen).toBe(false);
+  });
+
+  it('updateAllOpen sets allOpen', () => {
+    updateAllOpen(true);
+    expect(get(game).allOpen).toBe(true);
+  });
+
+  it('updateAllOpen(true) clears threeOpen', () => {
+    updateThreeOpen(true);
+    expect(get(game).threeOpen).toBe(true);
+    updateAllOpen(true);
+    expect(get(game).allOpen).toBe(true);
+    expect(get(game).threeOpen).toBe(false);
+  });
+
+  it('updateThreeOpen(true) clears allOpen', () => {
+    updateAllOpen(true);
+    expect(get(game).allOpen).toBe(true);
+    updateThreeOpen(true);
+    expect(get(game).threeOpen).toBe(true);
+    expect(get(game).allOpen).toBe(false);
   });
 
   it('updates ruleset', () => {
