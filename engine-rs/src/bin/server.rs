@@ -26,6 +26,8 @@ struct NullableGameState {
     opponent_hand: Vec<Option<Card>>,
     current_turn: Owner,
     rules: RuleSet,
+    #[serde(default)]
+    forced_card_id: Option<u8>,
 }
 
 /// Request body for POST /api/solve.
@@ -116,6 +118,7 @@ fn resolve_nulls(state: NullableGameState, explicit_ids: Vec<u8>) -> (GameState,
         opponent_hand,
         current_turn: state.current_turn,
         rules: state.rules,
+        forced_card_id: state.forced_card_id,
     };
 
     (game_state, unknown_card_ids)
@@ -181,6 +184,7 @@ mod tests {
             opponent_hand,
             current_turn: Owner::Player,
             rules: RuleSet::default(),
+            forced_card_id: None,
         }
     }
 

@@ -233,6 +233,7 @@ mod tests {
             opponent_hand: vec![game_card(7, 8), game_card(8, 1)],
             current_turn: Owner::Opponent,
             rules: RuleSet::default(),
+            forced_card_id: None,
         }
     }
 

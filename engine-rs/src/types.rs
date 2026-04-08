@@ -55,6 +55,8 @@ pub struct RuleSet {
     pub ascension: bool,
     pub descension: bool,
     pub order: bool,
+    #[serde(default)]
+    pub chaos: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,6 +67,8 @@ pub struct GameState {
     pub opponent_hand: Vec<Card>,
     pub current_turn: Owner,
     pub rules: RuleSet,
+    #[serde(default)]
+    pub forced_card_id: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -117,6 +121,7 @@ pub fn create_initial_state(
         opponent_hand,
         current_turn: first_turn,
         rules,
+        forced_card_id: None,
     }
 }
 
