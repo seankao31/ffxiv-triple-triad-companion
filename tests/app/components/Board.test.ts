@@ -29,6 +29,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     swap: false,
     threeOpen: false,
+    allOpen: false,
     playerHand: [null, null, null, null, null],
     setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
@@ -43,7 +44,7 @@ describe('Board', () => {
   it('renders 9 cells', () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
 
     render(Board);
@@ -53,7 +54,7 @@ describe('Board', () => {
   it('places a card when an empty cell is clicked with a card selected', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     selectCard(get(game).playerHand[0]!);
@@ -67,7 +68,7 @@ describe('Board', () => {
   it('highlights the suggested cell when a card is selected', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
@@ -81,7 +82,7 @@ describe('Board', () => {
   it('shows outcome overlays on empty cells when a card is selected', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
@@ -97,7 +98,7 @@ describe('Board', () => {
   it('shows outcome overlays when moves come from a deserialized source (Worker)', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
@@ -114,7 +115,7 @@ describe('Board', () => {
   it('highlights the suggested cell when moves come from a deserialized source (Worker)', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
