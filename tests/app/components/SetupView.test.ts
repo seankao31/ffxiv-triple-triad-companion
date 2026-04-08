@@ -125,6 +125,32 @@ describe('SetupView', () => {
     expect(screen.getAllByLabelText('Top').length).toBe(10); // 5 player + 5 opponent
   });
 
+  it('checking All Open unchecks Three Open', async () => {
+    render(SetupView);
+    const allOpen = screen.getByLabelText(/all open/i);
+    const threeOpen = screen.getByLabelText(/three open/i);
+
+    await fireEvent.click(threeOpen);
+    expect(get(game).threeOpen).toBe(true);
+
+    await fireEvent.click(allOpen);
+    expect(get(game).allOpen).toBe(true);
+    expect(get(game).threeOpen).toBe(false);
+  });
+
+  it('checking Three Open unchecks All Open', async () => {
+    render(SetupView);
+    const allOpen = screen.getByLabelText(/all open/i);
+    const threeOpen = screen.getByLabelText(/three open/i);
+
+    await fireEvent.click(allOpen);
+    expect(get(game).allOpen).toBe(true);
+
+    await fireEvent.click(threeOpen);
+    expect(get(game).threeOpen).toBe(true);
+    expect(get(game).allOpen).toBe(false);
+  });
+
   it('displays preserved player hand values after reset', () => {
     // Simulate the state after resetGame — playerHand preserved, opponentHand cleared
     const playerHand = [
