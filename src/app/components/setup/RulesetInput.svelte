@@ -1,4 +1,4 @@
-<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Order, Swap, Three Open, All Open). -->
+<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Order, Chaos, Swap, Three Open, All Open). -->
 <!-- ABOUTME: Updates the ruleset and format flags in the central game store on change. -->
 <script lang="ts">
   import { game, updateRuleset, updateSwap, updateThreeOpen, updateAllOpen } from '../../store';
@@ -10,16 +10,29 @@
   let ascension = $state($game.ruleset.ascension);
   let descension = $state($game.ruleset.descension);
   let order = $state($game.ruleset.order);
+  let chaos = $state($game.ruleset.chaos);
   let swap = $state($game.swap);
   let threeOpen = $state($game.threeOpen);
   let allOpen = $state($game.allOpen);
 
   function updateRules() {
-    updateRuleset({ plus, same, reverse, fallenAce, ascension, descension, order });
+    updateRuleset({ plus, same, reverse, fallenAce, ascension, descension, order, chaos });
   }
 
   function ruleChanged(setter: (v: boolean) => void) {
     return (v: boolean) => { setter(v); updateRules(); };
+  }
+
+  function orderChanged(v: boolean) {
+    order = v;
+    if (v) chaos = false;
+    updateRules();
+  }
+
+  function chaosChanged(v: boolean) {
+    chaos = v;
+    if (v) order = false;
+    updateRules();
   }
 </script>
 
@@ -69,9 +82,16 @@
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
     <input type="checkbox" bind:checked={
       () => order,
-      ruleChanged((v) => order = v)
+      orderChanged
     } class="accent-accent-blue" />
     Order
+  </label>
+  <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
+    <input type="checkbox" bind:checked={
+      () => chaos,
+      chaosChanged
+    } class="accent-accent-blue" />
+    Chaos
   </label>
   <label class="flex items-center gap-2 text-sm font-semibold tracking-wide cursor-pointer">
     <input type="checkbox" bind:checked={
