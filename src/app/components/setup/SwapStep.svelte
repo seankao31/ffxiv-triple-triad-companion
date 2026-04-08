@@ -27,7 +27,7 @@
 <div class="flex flex-col items-center gap-8 p-8">
   <h2 class="text-2xl font-bold">Swap — Exchange Cards</h2>
 
-  <div class="flex gap-12">
+  {#snippet playerHandSection()}
     <div>
       <h3 class="text-sm font-semibold text-surface-300 mb-3">Which card did you give away?</h3>
       <div class="flex flex-col gap-2">
@@ -44,7 +44,9 @@
         {/each}
       </div>
     </div>
+  {/snippet}
 
+  {#snippet opponentHandSection()}
     <div>
       <h3 class="text-sm font-semibold text-surface-300 mb-3">Which card did you receive?</h3>
       <div class="flex flex-col gap-2">
@@ -69,6 +71,16 @@
         {/each}
       </div>
     </div>
+  {/snippet}
+
+  <div class="flex gap-12">
+    {#if $game.playerSide === 'left'}
+      {@render playerHandSection()}
+      {@render opponentHandSection()}
+    {:else}
+      {@render opponentHandSection()}
+      {@render playerHandSection()}
+    {/if}
   </div>
 
   <button

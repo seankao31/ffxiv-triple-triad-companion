@@ -97,6 +97,21 @@ describe('SwapStep', () => {
     expect(confirm).toBeEnabled();
   });
 
+  it('shows player hand on the left by default', () => {
+    render(SwapStep);
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings[0]).toHaveTextContent(/give away/i);
+    expect(headings[1]).toHaveTextContent(/receive/i);
+  });
+
+  it('shows player hand on the right when playerSide is right', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    render(SwapStep);
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings[0]).toHaveTextContent(/receive/i);
+    expect(headings[1]).toHaveTextContent(/give away/i);
+  });
+
   it('clicking Confirm Swap transitions to play phase with swapped hands', async () => {
     render(SwapStep);
     const buttons = screen.getAllByRole('button');
