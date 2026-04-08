@@ -1,5 +1,5 @@
-// ABOUTME: Shared card display helpers for type labels and modifier calculation.
-// ABOUTME: Used by CardFace, HandPanel, and SolverPanel.
+// ABOUTME: Shared card display helpers for type labels, modifier calculation, and side-aware color mapping.
+// ABOUTME: Used by CardFace, HandPanel, BoardCell, and SolverPanel.
 import { CardType, Owner, type GameState, type RuleSet } from '../engine';
 
 export type PlayerSide = 'left' | 'right';

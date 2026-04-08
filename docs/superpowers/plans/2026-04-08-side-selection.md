@@ -1,6 +1,6 @@
 # ENG-85: Player Side Selection — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Let the player choose which visual side (left/right) they sit on during setup. Left is always blue, right is always red.
 
@@ -37,7 +37,7 @@
 - Modify: `src/app/card-display.ts`
 - Create or Modify: `tests/app/card-display.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `tests/app/card-display.test.ts`, add (or create the file with) these tests:
 
@@ -65,12 +65,12 @@ describe('ownerColor', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/card-display.test.ts`
 Expected: FAIL — `ownerColor` is not exported from `card-display.ts`
 
-- [ ] **Step 3: Implement `ownerColor`**
+- [x] **Step 3: Implement `ownerColor`**
 
 In `src/app/card-display.ts`, add the import for `Owner` and the function:
 
@@ -87,12 +87,12 @@ export function ownerColor(owner: Owner, playerSide: PlayerSide): SideColor {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/card-display.test.ts`
 Expected: PASS — all 4 tests green
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/card-display.ts tests/app/card-display.test.ts
@@ -107,7 +107,7 @@ git commit -m 'feat(ENG-85): add ownerColor helper for side-based color mapping'
 - Modify: `src/app/store.ts`
 - Modify: `tests/app/store.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/store.test.ts`:
 
@@ -139,12 +139,12 @@ describe('playerSide', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: FAIL — `playerSide` property doesn't exist, `updatePlayerSide` not exported
 
-- [ ] **Step 3: Implement `playerSide` in the store**
+- [x] **Step 3: Implement `playerSide` in the store**
 
 In `src/app/store.ts`:
 
@@ -167,7 +167,7 @@ export function updatePlayerSide(side: 'left' | 'right'): void {
 
 4. In `resetGame()`, do NOT reset `playerSide` (it persists across games — the player's preferred side doesn't change on reset).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: PASS
@@ -180,7 +180,7 @@ Note: Other test files that call `game.set()` in `beforeEach` will now fail beca
 
 Run `bunx vitest run` to verify all tests pass after adding `playerSide: 'left'` to each `beforeEach`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/store.ts tests/app/store.test.ts tests/app/components/SetupView.test.ts tests/app/components/GameView.test.ts tests/app/components/HandPanel.test.ts tests/app/components/SwapStep.test.ts
@@ -195,7 +195,7 @@ git commit -m 'feat(ENG-85): add playerSide to AppState with updatePlayerSide se
 - Modify: `src/app/components/setup/SetupView.svelte`
 - Modify: `tests/app/components/SetupView.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/components/SetupView.test.ts`:
 
@@ -234,12 +234,12 @@ it('shows Your Hand on the left when playerSide is left (default)', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/SetupView.test.ts`
 Expected: FAIL — no radio with label "Left (Blue)" exists
 
-- [ ] **Step 3: Implement side picker and hand order swap in SetupView**
+- [x] **Step 3: Implement side picker and hand order swap in SetupView**
 
 In `src/app/components/setup/SetupView.svelte`:
 
@@ -307,12 +307,12 @@ In `src/app/components/setup/SetupView.svelte`:
 
 Note: The `onadvance`/`onback` callbacks swap too — when player is on the right, advancing from the opponent (left) hand goes to the player (right) hand, and going back from the player hand returns to the opponent hand.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/SetupView.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/setup/SetupView.svelte tests/app/components/SetupView.test.ts
@@ -327,7 +327,7 @@ git commit -m 'feat(ENG-85): add side radio picker to SetupView with hand order 
 - Modify: `src/app/components/game/GameView.svelte`
 - Modify: `tests/app/components/GameView.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/components/GameView.test.ts`:
 
@@ -350,12 +350,12 @@ it('renders player hand on the right when playerSide is right', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/GameView.test.ts`
 Expected: The second test FAILs — player hand is always on the left
 
-- [ ] **Step 3: Implement HandPanel order swap in GameView**
+- [x] **Step 3: Implement HandPanel order swap in GameView**
 
 In `src/app/components/game/GameView.svelte`:
 
@@ -378,12 +378,12 @@ In `src/app/components/game/GameView.svelte`:
 </div>
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/GameView.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/game/GameView.svelte tests/app/components/GameView.test.ts
@@ -398,7 +398,7 @@ git commit -m 'feat(ENG-85): swap HandPanel order in GameView based on playerSid
 - Modify: `src/app/components/game/BoardCell.svelte`
 - Modify: `tests/app/components/BoardCell.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/components/BoardCell.test.ts`:
 
@@ -451,12 +451,12 @@ beforeEach(() => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/BoardCell.test.ts`
 Expected: FAIL — BoardCell doesn't read `playerSide`, always uses hardcoded blue/red
 
-- [ ] **Step 3: Implement `ownerColor` in BoardCell**
+- [x] **Step 3: Implement `ownerColor` in BoardCell**
 
 In `src/app/components/game/BoardCell.svelte`:
 
@@ -497,12 +497,12 @@ to:
 
 4. The `Owner` import can be removed if no longer used directly (check — it was only used in the color conditional).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/BoardCell.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/game/BoardCell.svelte tests/app/components/BoardCell.test.ts
@@ -517,7 +517,7 @@ git commit -m 'feat(ENG-85): use ownerColor in BoardCell for side-aware cell bac
 - Modify: `src/app/components/game/HandPanel.svelte`
 - Modify: `tests/app/components/HandPanel.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/components/HandPanel.test.ts`:
 
@@ -553,12 +553,12 @@ describe('HandPanel side color', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 Expected: FAIL — HandPanel always uses blue for player
 
-- [ ] **Step 3: Implement `ownerColor` in HandPanel**
+- [x] **Step 3: Implement `ownerColor` in HandPanel**
 
 In `src/app/components/game/HandPanel.svelte`:
 
@@ -599,12 +599,12 @@ to:
 {card === $game.selectedCard ? `${accentBorder} ${accentBgDim} shadow-lg ${accentShadow}` : 'border-surface-600 bg-surface-800'}
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/game/HandPanel.svelte tests/app/components/HandPanel.test.ts
@@ -619,7 +619,7 @@ git commit -m 'feat(ENG-85): use ownerColor in HandPanel for side-aware styling'
 - Modify: `src/app/components/setup/SwapStep.svelte`
 - Modify: `tests/app/components/SwapStep.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/app/components/SwapStep.test.ts`:
 
@@ -642,12 +642,12 @@ it('shows player hand on the right when playerSide is right', () => {
 
 Also add `playerSide: 'left'` to the `beforeEach` `game.set()` call if not already done.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/SwapStep.test.ts`
 Expected: The second test FAILs — "give away" is always first
 
-- [ ] **Step 3: Implement hand order swap in SwapStep**
+- [x] **Step 3: Implement hand order swap in SwapStep**
 
 In `src/app/components/setup/SwapStep.svelte`:
 
@@ -743,12 +743,12 @@ Replace the `<div class="flex gap-12">` block with a conditional that swaps the 
 
 Note: This duplicates the hand rendering markup. A cleaner approach would be to extract each hand into a `{#snippet}` block and render them in the desired order, but that's a refactoring decision for the implementer to make if the duplication feels excessive. The simpler `{#if}/{:else}` approach keeps behavior changes minimal.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/SwapStep.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/app/components/setup/SwapStep.svelte tests/app/components/SwapStep.test.ts
@@ -759,23 +759,23 @@ git commit -m 'feat(ENG-85): swap hand display order in SwapStep based on player
 
 ### Task 8: Full test suite verification
 
-- [ ] **Step 1: Run all TS tests**
+- [x] **Step 1: Run all TS tests**
 
 Run: `bun run test`
 Expected: All tests pass (engine tests, store tests, component tests)
 
-- [ ] **Step 2: Run type check**
+- [x] **Step 2: Run type check**
 
 Run: `bunx tsc --noEmit`
 Expected: No type errors
 
-- [ ] **Step 3: Fix any failures**
+- [x] **Step 3: Fix any failures**
 
 If any tests fail, investigate and fix. Common issues:
 - Missing `playerSide: 'left'` in test `beforeEach` blocks
 - Hardcoded color assertions in existing tests that need updating
 
-- [ ] **Step 4: Commit any fixes**
+- [x] **Step 4: Commit any fixes**
 
 If fixes were needed:
 ```
