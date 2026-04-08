@@ -1322,6 +1322,7 @@ describe('Chaos rule', () => {
       updatePlayerCard(i, createCard(cards[i]![0], cards[i]![1], cards[i]![2], cards[i]![3]));
       updateOpponentCard(i, createCard(oppCards[i]![0], oppCards[i]![1], oppCards[i]![2], oppCards[i]![3]));
     }
+    updateAllOpen(true);
     updateRuleset(chaosRules);
     startGame();
     return get(game);
@@ -1390,6 +1391,7 @@ describe('Chaos rule', () => {
       updatePlayerCard(i, createCard(i+1, i+1, i+1, i+1));
       updateOpponentCard(i, createCard(i+6, i+6, i+6, i+6));
     }
+    updateAllOpen(true);
     updateRuleset(bothRules);
     expect(() => startGame()).toThrow('Chaos and Order');
   });
