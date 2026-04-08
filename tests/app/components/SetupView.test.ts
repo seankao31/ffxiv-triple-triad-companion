@@ -152,6 +152,34 @@ describe('SetupView', () => {
     expect(get(game).allOpen).toBe(false);
   });
 
+  it('renders a side selector defaulting to Left (Blue)', () => {
+    render(SetupView);
+    const leftRadio = screen.getByLabelText(/left \(blue\)/i);
+    expect(leftRadio).toBeChecked();
+  });
+
+  it('updates playerSide in store when Right (Red) radio is clicked', async () => {
+    render(SetupView);
+    const rightRadio = screen.getByLabelText(/right \(red\)/i);
+    await fireEvent.click(rightRadio);
+    expect(get(game).playerSide).toBe('right');
+  });
+
+  it('shows Your Hand on the right when playerSide is right', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' }));
+    render(SetupView);
+    const handLabels = screen.getAllByText(/your hand|opponent hand/i);
+    expect(handLabels[0]).toHaveTextContent(/opponent hand/i);
+    expect(handLabels[1]).toHaveTextContent(/your hand/i);
+  });
+
+  it('shows Your Hand on the left when playerSide is left (default)', () => {
+    render(SetupView);
+    const handLabels = screen.getAllByText(/your hand|opponent hand/i);
+    expect(handLabels[0]).toHaveTextContent(/your hand/i);
+    expect(handLabels[1]).toHaveTextContent(/opponent hand/i);
+  });
+
   it('displays preserved player hand values after reset', () => {
     // Simulate the state after resetGame — playerHand preserved, opponentHand cleared
     const playerHand = [

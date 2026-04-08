@@ -5,7 +5,7 @@
   import RulesetInput from './RulesetInput.svelte';
   import ServerSettings from './ServerSettings.svelte';
   import SwapStep from './SwapStep.svelte';
-  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen, updateAllOpen } from '../../store';
+  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen, updateAllOpen, updatePlayerSide } from '../../store';
   import { Owner } from '../../../engine';
 
   let error = $state('');
@@ -51,24 +51,58 @@
           Opponent
         </label>
       </fieldset>
+
+      <fieldset class="flex gap-6 items-center border-t border-surface-700 pt-4 w-full justify-center">
+        <legend class="text-sm font-semibold text-surface-400 mr-2">Your Side</legend>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="radio" name="playerSide" value="left"
+            checked={$game.playerSide === 'left'}
+            onchange={() => updatePlayerSide('left')} />
+          Left (Blue)
+        </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="radio" name="playerSide" value="right"
+            checked={$game.playerSide === 'right'}
+            onchange={() => updatePlayerSide('right')} />
+          Right (Red)
+        </label>
+      </fieldset>
     </div>
 
     <div class="flex gap-12">
-      <HandInput
-        label="Your Hand"
-        hand={$game.playerHand}
-        onchange={updatePlayerCard}
-        onadvance={() => opponentHandRef?.focusFirst()}
-        bind:this={playerHandRef}
-      />
-      <HandInput
-        label="Opponent Hand"
-        onchange={updateOpponentCard}
-        onback={() => playerHandRef?.focusLast()}
-        allowUnknown={$game.threeOpen}
-        disabled={!$game.allOpen && !$game.threeOpen}
-        bind:this={opponentHandRef}
-      />
+      {#if $game.playerSide === 'left'}
+        <HandInput
+          label="Your Hand"
+          hand={$game.playerHand}
+          onchange={updatePlayerCard}
+          onadvance={() => opponentHandRef?.focusFirst()}
+          bind:this={playerHandRef}
+        />
+        <HandInput
+          label="Opponent Hand"
+          onchange={updateOpponentCard}
+          onback={() => playerHandRef?.focusLast()}
+          allowUnknown={$game.threeOpen}
+          disabled={!$game.allOpen && !$game.threeOpen}
+          bind:this={opponentHandRef}
+        />
+      {:else}
+        <HandInput
+          label="Opponent Hand"
+          onchange={updateOpponentCard}
+          onadvance={() => playerHandRef?.focusFirst()}
+          allowUnknown={$game.threeOpen}
+          disabled={!$game.allOpen && !$game.threeOpen}
+          bind:this={opponentHandRef}
+        />
+        <HandInput
+          label="Your Hand"
+          hand={$game.playerHand}
+          onchange={updatePlayerCard}
+          onback={() => opponentHandRef?.focusLast()}
+          bind:this={playerHandRef}
+        />
+      {/if}
     </div>
 
     {#if error}
