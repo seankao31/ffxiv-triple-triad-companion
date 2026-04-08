@@ -241,3 +241,33 @@ describe('HandPanel modifier', () => {
     expect(screen.queryByText(/^-\d$/)).not.toBeInTheDocument();
   });
 });
+
+describe('HandPanel side color', () => {
+  it('shows blue turn indicator when playerSide is left and player is active', () => {
+    render(HandPanel, { props: { owner: Owner.Player } });
+    const indicator = document.querySelector('[title="Active turn"]');
+    expect(indicator?.classList.contains('bg-accent-blue')).toBe(true);
+  });
+
+  it('shows red turn indicator when playerSide is right and player is active', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    render(HandPanel, { props: { owner: Owner.Player } });
+    const indicator = document.querySelector('[title="Active turn"]');
+    expect(indicator?.classList.contains('bg-accent-red')).toBe(true);
+  });
+
+  it('shows blue selection border when playerSide is left', async () => {
+    render(HandPanel, { props: { owner: Owner.Player } });
+    await fireEvent.click(screen.getAllByRole('button')[0]!);
+    const selected = screen.getAllByRole('button').find((b) => b.classList.contains('border-accent-blue'));
+    expect(selected).toBeDefined();
+  });
+
+  it('shows red selection border when playerSide is right', async () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    render(HandPanel, { props: { owner: Owner.Player } });
+    await fireEvent.click(screen.getAllByRole('button')[0]!);
+    const selected = screen.getAllByRole('button').find((b) => b.classList.contains('border-accent-red'));
+    expect(selected).toBeDefined();
+  });
+});
