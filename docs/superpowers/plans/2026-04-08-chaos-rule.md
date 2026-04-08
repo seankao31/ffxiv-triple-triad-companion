@@ -1,6 +1,6 @@
 # Chaos Rule Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement the Chaos rule — a card-selection constraint where the user inputs which card FFXIV forced, and the solver finds the best board position for that card.
 
@@ -17,7 +17,7 @@
 - Modify: `src/engine/types.ts:59-65` (GameState interface)
 - Modify: `src/engine/types.ts:104-117` (createInitialState)
 
-- [ ] **Step 1: Add `chaos` to the RuleSet interface**
+- [x] **Step 1: Add `chaos` to the RuleSet interface**
 
 In `src/engine/types.ts`, add `chaos` after `order` in the `RuleSet` interface:
 
@@ -34,7 +34,7 @@ export interface RuleSet {
 }
 ```
 
-- [ ] **Step 2: Add `forcedCardId` to the GameState interface**
+- [x] **Step 2: Add `forcedCardId` to the GameState interface**
 
 In `src/engine/types.ts`, add `forcedCardId` after `rules` in the `GameState` interface:
 
@@ -49,7 +49,7 @@ export interface GameState {
 }
 ```
 
-- [ ] **Step 3: Update `createInitialState` default and return value**
+- [x] **Step 3: Update `createInitialState` default and return value**
 
 Update the default `rules` parameter to include `chaos: false` and add `forcedCardId: null` to the return:
 
@@ -71,7 +71,7 @@ export function createInitialState(
 }
 ```
 
-- [ ] **Step 4: Update `placeCard` return to include `forcedCardId: null`**
+- [x] **Step 4: Update `placeCard` return to include `forcedCardId: null`**
 
 In `src/engine/board.ts:206-214`, add `forcedCardId: null` to the returned state. The next turn's forced card is unknown, so it always resets:
 
@@ -88,7 +88,7 @@ In `src/engine/board.ts:206-214`, add `forcedCardId: null` to the returned state
   };
 ```
 
-- [ ] **Step 5: Fix all TypeScript compilation errors**
+- [x] **Step 5: Fix all TypeScript compilation errors**
 
 Run `bunx tsc --noEmit` and fix every site that constructs a `RuleSet` or `GameState` without the new fields. These will be in test files (e.g. `tests/engine/board.test.ts`, `tests/app/store.test.ts`, `tests/app/components/ActiveRules.test.ts`) and `scripts/generate-board-fixtures.ts`. Add `chaos: false` to every RuleSet literal and `forcedCardId: null` to every GameState literal.
 
@@ -102,7 +102,7 @@ Key files to update:
 Run: `bunx tsc --noEmit`
 Expected: No errors.
 
-- [ ] **Step 6: Run tests to verify nothing breaks**
+- [x] **Step 6: Run tests to verify nothing breaks**
 
 Run: `bun test tests/engine`
 Expected: 96 pass (WASM test still expected to fail — pkg not built).
@@ -110,7 +110,7 @@ Expected: 96 pass (WASM test still expected to fail — pkg not built).
 Run: `bunx vitest run`
 Expected: 204+ pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/engine/types.ts src/engine/board.ts src/app/store.ts tests/ scripts/generate-board-fixtures.ts
@@ -125,7 +125,7 @@ git commit -m 'feat(ENG-34): add chaos to RuleSet and forcedCardId to GameState 
 - Modify: `src/engine/board.ts:163-165` (placeCard validation)
 - Modify: `tests/engine/board.test.ts` (new describe block)
 
-- [ ] **Step 1: Write failing tests for Chaos validation**
+- [x] **Step 1: Write failing tests for Chaos validation**
 
 In `tests/engine/board.test.ts`, add a new `describe("Chaos rule", ...)` block after the Order rule block (after line 1145):
 
@@ -187,12 +187,12 @@ describe("Chaos rule", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bun test tests/engine/board.test.ts`
 Expected: The "throws when playing a card that is not the forced card" test FAILS (no validation yet). Others may pass since `forcedCardId: null` returns naturally.
 
-- [ ] **Step 3: Add Chaos validation to placeCard**
+- [x] **Step 3: Add Chaos validation to placeCard**
 
 In `src/engine/board.ts`, after the Order rule check (line 165), add:
 
@@ -202,12 +202,12 @@ In `src/engine/board.ts`, after the Order rule check (line 165), add:
   }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun test tests/engine/board.test.ts`
 Expected: All tests pass, including the new Chaos tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/engine/board.ts tests/engine/board.test.ts
@@ -223,7 +223,7 @@ git commit -m 'feat(ENG-34): add Chaos rule validation to TS engine'
 - Modify: `engine-rs/src/types.rs:60-68` (GameState struct)
 - Modify: `engine-rs/src/types.rs:108-121` (create_initial_state)
 
-- [ ] **Step 1: Add `chaos` to RuleSet**
+- [x] **Step 1: Add `chaos` to RuleSet**
 
 In `engine-rs/src/types.rs`, add `chaos` after `order` in the `RuleSet` struct:
 
@@ -244,7 +244,7 @@ pub struct RuleSet {
 
 Since `RuleSet` derives `Default`, the new `chaos` field defaults to `false` — existing code constructing `RuleSet::default()` is unaffected.
 
-- [ ] **Step 2: Add `forced_card_id` to GameState**
+- [x] **Step 2: Add `forced_card_id` to GameState**
 
 In `engine-rs/src/types.rs`, add `forced_card_id` after `rules` in the `GameState` struct. Use `#[serde(default)]` so existing fixture JSON files (without the field) deserialize correctly:
 
@@ -262,7 +262,7 @@ pub struct GameState {
 }
 ```
 
-- [ ] **Step 3: Update `create_initial_state` to include `forced_card_id: None`**
+- [x] **Step 3: Update `create_initial_state` to include `forced_card_id: None`**
 
 ```rust
 pub fn create_initial_state(
@@ -282,7 +282,7 @@ pub fn create_initial_state(
 }
 ```
 
-- [ ] **Step 4: Fix compilation errors across Rust codebase**
+- [x] **Step 4: Fix compilation errors across Rust codebase**
 
 Run `cargo check --features server --manifest-path engine-rs/Cargo.toml` and fix every site that constructs a `GameState` without `forced_card_id`. Key files:
 - `engine-rs/src/board.rs:284-291` — `place_card` return (add `forced_card_id: None`)
@@ -337,12 +337,12 @@ In `undo_place`, restore it:
 Run: `cargo check --features server --manifest-path engine-rs/Cargo.toml`
 Expected: No errors.
 
-- [ ] **Step 5: Run Rust tests to verify nothing breaks**
+- [x] **Step 5: Run Rust tests to verify nothing breaks**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml`
 Expected: 87 tests pass (same as baseline).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add engine-rs/src/types.rs engine-rs/src/board.rs engine-rs/tests/board_fixtures.rs engine-rs/src/solver.rs
@@ -357,7 +357,7 @@ git commit -m 'feat(ENG-34): add chaos to RuleSet and forced_card_id to GameStat
 - Modify: `engine-rs/src/board.rs:208-213` (place_card validation)
 - Modify: `engine-rs/src/board.rs:366-370` (place_card_mut validation)
 
-- [ ] **Step 1: Add Chaos validation to `place_card`**
+- [x] **Step 1: Add Chaos validation to `place_card`**
 
 In `engine-rs/src/board.rs`, after the Order assert (line 213), add:
 
@@ -368,7 +368,7 @@ In `engine-rs/src/board.rs`, after the Order assert (line 213), add:
     );
 ```
 
-- [ ] **Step 2: Add Chaos validation to `place_card_mut`**
+- [x] **Step 2: Add Chaos validation to `place_card_mut`**
 
 In `engine-rs/src/board.rs`, after the Order assert in `place_card_mut` (line 370), add the same assert:
 
@@ -379,7 +379,7 @@ In `engine-rs/src/board.rs`, after the Order assert in `place_card_mut` (line 37
     );
 ```
 
-- [ ] **Step 3: Add Rust unit tests for Chaos validation**
+- [x] **Step 3: Add Rust unit tests for Chaos validation**
 
 In `engine-rs/src/board.rs`, in the `#[cfg(test)]` module, add:
 
@@ -486,12 +486,12 @@ In `engine-rs/src/board.rs`, in the `#[cfg(test)]` module, add:
     }
 ```
 
-- [ ] **Step 4: Run Rust tests**
+- [x] **Step 4: Run Rust tests**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml`
 Expected: 91+ tests pass (87 baseline + 4 new).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add engine-rs/src/board.rs
@@ -505,7 +505,7 @@ git commit -m 'feat(ENG-34): add Chaos rule validation to Rust engine'
 **Files:**
 - Modify: `scripts/generate-board-fixtures.ts` (add Chaos fixtures)
 
-- [ ] **Step 1: Add Chaos fixtures to the generator**
+- [x] **Step 1: Add Chaos fixtures to the generator**
 
 In `scripts/generate-board-fixtures.ts`, after the Order rule fixtures (around line 785), add:
 
@@ -538,22 +538,22 @@ resetCardIds();
 }
 ```
 
-- [ ] **Step 2: Regenerate all fixtures**
+- [x] **Step 2: Regenerate all fixtures**
 
 Run: `bun scripts/generate-board-fixtures.ts`
 Expected: All fixtures regenerated (32 existing + 2 new). No errors.
 
-- [ ] **Step 3: Run TS fixture tests**
+- [x] **Step 3: Run TS fixture tests**
 
 Run: `bun test tests/engine/board.fixtures.test.ts`
 Expected: 34 fixtures pass.
 
-- [ ] **Step 4: Run Rust fixture tests**
+- [x] **Step 4: Run Rust fixture tests**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml board_fixtures`
 Expected: Both `test_board_fixtures` and `test_board_fixtures_mut_and_undo` pass with 34 fixtures each.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/generate-board-fixtures.ts tests/fixtures/board/
@@ -569,7 +569,7 @@ git commit -m 'feat(ENG-34): add shared board fixtures for Chaos rule'
 - Modify: `engine-rs/src/solver.rs:214-219` (find_best_move_with cards_to_try)
 - Modify: `engine-rs/src/solver.rs:249-252` (robustness cards_to_try)
 
-- [ ] **Step 1: Write failing solver test**
+- [x] **Step 1: Write failing solver test**
 
 In `engine-rs/src/solver.rs`, in the `#[cfg(test)]` module, add:
 
@@ -632,12 +632,12 @@ In `engine-rs/src/solver.rs`, in the `#[cfg(test)]` module, add:
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml solver_chaos`
 Expected: `solver_chaos_only_uses_forced_card` FAILS (solver uses all cards, not just forced).
 
-- [ ] **Step 3: Constrain `find_best_move_with` for Chaos**
+- [x] **Step 3: Constrain `find_best_move_with` for Chaos**
 
 In `engine-rs/src/solver.rs`, replace the `cards_to_try` logic in `find_best_move_with` (lines 214-219):
 
@@ -668,23 +668,23 @@ Apply the same change to the robustness second-pass opponent enumeration (around
 
 (No Chaos branch needed here — opponent forced card is always `None`.)
 
-- [ ] **Step 4: Keep `negamax` unchanged**
+- [x] **Step 4: Keep `negamax` unchanged**
 
 In `negamax` (lines 140-145), the `cards_to_try` logic does NOT need a Chaos branch. After `place_card_mut` clears `forced_card_id` to `None`, all recursive calls see `None` and use the full hand. The existing Order check still applies. No changes needed.
 
 Verify this reasoning: `find_best_move_with` calls `place_card_mut` → clears `forced_card_id` → calls `negamax` → `state.forced_card_id` is `None` → tries all cards. Correct.
 
-- [ ] **Step 5: Run solver tests**
+- [x] **Step 5: Run solver tests**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml solver`
 Expected: All solver tests pass including the 2 new Chaos tests.
 
-- [ ] **Step 6: Run full Rust test suite**
+- [x] **Step 6: Run full Rust test suite**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml`
 Expected: 93+ tests pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add engine-rs/src/solver.rs
@@ -703,7 +703,7 @@ git commit -m 'feat(ENG-34): constrain solver move enumeration for Chaos rule'
 
 **Note on RulesetInput testing:** This component uses Svelte 5 function bindings (`bind:checked`) for checkbox state. The tests for RulesetInput live in the E2E suite (Playwright), not unit tests. Changes here are tested via E2E in Task 9.
 
-- [ ] **Step 1: Add `chaos` to store's initialAppState and update ruleset references**
+- [x] **Step 1: Add `chaos` to store's initialAppState and update ruleset references**
 
 In `src/app/store.ts`, update `initialAppState.ruleset` to include `chaos: false`:
 
@@ -711,7 +711,7 @@ In `src/app/store.ts`, update `initialAppState.ruleset` to include `chaos: false
   ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: false },
 ```
 
-- [ ] **Step 2: Add Chaos checkbox with mutual exclusivity to RulesetInput**
+- [x] **Step 2: Add Chaos checkbox with mutual exclusivity to RulesetInput**
 
 In `src/app/components/setup/RulesetInput.svelte`:
 
@@ -758,7 +758,7 @@ In `src/app/components/setup/RulesetInput.svelte`:
    </label>
    ```
 
-- [ ] **Step 3: Add "Chaos" to ActiveRules label map**
+- [x] **Step 3: Add "Chaos" to ActiveRules label map**
 
 In `src/app/components/game/ActiveRules.svelte`, add `['chaos', 'Chaos']` after the Order entry:
 
@@ -775,7 +775,7 @@ In `src/app/components/game/ActiveRules.svelte`, add `['chaos', 'Chaos']` after 
   ];
 ```
 
-- [ ] **Step 4: Add ActiveRules unit test for Chaos**
+- [x] **Step 4: Add ActiveRules unit test for Chaos**
 
 In `tests/app/components/ActiveRules.test.ts`:
 
@@ -820,12 +820,12 @@ In `tests/app/components/ActiveRules.test.ts`:
    });
    ```
 
-- [ ] **Step 5: Run UI tests**
+- [x] **Step 5: Run UI tests**
 
 Run: `bunx vitest run`
 Expected: All tests pass (205+ including new Chaos test).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/store.ts src/app/components/setup/RulesetInput.svelte src/app/components/game/ActiveRules.svelte tests/app/components/ActiveRules.test.ts
@@ -841,7 +841,7 @@ git commit -m 'feat(ENG-34): add Chaos checkbox and ActiveRules label'
 - Modify: `src/app/store.ts:415-424` (playCard)
 - Modify: `tests/app/store.test.ts` (new tests)
 
-- [ ] **Step 1: Write failing store tests for Chaos solver gating**
+- [x] **Step 1: Write failing store tests for Chaos solver gating**
 
 In `tests/app/store.test.ts`, add a new `describe('Chaos rule', ...)` block:
 
@@ -901,12 +901,12 @@ describe('Chaos rule', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: Chaos tests FAIL (solver gating not implemented yet).
 
-- [ ] **Step 3: Implement solver gating in the store**
+- [x] **Step 3: Implement solver gating in the store**
 
 In `src/app/store.ts`, modify the `currentState.subscribe` callback (around line 259):
 
@@ -937,7 +937,7 @@ currentState.subscribe((state) => {
 });
 ```
 
-- [ ] **Step 4: Update `selectCard` to set forcedCardId on state under Chaos**
+- [x] **Step 4: Update `selectCard` to set forcedCardId on state under Chaos**
 
 In `src/app/store.ts`, modify `selectCard`:
 
@@ -961,7 +961,7 @@ export function selectCard(card: Card | null): void {
 
 This replaces the last history entry with one that has `forcedCardId` set. The `currentState` derived store picks up the change and triggers the subscriber, which now sees `forcedCardId !== null` and calls `triggerSolve`.
 
-- [ ] **Step 5: Ensure undo clears forcedCardId**
+- [x] **Step 5: Ensure undo clears forcedCardId**
 
 The existing `undoMove` pops the last history entry. If the user set `forcedCardId` on the current state and then undoes, the popped state is the one with `forcedCardId` set, and the previous state has `forcedCardId: null` (as set by `placeCard`). So undo naturally clears `forcedCardId`. No additional changes needed.
 
@@ -979,17 +979,17 @@ However, if the user selects a forced card (which mutates the last history entry
 
 (Remove the `&& currentState.forcedCardId === null` guard so re-selection works.)
 
-- [ ] **Step 6: Run store tests**
+- [x] **Step 6: Run store tests**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: All tests pass including new Chaos tests.
 
-- [ ] **Step 7: Run full UI test suite**
+- [x] **Step 7: Run full UI test suite**
 
 Run: `bunx vitest run`
 Expected: All tests pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/app/store.ts tests/app/store.test.ts
@@ -1004,7 +1004,7 @@ git commit -m 'feat(ENG-34): gate solver on forced card selection under Chaos ru
 - Modify: `src/app/store.ts:350-408` (startGame validation)
 - Modify: `tests/app/store.test.ts`
 
-- [ ] **Step 1: Write failing test for Chaos+Order rejection**
+- [x] **Step 1: Write failing test for Chaos+Order rejection**
 
 In `tests/app/store.test.ts`, in the Chaos rule describe block:
 
@@ -1020,12 +1020,12 @@ In `tests/app/store.test.ts`, in the Chaos rule describe block:
   });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: FAIL — no validation yet.
 
-- [ ] **Step 3: Add validation to startGame**
+- [x] **Step 3: Add validation to startGame**
 
 In `src/app/store.ts`, in `startGame()`, after the Ascension/Descension check (line 359):
 
@@ -1035,12 +1035,12 @@ In `src/app/store.ts`, in `startGame()`, after the Ascension/Descension check (l
   }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `bunx vitest run tests/app/store.test.ts`
 Expected: All pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/store.ts tests/app/store.test.ts
@@ -1051,26 +1051,26 @@ git commit -m 'feat(ENG-34): validate Chaos/Order mutual exclusivity in startGam
 
 ### Task 10: Full cross-engine verification
 
-- [ ] **Step 1: Run all TS engine tests**
+- [x] **Step 1: Run all TS engine tests**
 
 Run: `bun test tests/engine`
 Expected: 96+ pass (WASM test expected to fail — pkg not built).
 
-- [ ] **Step 2: Run all Rust tests**
+- [x] **Step 2: Run all Rust tests**
 
 Run: `cargo test --features server --manifest-path engine-rs/Cargo.toml`
 Expected: 93+ pass.
 
-- [ ] **Step 3: Run full UI test suite**
+- [x] **Step 3: Run full UI test suite**
 
 Run: `bunx vitest run`
 Expected: 205+ pass.
 
-- [ ] **Step 4: Run type check**
+- [x] **Step 4: Run type check**
 
 Run: `bunx tsc --noEmit`
 Expected: No errors.
 
-- [ ] **Step 5: Commit any remaining fixes**
+- [x] **Step 5: Commit any remaining fixes**
 
 If any tests fail, fix and commit.
