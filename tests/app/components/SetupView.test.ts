@@ -21,6 +21,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     swap: false,
     threeOpen: false,
+    allOpen: false,
     playerHand: [null, null, null, null, null],
     setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],
