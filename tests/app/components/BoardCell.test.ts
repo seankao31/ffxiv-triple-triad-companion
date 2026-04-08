@@ -4,9 +4,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { CardType, Owner, createCard, resetCardIds } from '../../../src/engine';
 import BoardCell from '../../../src/app/components/game/BoardCell.svelte';
+import { game } from '../../../src/app/store';
 
 beforeEach(() => {
   resetCardIds();
+  game.update((s) => ({ ...s, playerSide: 'left' as const }));
 });
 
 describe('BoardCell type label', () => {
@@ -96,5 +98,36 @@ describe('BoardCell modifier', () => {
     // No modifier elements — just the card values and type label
     expect(screen.queryByText(/^\+\d$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^-\d$/)).not.toBeInTheDocument();
+  });
+});
+
+describe('BoardCell owner color', () => {
+  it('shows blue background for Player card when playerSide is left', () => {
+    const card = createCard(5, 5, 5, 5);
+    const { container } = render(BoardCell, {
+      props: { cell: { card, owner: Owner.Player }, onclick: () => {} },
+    });
+    const button = container.querySelector('button')!;
+    expect(button.classList.contains('bg-accent-blue-dim')).toBe(true);
+  });
+
+  it('shows red background for Player card when playerSide is right', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    const card = createCard(5, 5, 5, 5);
+    const { container } = render(BoardCell, {
+      props: { cell: { card, owner: Owner.Player }, onclick: () => {} },
+    });
+    const button = container.querySelector('button')!;
+    expect(button.classList.contains('bg-accent-red-dim')).toBe(true);
+  });
+
+  it('shows blue background for Opponent card when playerSide is right', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' as const }));
+    const card = createCard(5, 5, 5, 5);
+    const { container } = render(BoardCell, {
+      props: { cell: { card, owner: Owner.Opponent }, onclick: () => {} },
+    });
+    const button = container.querySelector('button')!;
+    expect(button.classList.contains('bg-accent-blue-dim')).toBe(true);
   });
 });

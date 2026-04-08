@@ -1,8 +1,10 @@
 <!-- ABOUTME: A single cell on the 3×3 board — renders an empty slot or a placed card. -->
-<!-- ABOUTME: Ownership is shown via background colour: blue for player, red for opponent. -->
+<!-- ABOUTME: Ownership colour is side-aware via ownerColor: blue/red depends on playerSide. -->
 <script lang="ts">
   import type { BoardCell as BoardCellData } from '../../../engine/types';
-  import { Owner, type OutcomeTier } from '../../../engine';
+  import { type OutcomeTier } from '../../../engine';
+  import { game } from '../../store';
+  import { ownerColor } from '../../card-display';
   import CardFace from '../CardFace.svelte';
 
   let {
@@ -19,6 +21,10 @@
     onclick: () => void;
   } = $props();
 
+  let cellColor = $derived(
+    cell ? (ownerColor(cell.owner, $game.playerSide) === 'blue' ? 'bg-accent-blue-dim' : 'bg-accent-red-dim') : ''
+  );
+
   const evalBg: Record<OutcomeTier, string> = {
     win: 'bg-eval-win/20',
     draw: 'bg-eval-draw/20',
@@ -32,7 +38,7 @@
   class="w-24 h-24 border border-surface-600 rounded flex items-center justify-center
     {highlighted ? 'ring-2 ring-accent-gold' : ''}
     {cell
-      ? (cell.owner === Owner.Player ? 'bg-accent-blue-dim shadow-inner' : 'bg-accent-red-dim shadow-inner')
+      ? cellColor + ' shadow-inner'
       : evaluation
         ? evalBg[evaluation]
         : 'bg-surface-800 hover:bg-surface-700'}"
