@@ -32,6 +32,7 @@ beforeEach(() => {
     history: [],
     selectedCard: null,
     unknownCardIds: new Set(),
+    playerSide: 'left',
   });
 });
 

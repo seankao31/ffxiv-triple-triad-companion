@@ -38,6 +38,8 @@ export type AppState = {
   // IDs of opponent hand cards that are placeholder (unknown) in Three Open games.
   // HandPanel uses this set to decide whether to show stats or a face-down "?" display.
   unknownCardIds: Set<number>;
+  // Visual side the player sits on. Left = blue, right = red.
+  playerSide: 'left' | 'right';
 };
 
 const initialAppState: AppState = {
@@ -53,6 +55,7 @@ const initialAppState: AppState = {
   history: [],
   selectedCard: null,
   unknownCardIds: new Set(),
+  playerSide: 'left',
 };
 
 export const game = writable<AppState>(initialAppState);
@@ -340,6 +343,10 @@ export function updateAllOpen(allOpen: boolean): void {
       opponentHand: enteringHidden ? [null, null, null, null, null] : s.opponentHand,
     };
   });
+}
+
+export function updatePlayerSide(side: 'left' | 'right'): void {
+  game.update((s) => ({ ...s, playerSide: side }));
 }
 
 export function handleSwap(given: Card, received: Card): void {

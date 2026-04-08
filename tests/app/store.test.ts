@@ -7,7 +7,7 @@ import {
   startGame, playCard, undoMove, selectCard, resetGame,
   updatePlayerCard, updateOpponentCard, updateRuleset, updateFirstTurn,
   updateSwap, handleSwap, updateThreeOpen, updateAllOpen, revealCard,
-  updateSolverMode, updateServerEndpoint,
+  updateSolverMode, updateServerEndpoint, updatePlayerSide,
   _resetWorkersForTesting,
 } from '../../src/app/store';
 import { createCard, CardType, Owner, resetCardIds, type Card, type RankedMove, type RuleSet } from '../../src/engine';
@@ -57,6 +57,7 @@ beforeEach(() => {
     history: [],
     selectedCard: null,
     unknownCardIds: new Set(),
+    playerSide: 'left',
   });
 });
 
@@ -1394,6 +1395,27 @@ describe('Chaos rule', () => {
     updateAllOpen(true);
     updateRuleset(bothRules);
     expect(() => startGame()).toThrow('Chaos and Order');
+  });
+});
+
+describe('playerSide', () => {
+  it('defaults to left', () => {
+    expect(get(game).playerSide).toBe('left');
+  });
+
+  it('updatePlayerSide sets playerSide to right', () => {
+    updatePlayerSide('right');
+    expect(get(game).playerSide).toBe('right');
+  });
+
+  it('resetGame preserves playerSide', () => {
+    updatePlayerSide('right');
+    const ph = makePlayerHand();
+    const oh = makeOpponentHand();
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
+    startGame();
+    resetGame();
+    expect(get(game).playerSide).toBe('right');
   });
 });
 

@@ -37,6 +37,7 @@ beforeEach(() => {
     history: [],
     selectedCard: null,
     unknownCardIds: new Set(),
+    playerSide: 'left',
   });
   startGame();
   rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));

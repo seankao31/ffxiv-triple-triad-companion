@@ -39,6 +39,7 @@ beforeEach(() => {
     history: [],
     selectedCard: null,
     unknownCardIds: new Set(),
+    playerSide: 'left',
   });
   startGame();
   // Worker is mocked — populate rankedMoves directly for component tests.

@@ -39,6 +39,7 @@ beforeEach(() => {
     history: [],
     selectedCard: null,
     unknownCardIds: new Set(),
+    playerSide: 'left',
   });
   startGame();
   // Worker is mocked — populate rankedMoves directly for component tests.
@@ -63,6 +64,7 @@ describe('unknown card reveal', () => {
       history: [],
       selectedCard: null,
       unknownCardIds: new Set(),
+      playerSide: 'left',
     });
     startGame();
     rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
@@ -182,6 +184,7 @@ describe('HandPanel type label', () => {
       history: [],
       selectedCard: null,
       unknownCardIds: new Set(),
+      playerSide: 'left',
     });
     startGame();
     rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
@@ -214,6 +217,7 @@ describe('HandPanel modifier', () => {
       history: [],
       selectedCard: null,
       unknownCardIds: new Set(),
+      playerSide: 'left',
     });
     startGame();
 
