@@ -75,4 +75,21 @@ describe('GameView', () => {
     render(GameView);
     expect(screen.getByText('Active rules: Plus · Same')).toBeInTheDocument();
   });
+
+  it('renders player hand on the left by default', () => {
+    render(GameView);
+    const layout = screen.getByTestId('game-layout');
+    const headings = layout.querySelectorAll('h3');
+    expect(headings[0]).toHaveTextContent(/your hand/i);
+    expect(headings[1]).toHaveTextContent(/opponent/i);
+  });
+
+  it('renders player hand on the right when playerSide is right', () => {
+    game.update((s) => ({ ...s, playerSide: 'right' }));
+    render(GameView);
+    const layout = screen.getByTestId('game-layout');
+    const headings = layout.querySelectorAll('h3');
+    expect(headings[0]).toHaveTextContent(/opponent/i);
+    expect(headings[1]).toHaveTextContent(/your hand/i);
+  });
 });

@@ -5,7 +5,7 @@
   import Board from './Board.svelte';
   import HandPanel from './HandPanel.svelte';
   import SolverPanel from './SolverPanel.svelte';
-  import { undoMove, resetGame, currentState, canUndo } from '../../store';
+  import { undoMove, resetGame, currentState, canUndo, game } from '../../store';
   import { Owner, getScore } from '../../../engine';
 
   let score = $derived(
@@ -40,9 +40,15 @@
   <ActiveRules />
 
   <div data-testid="game-layout" class="flex gap-10 flex-1 items-start justify-center pt-6">
-    <HandPanel owner={Owner.Player} />
-    <Board />
-    <HandPanel owner={Owner.Opponent} />
+    {#if $game.playerSide === 'left'}
+      <HandPanel owner={Owner.Player} />
+      <Board />
+      <HandPanel owner={Owner.Opponent} />
+    {:else}
+      <HandPanel owner={Owner.Opponent} />
+      <Board />
+      <HandPanel owner={Owner.Player} />
+    {/if}
     <SolverPanel />
   </div>
 </div>
