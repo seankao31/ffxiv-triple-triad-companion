@@ -212,6 +212,11 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
         "Order rule: must play the first card in hand"
     );
 
+    assert!(
+        !state.rules.chaos || state.forced_card_id.is_none() || card.id == state.forced_card_id.unwrap(),
+        "Chaos rule: must play the forced card"
+    );
+
     // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
     let mut type_counts: HashMap<CardType, u8> = HashMap::new();
     for placed in state.board.iter().flatten() {
@@ -369,6 +374,11 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
     assert!(
         !state.rules.order || card_hand_index == 0,
         "Order rule: must play the first card in hand"
+    );
+
+    assert!(
+        !state.rules.chaos || state.forced_card_id.is_none() || card.id == state.forced_card_id.unwrap(),
+        "Chaos rule: must play the forced card"
     );
 
     // Snapshot per-type card counts from board BEFORE placing (placed card excluded).
@@ -1772,5 +1782,106 @@ mod tests {
         ];
         let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
         place_card_mut(&mut state, p[1], 4);
+    }
+
+    #[test]
+    fn chaos_allows_forced_card() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        state.forced_card_id = Some(p[0].id);
+        let result = place_card(&state, p[0], 4);
+        assert_eq!(result.board[4].unwrap().card, p[0]);
+        assert_eq!(result.forced_card_id, None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Chaos rule")]
+    fn chaos_rejects_non_forced_card() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        state.forced_card_id = Some(p[0].id);
+        let _ = place_card(&state, p[1], 4); // should panic
+    }
+
+    #[test]
+    fn chaos_allows_any_card_when_forced_card_id_is_none() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        // forced_card_id is None — any card is legal
+        let result = place_card(&state, p[1], 4);
+        assert_eq!(result.board[4].unwrap().card, p[1]);
+    }
+
+    #[test]
+    fn chaos_place_card_mut_clears_forced_card_id() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(7, 3, 5, 2, CardType::None),
+            create_card(4, 8, 1, 6, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let o = vec![
+            create_card(2, 2, 2, 2, CardType::None),
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+            create_card(1, 1, 1, 1, CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        state.forced_card_id = Some(p[0].id);
+        let undo = place_card_mut(&mut state, p[0], 4);
+        assert_eq!(state.forced_card_id, None);
+
+        // Undo restores forced_card_id
+        undo_place(&mut state, undo);
+        assert_eq!(state.forced_card_id, Some(p[0].id));
     }
 }
