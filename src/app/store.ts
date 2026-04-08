@@ -1,5 +1,5 @@
 // ABOUTME: Central Svelte store for the Live Solver app.
-// ABOUTME: Holds game phase, hands, ruleset, firstTurn setting, history stack, and selected card.
+// ABOUTME: Holds game phase, hands, ruleset, visibility mode (All Open / Three Open / hidden), history stack, and selected card.
 import { writable, derived, get } from 'svelte/store';
 import {
   createCard, createInitialState, placeCard as enginePlaceCard, resetCardIds,
