@@ -244,4 +244,37 @@ describe('CardInput', () => {
     render(CardInput, { props: { onchange: vi.fn(), card } });
     expect(screen.getByLabelText('Top')).toHaveValue('A');
   });
+
+  it('clears local values when disabled becomes true then false', async () => {
+    const onchange = vi.fn();
+    const { rerender } = render(CardInput, { props: { onchange } });
+
+    await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
+    await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '3' });
+    await fireEvent.keyDown(screen.getByLabelText('Bottom'), { key: '7' });
+    await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '2' });
+
+    // Disable (entering hidden mode clears store, disables inputs)
+    await rerender({ onchange, disabled: true });
+    // Re-enable (switching back to All Open)
+    await rerender({ onchange, disabled: false });
+
+    // Stat inputs should be empty, not showing stale values
+    expect(screen.getByLabelText('Top')).toHaveValue('');
+  });
+
+  it('clears isUnknown when allowUnknown becomes false', async () => {
+    const onchange = vi.fn();
+    const { rerender } = render(CardInput, { props: { onchange, allowUnknown: true } });
+
+    // Toggle unknown on
+    await fireEvent.click(screen.getByLabelText('Toggle unknown'));
+    expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
+
+    // Switch to mode without allowUnknown (Three Open → All Open)
+    await rerender({ onchange, allowUnknown: false });
+
+    // Should show editable stat inputs, not stuck on "?"
+    expect(screen.getByLabelText('Top')).toBeInTheDocument();
+  });
 });

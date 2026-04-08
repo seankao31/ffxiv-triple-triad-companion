@@ -28,6 +28,24 @@
   let inputEls: HTMLInputElement[] = $state([]);
   let isUnknown = $state(false);
 
+  // Reset local state when entering disabled mode (hidden-mode transition clears store)
+  $effect(() => {
+    if (disabled) {
+      values = [null, null, null, null];
+      type = CardType.None;
+      isUnknown = false;
+    }
+  });
+
+  // Clear unknown flag when unknown mode is no longer allowed (e.g. Three Open → All Open)
+  $effect(() => {
+    if (!allowUnknown && isUnknown) {
+      isUnknown = false;
+      values = [null, null, null, null];
+      type = CardType.None;
+    }
+  });
+
   function displayValue(v: number | null): string {
     if (v === null) return '';
     return v === 10 ? 'A' : String(v);
