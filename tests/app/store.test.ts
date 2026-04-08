@@ -1360,5 +1360,15 @@ describe('Chaos rule', () => {
     const afterUndo = get(currentState)!;
     expect(afterUndo.forcedCardId).toBeNull();
   });
+
+  it('startGame throws when both Chaos and Order are active', () => {
+    const bothRules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: true, chaos: true };
+    for (let i = 0; i < 5; i++) {
+      updatePlayerCard(i, createCard(i+1, i+1, i+1, i+1));
+      updateOpponentCard(i, createCard(i+6, i+6, i+6, i+6));
+    }
+    updateRuleset(bothRules);
+    expect(() => startGame()).toThrow('Chaos and Order');
+  });
 });
 

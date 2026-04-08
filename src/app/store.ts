@@ -391,6 +391,9 @@ export function startGame(): void {
   if (s.ruleset.ascension && s.ruleset.descension) {
     throw new Error('Ascension and Descension cannot both be active.');
   }
+  if (s.ruleset.chaos && s.ruleset.order) {
+    throw new Error('Chaos and Order cannot both be active.');
+  }
   const statsKey = (c: Card) => `${c.top},${c.right},${c.bottom},${c.left},${c.type}`;
   const playerKeys = s.playerHand.map((c) => statsKey(c!));
   if (new Set(playerKeys).size < playerKeys.length) {
