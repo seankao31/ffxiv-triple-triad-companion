@@ -149,6 +149,7 @@ fn get_score_counts_all_cards_in_hand_initially() {
         ascension: false,
         descension: false,
         order: false,
+        chaos: false,
     };
     let p: Vec<engine_rs::types::Card> = (0..5)
         .map(|_| create_card(10, 10, 10, 10, CardType::None))
@@ -175,6 +176,7 @@ fn get_score_reflects_captures() {
         ascension: false,
         descension: false,
         order: false,
+        chaos: false,
     };
     let p: Vec<engine_rs::types::Card> = (0..5)
         .map(|_| create_card(10, 10, 10, 10, CardType::None))

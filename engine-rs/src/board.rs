@@ -287,6 +287,7 @@ pub fn place_card(state: &GameState, card: Card, position: usize) -> GameState {
         opponent_hand,
         current_turn: next_turn,
         rules: state.rules,
+        forced_card_id: None,
     }
 }
 
@@ -297,6 +298,7 @@ pub struct UndoRecord {
     card_hand_index: usize,
     prev_turn: Owner,
     flipped: Vec<(usize, Owner)>,
+    forced_card_id: Option<u8>,
 }
 
 // BFS combo cascade that records every ownership change, for use with undo.
@@ -376,6 +378,8 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
     }
 
     let prev_turn = state.current_turn;
+    let saved_forced_card_id = state.forced_card_id;
+    state.forced_card_id = None;
     let mut flipped: Vec<(usize, Owner)> = Vec::new();
 
     state.board[position] = Some(PlacedCard { card, owner: state.current_turn });
@@ -454,13 +458,14 @@ pub fn place_card_mut(state: &mut GameState, card: Card, position: usize) -> Und
         Owner::Opponent => Owner::Player,
     };
 
-    UndoRecord { card, position, card_hand_index, prev_turn, flipped }
+    UndoRecord { card, position, card_hand_index, prev_turn, flipped, forced_card_id: saved_forced_card_id }
 }
 
 /// Reverts all changes made by place_card_mut using the provided UndoRecord.
 pub fn undo_place(state: &mut GameState, undo: UndoRecord) {
-    // Restore turn
+    // Restore turn and forced_card_id
     state.current_turn = undo.prev_turn;
+    state.forced_card_id = undo.forced_card_id;
 
     // Remove the placed card from the board
     state.board[undo.position] = None;
@@ -1029,6 +1034,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { plus: true, same: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_card, 4);
@@ -1074,6 +1080,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: same_rules(),
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_card, 4);
@@ -1260,6 +1267,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_primal, 3); // top=5+2=7 > Garlean 5+1=6 → capture
@@ -1286,6 +1294,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_none, 3);
@@ -1315,6 +1324,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_none, 4); // both Nones boosted equally: 6 vs 6 → no capture
@@ -1347,6 +1357,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_primal, 4); // min(10, 9+3)=10 vs Garlean 9+1=10. 10>10 false.
@@ -1376,6 +1387,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_primal, 3); // typeCounts[Primal]=1 (filler only). 5+1=6 vs 5+1=6. No capture.
@@ -1409,6 +1421,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { same: true, ascension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_primal, 4);
@@ -1444,6 +1457,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { descension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_scion, 3); // top=6-2=4 vs Garlean 5-1=4. 4>4? No → no capture
@@ -1472,6 +1486,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { descension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_none, 3);
@@ -1501,6 +1516,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { descension: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
 
         let s = place_card(&state, p_none, 4); // 5-1=4 > 4-1=3 → capture
@@ -1572,6 +1588,7 @@ mod tests {
             opponent_hand: vec![],
             current_turn: Owner::Player,
             rules: RuleSet { same: true, ..RuleSet::default() },
+            forced_card_id: None,
         };
         let after_same_immutable = place_card(&state3, p_same2, 4);
         // Both o_above and o_left should be captured via Same
