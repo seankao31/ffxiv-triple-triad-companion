@@ -1361,6 +1361,29 @@ describe('Chaos rule', () => {
     expect(afterUndo.forcedCardId).toBeNull();
   });
 
+  it('clears solver state when entering gated Chaos state (e.g. after undo)', () => {
+    startChaosGame();
+    const state = get(currentState)!;
+    // Select forced card — solver starts
+    selectCard(state.playerHand[0]!);
+    expect(get(solverLoading)).toBe(true);
+    // Play the card, then undo — should clear solver state
+    playCard(4);
+    undoMove();
+    expect(get(solverLoading)).toBe(false);
+    expect(get(rankedMoves)).toEqual([]);
+  });
+
+  it('clears forcedCardId when selection is cleared under Chaos', () => {
+    startChaosGame();
+    const state = get(currentState)!;
+    selectCard(state.playerHand[0]!);
+    expect(get(currentState)!.forcedCardId).toBe(state.playerHand[0]!.id);
+    // Clear selection
+    selectCard(null);
+    expect(get(currentState)!.forcedCardId).toBeNull();
+  });
+
   it('startGame throws when both Chaos and Order are active', () => {
     const bothRules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: true, chaos: true };
     for (let i = 0; i < 5; i++) {
