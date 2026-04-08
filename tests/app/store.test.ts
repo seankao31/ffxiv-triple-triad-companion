@@ -105,6 +105,29 @@ describe('setup', () => {
     expect(get(game).allOpen).toBe(false);
   });
 
+  it('updateAllOpen(false) clears opponent hand when entering hidden mode', () => {
+    updateAllOpen(true);
+    for (let i = 0; i < 5; i++) updateOpponentCard(i, createCard(1, 2, 3, 4));
+    expect(get(game).opponentHand.every(c => c !== null)).toBe(true);
+    updateAllOpen(false);
+    expect(get(game).opponentHand.every(c => c === null)).toBe(true);
+  });
+
+  it('updateThreeOpen(false) clears opponent hand when entering hidden mode', () => {
+    updateThreeOpen(true);
+    for (let i = 0; i < 3; i++) updateOpponentCard(i, createCard(1, 2, 3, 4));
+    expect(get(game).opponentHand.filter(c => c !== null)).toHaveLength(3);
+    updateThreeOpen(false);
+    expect(get(game).opponentHand.every(c => c === null)).toBe(true);
+  });
+
+  it('updateAllOpen(false) preserves opponent hand when switching to Three Open', () => {
+    updateAllOpen(true);
+    for (let i = 0; i < 5; i++) updateOpponentCard(i, createCard(1, 2, 3, 4));
+    updateThreeOpen(true); // mutual exclusion clears allOpen, but threeOpen becomes true
+    expect(get(game).opponentHand.every(c => c !== null)).toBe(true);
+  });
+
   it('updates ruleset', () => {
     updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
     expect(get(game).ruleset).toEqual({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
