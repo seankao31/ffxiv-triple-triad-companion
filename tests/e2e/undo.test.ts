@@ -1,11 +1,12 @@
 // ABOUTME: E2E test for the Undo button during gameplay.
 // ABOUTME: Verifies that undo returns a placed card to the hand and frees the board cell.
 import { test, expect } from '@playwright/test';
-import { fillHands, placeCard, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
+import { fillHands, placeCard, enableAllOpen, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
 test('undo returns card to hand and frees board cell', async ({ page }) => {
   await page.goto('/');
 
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 

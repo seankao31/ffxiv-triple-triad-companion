@@ -42,6 +42,11 @@ export async function placeCard(
   await clickCell(page, cellIndex);
 }
 
+/** Enable the All Open visibility rule by clicking the checkbox. */
+export async function enableAllOpen(page: Page): Promise<void> {
+  await page.getByRole('checkbox', { name: 'All Open' }).click();
+}
+
 /** Default test hands — distinct stats for easy identification. */
 export const DEFAULT_PLAYER: CardStats[] = [
   ['5', '3', '7', '2'],
