@@ -226,6 +226,19 @@ describe('CardInput', () => {
     expect(screen.getByRole('combobox')).toHaveValue('primal');
   });
 
+  it('renders locked unknown display when disabled is true', () => {
+    render(CardInput, { props: { onchange: vi.fn(), disabled: true } });
+    expect(screen.getByText('?')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Toggle unknown')).not.toBeInTheDocument();
+  });
+
+  it('does not call onchange when disabled', () => {
+    const onchange = vi.fn();
+    render(CardInput, { props: { onchange, disabled: true } });
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
   it('displays A for value 10 when card prop has stat of 10', () => {
     const card = createCard(10, 5, 5, 5);
     render(CardInput, { props: { onchange: vi.fn(), card } });
