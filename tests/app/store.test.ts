@@ -10,7 +10,7 @@ import {
   updateSolverMode, updateServerEndpoint,
   _resetWorkersForTesting,
 } from '../../src/app/store';
-import { createCard, CardType, Owner, resetCardIds, type Card, type RankedMove } from '../../src/engine';
+import { createCard, CardType, Owner, resetCardIds, type Card, type RankedMove, type RuleSet } from '../../src/engine';
 import { lastWorkerInstance, workerInstances, resetWorkers } from './setup';
 
 function makePlayerHand() {
@@ -1305,6 +1305,60 @@ describe('solver interruption', () => {
 
     const newSolveCount = solver.postedMessages.filter((m: any) => m.type === 'solve').length;
     expect(newSolveCount).toBe(1);
+  });
+});
+
+describe('Chaos rule', () => {
+  const chaosRules: RuleSet = { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false, chaos: true };
+
+  function startChaosGame() {
+    const cards = [
+      [7, 3, 5, 2], [4, 8, 1, 6], [9, 2, 3, 7], [5, 6, 4, 8], [3, 9, 7, 1],
+    ] as const;
+    const oppCards = [
+      [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4], [5, 5, 5, 5], [6, 6, 6, 6],
+    ] as const;
+    for (let i = 0; i < 5; i++) {
+      updatePlayerCard(i, createCard(cards[i][0], cards[i][1], cards[i][2], cards[i][3]));
+      updateOpponentCard(i, createCard(oppCards[i][0], oppCards[i][1], oppCards[i][2], oppCards[i][3]));
+    }
+    updateRuleset(chaosRules);
+    startGame();
+    return get(game);
+  }
+
+  it('does not trigger solve when Chaos is active and no forced card is selected (player turn)', () => {
+    startChaosGame();
+    // Solver should NOT be loading — no forced card selected yet
+    expect(get(solverLoading)).toBe(false);
+  });
+
+  it('sets forcedCardId on state when selecting a card under Chaos', () => {
+    startChaosGame();
+    const state = get(currentState)!;
+    const hand = state.playerHand;
+    selectCard(hand[0]!);
+    // After selecting, the current state should have forcedCardId set
+    const updatedState = get(currentState)!;
+    expect(updatedState.forcedCardId).toBe(hand[0]!.id);
+  });
+
+  it('triggers solve after forced card is selected', () => {
+    startChaosGame();
+    const state = get(currentState)!;
+    selectCard(state.playerHand[0]!);
+    // Solver should now be loading
+    expect(get(solverLoading)).toBe(true);
+  });
+
+  it('clears forcedCardId on undo', () => {
+    const g = startChaosGame();
+    const state = get(currentState)!;
+    selectCard(state.playerHand[0]!);
+    playCard(4);
+    undoMove();
+    const afterUndo = get(currentState)!;
+    expect(afterUndo.forcedCardId).toBeNull();
   });
 });
 
