@@ -121,6 +121,7 @@ describe('startGame', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
 
     startGame();
 
@@ -135,6 +136,7 @@ describe('startGame', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     updateFirstTurn(Owner.Opponent);
     startGame();
     expect(get(currentState)!.currentTurn).toBe(Owner.Opponent);
@@ -143,6 +145,7 @@ describe('startGame', () => {
   it('throws if any hand slot is null', () => {
     makePlayerHand().slice(0, 4).forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
 
     expect(() => startGame()).toThrow();
   });
@@ -150,6 +153,7 @@ describe('startGame', () => {
   it('throws if both Ascension and Descension are active', () => {
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     updateRuleset({ plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: true, order: false });
 
     expect(() => startGame()).toThrow('Ascension and Descension cannot both be active');
@@ -164,6 +168,7 @@ describe('startGame', () => {
     updatePlayerCard(3, createCard(3, 5, 5, 7));
     updatePlayerCard(4, createCard(6, 4, 3, 9));
     makeOpponentHand().forEach((c: Card, i: number) => updateOpponentCard(i, c));
+    updateAllOpen(true);
 
     expect(() => startGame()).toThrow('Duplicate cards');
   });
@@ -175,8 +180,69 @@ describe('startGame', () => {
     updateOpponentCard(2, createCard(2, 8, 1, 6));
     updateOpponentCard(3, createCard(5, 5, 5, 5));
     updateOpponentCard(4, createCard(3, 6, 4, 7));
+    updateAllOpen(true);
 
     expect(() => startGame()).toThrow('Duplicate cards');
+  });
+
+  it('throws when All Open and opponent hand has null slots', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().slice(0, 3).forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
+
+    expect(() => startGame()).toThrow('All opponent hand slots must be filled');
+  });
+
+  it('starts game when All Open and all opponent slots are filled', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
+
+    startGame();
+    expect(get(game).phase).toBe('play');
+  });
+
+  it('throws when Three Open and opponent hand does not have exactly 2 unknowns', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    // Only 1 null — should fail (needs exactly 2)
+    makeOpponentHand().slice(0, 4).forEach((c, i) => updateOpponentCard(i, c));
+    updateThreeOpen(true);
+
+    expect(() => startGame()).toThrow('Three Open requires exactly 2 unknown cards');
+  });
+
+  it('throws when Three Open and opponent hand has 0 unknowns', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateThreeOpen(true);
+
+    expect(() => startGame()).toThrow('Three Open requires exactly 2 unknown cards');
+  });
+
+  it('starts game when Three Open and opponent hand has exactly 2 unknowns', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    makeThreeOpenOpponentCards(); // fills slots 0-2, leaves 3-4 null
+    updateThreeOpen(true);
+
+    startGame();
+    expect(get(game).phase).toBe('play');
+  });
+
+  it('starts game in hidden mode with all 5 opponent slots null', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    // Neither allOpen nor threeOpen — all 5 opponent slots null (default)
+
+    startGame();
+    expect(get(game).phase).toBe('play');
+    expect(get(game).unknownCardIds.size).toBe(5);
+  });
+
+  it('throws in hidden mode when opponent hand has some but not all slots filled', () => {
+    makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
+    updateOpponentCard(0, createCard(5, 5, 5, 5));
+    // Neither allOpen nor threeOpen, but 1 slot filled — invalid
+
+    expect(() => startGame()).toThrow('opponent hand slots must be empty');
   });
 
   it('allows same card stats across player and opponent hands', () => {
@@ -191,6 +257,7 @@ describe('startGame', () => {
     updateOpponentCard(2, createCard(2, 8, 1, 6));
     updateOpponentCard(3, createCard(9, 5, 5, 5));
     updateOpponentCard(4, createCard(3, 6, 4, 7));
+    updateAllOpen(true);
 
     expect(() => startGame()).not.toThrow();
   });
@@ -217,6 +284,7 @@ describe('playCard', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
@@ -253,6 +321,7 @@ describe('undoMove', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     // startGame re-creates cards with fresh IDs; use the store's hand for card references.
     const freshHand = get(game).playerHand;
@@ -303,6 +372,7 @@ describe('resetGame', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     updateRuleset({ plus: true, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false });
     updateFirstTurn(Owner.Opponent);
     startGame();
@@ -365,6 +435,7 @@ describe('resetGame', () => {
 
   it('restores original playerHand after swap + reset (not the swapped hand)', () => {
     updateSwap(true);
+    updateAllOpen(true);
     const playerCards = makePlayerHand();
     playerCards.forEach((c, i) => updatePlayerCard(i, c));
     const oppCards = makeOpponentHand();
@@ -437,6 +508,7 @@ describe('async solver', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     expect(get(solverLoading)).toBe(true);
   });
@@ -446,6 +518,7 @@ describe('async solver', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     expect(get(rankedMoves)).toEqual([]);
   });
@@ -461,6 +534,7 @@ describe('generation counter', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     const gen = currentGeneration();
     const move = { card: ph[0]!, position: 0, score: 7, robustness: 0 };
@@ -477,6 +551,7 @@ describe('generation counter', () => {
     const oh = makeOpponentHand();
     ph.forEach((c, i) => updatePlayerCard(i, c));
     oh.forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     const gen1 = currentGeneration();
     const oldWorker = workerInstances[0]!;
@@ -562,6 +637,7 @@ describe('swap rule', () => {
 
   it('phase transitions to swap when swap is enabled and Start Game is pressed', () => {
     updateSwap(true);
+    updateAllOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
     startGame();
@@ -570,6 +646,7 @@ describe('swap rule', () => {
 
   it('phase stays play when swap is disabled', () => {
     updateSwap(false);
+    updateAllOpen(true);
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
     startGame();
@@ -997,6 +1074,7 @@ describe('server solver mode', () => {
 
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
 
     // fetch is invoked synchronously (before the first await inside triggerServerSolve)
@@ -1016,6 +1094,7 @@ describe('server solver mode', () => {
 
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
 
     // Flush microtasks: fetch resolves → json() resolves → rankedMoves.set runs
@@ -1034,6 +1113,7 @@ describe('server solver mode', () => {
 
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
 
     // No fetch call — falls back to WASM worker path
@@ -1079,6 +1159,7 @@ describe('server solver mode', () => {
 
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame(); // triggers first fetch
 
     expect(firstSignal).toBeDefined();
@@ -1096,6 +1177,7 @@ describe('solver interruption', () => {
   function setupAndStartGame() {
     makePlayerHand().forEach((c, i) => updatePlayerCard(i, c));
     makeOpponentHand().forEach((c, i) => updateOpponentCard(i, c));
+    updateAllOpen(true);
     startGame();
     return get(game).playerHand;
   }

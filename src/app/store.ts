@@ -360,8 +360,15 @@ export function startGame(): void {
   if (s.playerHand.some((c) => c === null)) {
     throw new Error('All player hand slots must be filled before starting the game.');
   }
-  if (!s.threeOpen && s.opponentHand.some((c) => c === null)) {
-    throw new Error('All opponent hand slots must be filled before starting the game.');
+  const nullCount = s.opponentHand.filter((c) => c === null).length;
+  if (s.allOpen && nullCount > 0) {
+    throw new Error('All opponent hand slots must be filled when All Open is active.');
+  }
+  if (s.threeOpen && nullCount !== 2) {
+    throw new Error('Three Open requires exactly 2 unknown cards.');
+  }
+  if (!s.allOpen && !s.threeOpen && nullCount !== 5) {
+    throw new Error('All opponent hand slots must be empty when no visibility rule is active.');
   }
   if (s.ruleset.ascension && s.ruleset.descension) {
     throw new Error('Ascension and Descension cannot both be active.');
