@@ -47,17 +47,16 @@ test('three open: start game with unknown opponent cards', async ({ page }) => {
 test('three open: reveal unknown card and place it', async ({ page }) => {
   await page.goto('/');
 
-  // Enable Three Open with ALL opponent cards unknown for immediate reveal on turn 2.
   await page.getByRole('checkbox', { name: 'Three Open' }).click();
 
-  // Fill player hand only — no opponent cards.
-  await fillPlayerAndPartialOpponent(page, DEFAULT_PLAYER, []);
+  // Fill player hand + 3 opponent cards (leave 2 unknown to match "exactly 2" rule).
+  await fillPlayerAndPartialOpponent(page, DEFAULT_PLAYER, DEFAULT_OPPONENT.slice(0, 3));
 
   await page.getByRole('button', { name: 'Start Game' }).click();
   await expect(page.getByRole('heading', { name: 'FFXIV Triple Triad Companion' })).toBeVisible();
 
-  // All 5 opponent cards should be unknown.
-  await expect(page.getByRole('button', { name: '?' })).toHaveCount(5);
+  // 2 opponent cards should be unknown.
+  await expect(page.getByRole('button', { name: '?' })).toHaveCount(2);
 
   // Turn 1 (Player): place a card.
   await page.getByRole('button', { name: '5 3 7 2' }).click();
@@ -67,30 +66,25 @@ test('three open: reveal unknown card and place it', async ({ page }) => {
   // Turn 2 (Opponent): click an unknown card — should open reveal CardInput.
   await page.getByRole('button', { name: '?' }).first().click();
 
-  // A CardInput should appear with 4 stat textboxes.
   const statInputs = await page.getByRole('textbox').all();
   expect(statInputs.length).toBe(4);
 
-  // Type stats to reveal: 6 2 7 4 (top, right, bottom, left).
+  // Type stats to reveal: 6 2 7 4.
   await statInputs[0]!.click();
   await page.keyboard.press('6');
   await page.keyboard.press('2');
   await page.keyboard.press('7');
   await page.keyboard.press('4');
 
-  // Card is now revealed — the "?" count should drop by 1.
-  await expect(page.getByRole('button', { name: '?' })).toHaveCount(4);
+  // Unknown count should drop by 1.
+  await expect(page.getByRole('button', { name: '?' })).toHaveCount(1);
 
-  // The revealed card should be visible. Auto-advance types into Top→Right→Bottom→Left,
-  // creating card top=6, right=2, bottom=7, left=4. The grid renders in DOM order
-  // (top, left, right, bottom) so the accessible name is "6 4 2 7".
+  // The revealed card should be visible (DOM order: top, left, right, bottom → "6 4 2 7").
   const revealedCard = page.getByRole('button', { name: '6 4 2 7' });
   await expect(revealedCard).toBeVisible();
 
-  // Click the revealed card to select it, then place on the board.
+  // Place the revealed card.
   await revealedCard.click();
   await page.getByRole('button', { name: '·' }).first().click();
-
-  // Board should now have 7 empty cells (2 cards placed).
   await expect(page.getByRole('button', { name: '·' })).toHaveCount(7);
 });

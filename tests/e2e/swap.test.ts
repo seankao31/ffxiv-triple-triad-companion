@@ -1,7 +1,7 @@
 // ABOUTME: E2E test for the Swap rule flow — setup, swap phase, and game start.
 // ABOUTME: Verifies that enabling Swap leads to the card exchange UI, and the game starts with swapped hands.
 import { test, expect } from '@playwright/test';
-import { fillHands, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
+import { fillHands, enableAllOpen, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
 test('swap + three open: enter swap phase with unknown opponent cards', async ({ page }) => {
   await page.goto('/');
@@ -83,6 +83,7 @@ test('swap flow: enable swap, exchange cards, and start game with swapped hands'
   // Enable Swap rule.
   await page.getByRole('checkbox', { name: 'Swap' }).click();
   await expect(page.getByRole('checkbox', { name: 'Swap' })).toBeChecked();
+  await enableAllOpen(page);
 
   // Fill both hands.
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);

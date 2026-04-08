@@ -1,13 +1,14 @@
 // ABOUTME: E2E test for the full game flow — setup through game completion.
 // ABOUTME: Verifies that filling hands, starting, and placing all 9 cards reaches a final score.
 import { test, expect } from '@playwright/test';
-import { fillHands, placeCard, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
+import { fillHands, placeCard, enableAllOpen, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
 test('full game flow from setup to completion', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /setup/i })).toBeVisible();
 
   // Fill both hands and start game.
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 

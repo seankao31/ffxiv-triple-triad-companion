@@ -1,12 +1,13 @@
 // ABOUTME: Visual regression tests — screenshot diffing to catch CSS/layout regressions.
 // ABOUTME: Captures element-scoped snapshots at key visual states; decoupled from functional E2E tests.
 import { test, expect } from '@playwright/test';
-import { fillHands, placeCard, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
+import { fillHands, placeCard, enableAllOpen, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
 const SCREENSHOT_OPTS = { maxDiffPixels: 100 };
 
 test('setup view with filled hands', async ({ page }) => {
   await page.goto('/');
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
 
   await expect(page).toHaveScreenshot('setup-filled-hands.png', SCREENSHOT_OPTS);
@@ -14,6 +15,7 @@ test('setup view with filled hands', async ({ page }) => {
 
 test('hand panels at game start', async ({ page }) => {
   await page.goto('/');
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 
@@ -23,6 +25,7 @@ test('hand panels at game start', async ({ page }) => {
 
 test('board mid-game with placed cards', async ({ page }) => {
   await page.goto('/');
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 
@@ -40,6 +43,7 @@ test('board mid-game with placed cards', async ({ page }) => {
 
 test('solver suggestion with best move highlight', async ({ page }) => {
   await page.goto('/');
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 

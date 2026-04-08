@@ -1,11 +1,12 @@
 // ABOUTME: E2E test for the Reset button — verifies player hand is preserved.
 // ABOUTME: Tests the bug fix: after reset, setup shows player cards but clears opponent cards.
 import { test, expect } from '@playwright/test';
-import { fillHands, placeCard, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
+import { fillHands, placeCard, enableAllOpen, DEFAULT_PLAYER, DEFAULT_OPPONENT } from './helpers';
 
 test('reset preserves player hand and clears opponent hand', async ({ page }) => {
   await page.goto('/');
 
+  await enableAllOpen(page);
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
 
@@ -35,6 +36,7 @@ test('reset after swap restores original player hand, not swapped hand', async (
 
   // Enable Swap rule.
   await page.getByRole('checkbox', { name: 'Swap' }).click();
+  await enableAllOpen(page);
 
   await fillHands(page, DEFAULT_PLAYER, DEFAULT_OPPONENT);
   await page.getByRole('button', { name: 'Start Game' }).click();
