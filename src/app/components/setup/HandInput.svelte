@@ -11,6 +11,7 @@
     onadvance = () => {},
     onback = () => {},
     allowUnknown = false,
+    disabled = false,
   }: {
     label: string;
     hand?: (Card | null)[];
@@ -18,6 +19,7 @@
     onadvance?: () => void;
     onback?: () => void;
     allowUnknown?: boolean;
+    disabled?: boolean;
   } = $props();
 
   let cardRefs: Array<{ focusFirst: () => void; focusLast: () => void } | undefined> = $state(Array(5).fill(undefined));
@@ -41,6 +43,7 @@
         onadvance={i < 4 ? () => cardRefs[i + 1]?.focusFirst() : onadvance}
         onback={i > 0 ? () => cardRefs[i - 1]?.focusLast() : onback}
         {allowUnknown}
+        {disabled}
         bind:this={cardRefs[i]}
       />
     {/each}

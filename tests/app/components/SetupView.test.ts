@@ -103,6 +103,28 @@ describe('SetupView', () => {
     expect(get(game).phase).toBe('swap');
   });
 
+  it('renders All Open checkbox', () => {
+    render(SetupView);
+    expect(screen.getByLabelText(/all open/i)).toBeInTheDocument();
+  });
+
+  it('renders opponent hand as locked unknowns when neither visibility rule is active', () => {
+    render(SetupView);
+    // Default: neither allOpen nor threeOpen — opponent inputs should be disabled
+    // All 5 opponent card slots should show "?" and no stat inputs
+    const questionMarks = screen.getAllByText('?');
+    expect(questionMarks.length).toBe(5);
+    // Opponent hand should have no stat inputs — only player hand's 5 "Top" inputs exist
+    expect(screen.getAllByLabelText('Top').length).toBe(5);
+  });
+
+  it('enables opponent hand inputs when All Open is checked', async () => {
+    render(SetupView);
+    await fireEvent.click(screen.getByLabelText(/all open/i));
+    // Now opponent hand should have editable stat inputs
+    expect(screen.getAllByLabelText('Top').length).toBe(10); // 5 player + 5 opponent
+  });
+
   it('displays preserved player hand values after reset', () => {
     // Simulate the state after resetGame — playerHand preserved, opponentHand cleared
     const playerHand = [
@@ -118,12 +140,13 @@ describe('SetupView', () => {
 
     // "Your Hand" section should show the first card's stats
     const topInputs = screen.getAllByLabelText('Top');
-    // First 5 inputs are player hand, next 5 are opponent hand
+    // Only player hand has stat inputs (5 total) — opponent hand is disabled
     expect(topInputs[0]).toHaveValue('5');  // card 1 top
     expect(topInputs[1]).toHaveValue('A');  // card 2 top (10 → A)
     expect(topInputs[2]).toHaveValue('8');  // card 3 top
 
-    // Opponent hand inputs should be empty
-    expect(topInputs[5]).toHaveValue('');
+    // Opponent hand should be disabled (locked "?") — no stat inputs
+    const questionMarks = screen.getAllByText('?');
+    expect(questionMarks.length).toBe(5);
   });
 });
