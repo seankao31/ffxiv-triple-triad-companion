@@ -313,11 +313,25 @@ export function updateSwap(swap: boolean): void {
 }
 
 export function updateThreeOpen(threeOpen: boolean): void {
-  game.update((s) => ({ ...s, threeOpen, allOpen: threeOpen ? false : s.allOpen }));
+  game.update((s) => {
+    const allOpen = threeOpen ? false : s.allOpen;
+    const enteringHidden = !threeOpen && !allOpen;
+    return {
+      ...s, threeOpen, allOpen,
+      opponentHand: enteringHidden ? [null, null, null, null, null] : s.opponentHand,
+    };
+  });
 }
 
 export function updateAllOpen(allOpen: boolean): void {
-  game.update((s) => ({ ...s, allOpen, threeOpen: allOpen ? false : s.threeOpen }));
+  game.update((s) => {
+    const threeOpen = allOpen ? false : s.threeOpen;
+    const enteringHidden = !allOpen && !threeOpen;
+    return {
+      ...s, allOpen, threeOpen,
+      opponentHand: enteringHidden ? [null, null, null, null, null] : s.opponentHand,
+    };
+  });
 }
 
 export function handleSwap(given: Card, received: Card): void {
