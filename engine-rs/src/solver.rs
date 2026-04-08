@@ -212,10 +212,13 @@ fn find_best_move_with(state: &mut GameState, tt: &mut Vec<TTSlot>, occupied: &m
     let mut seen_cards: HashSet<u32> = HashSet::new();
 
     // Order rule: only the first card in hand is legal.
-    let cards_to_try: &[Card] = if state.rules.order {
-        &hand_cards[..1]
+    // Chaos rule: only the forced card is legal (when set).
+    let cards_to_try: Vec<Card> = if state.rules.order {
+        vec![hand_cards[0]]
+    } else if let Some(forced_id) = state.forced_card_id {
+        hand_cards.iter().filter(|c| c.id == forced_id).copied().collect()
     } else {
-        &hand_cards
+        hand_cards.clone()
     };
 
     for card in cards_to_try.iter() {
@@ -1262,6 +1265,65 @@ mod tests {
 
         assert!(!moves.is_empty(), "Solver returned no moves");
         println!("PIMC single sim: {elapsed_us}µs");
+    }
+
+    // ---- Chaos rule ----
+
+    #[test]
+    fn solver_chaos_only_uses_forced_card() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(3, 3, 3, 3, CardType::None),  // index 0
+            create_card(10, 10, 10, 10, CardType::None), // index 1 (forced)
+            create_card(1,1,1,1,CardType::None),
+            create_card(1,1,1,1,CardType::None),
+            create_card(1,1,1,1,CardType::None),
+        ];
+        let o = vec![
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+        ];
+        let mut state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        state.forced_card_id = Some(p[1].id);
+        let moves = find_best_move(&state);
+        // Every returned move must use p[1] (the forced card)
+        assert!(!moves.is_empty());
+        for m in &moves {
+            assert_eq!(m.card.id, p[1].id,
+                "Chaos rule: solver suggested card id {} but only card id {} is forced",
+                m.card.id, p[1].id);
+        }
+    }
+
+    #[test]
+    fn solver_chaos_no_forced_card_uses_all() {
+        reset_card_ids();
+        let rules = RuleSet { chaos: true, ..RuleSet::default() };
+        let p = vec![
+            create_card(3, 3, 3, 3, CardType::None),
+            create_card(10, 10, 10, 10, CardType::None),
+            create_card(7, 7, 7, 7, CardType::None),
+            create_card(1,1,1,1,CardType::None),
+            create_card(1,1,1,1,CardType::None),
+        ];
+        let o = vec![
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+            create_card(5, 5, 5, 5, CardType::None),
+        ];
+        let state = create_initial_state(p.clone(), o, Owner::Player, rules);
+        // forced_card_id is None — solver should use all cards
+        let moves = find_best_move(&state);
+        let card_ids: std::collections::HashSet<u8> = moves.iter().map(|m| m.card.id).collect();
+        // Should have moves from multiple distinct cards
+        assert!(card_ids.len() > 1,
+            "Chaos with no forced card should use multiple cards, got {:?}", card_ids);
     }
 
     #[test]
