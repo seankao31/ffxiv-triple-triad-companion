@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import { game, startGame, selectCard, playCard, rankedMoves, currentState, updateThreeOpen, revealCard, updateRuleset } from '../../../src/app/store';
+import { game, startGame, selectCard, playCard, undoMove, rankedMoves, currentState, updateThreeOpen, revealCard, updateRuleset } from '../../../src/app/store';
 import HandPanel from '../../../src/app/components/game/HandPanel.svelte';
 import { createCard, Owner, CardType, type Card, type RankedMove, resetCardIds } from '../../../src/engine';
 
@@ -156,6 +156,49 @@ describe('HandPanel', () => {
       .getAllByRole('button')
       .filter((b) => b.classList.contains('ring-2'));
     expect(highlighted.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders a ghost slot after a card is played', () => {
+    // Play the first player card at position 0
+    const hand = get(currentState)!.playerHand;
+    selectCard(hand[0]!);
+    playCard(0);
+    // Opponent's turn — play opponent card at position 1 so it's player turn again
+    const oppHand = get(currentState)!.opponentHand;
+    selectCard(oppHand[0]!);
+    playCard(1);
+
+    rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
+    render(HandPanel, { props: { owner: Owner.Player } });
+
+    // 4 remaining cards are buttons; 1 played card is a ghost slot
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+    expect(screen.getAllByTestId('empty-hand-slot')).toHaveLength(1);
+  });
+
+  it('restores a card to its original slot after undo', () => {
+    const hand = get(currentState)!.playerHand;
+    selectCard(hand[0]!);
+    playCard(0);
+    const oppHand = get(currentState)!.opponentHand;
+    selectCard(oppHand[0]!);
+    playCard(1);
+
+    undoMove();
+    undoMove();
+
+    rankedMoves.set(makeAllMoves(get(currentState)!.playerHand));
+    render(HandPanel, { props: { owner: Owner.Player } });
+
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+    expect(screen.queryByTestId('empty-hand-slot')).toBeNull();
+  });
+
+  it('renders no slots when history is empty (setup phase)', () => {
+    game.update((s) => ({ ...s, phase: 'setup', history: [] }));
+    render(HandPanel, { props: { owner: Owner.Player } });
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByTestId('empty-hand-slot')).toBeNull();
   });
 });
 
