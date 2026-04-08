@@ -31,6 +31,7 @@ beforeEach(() => {
     ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
     swap: false,
     threeOpen: false,
+    allOpen: true,
     playerHand: ph,
     setupPlayerHand: [null, null, null, null, null],
     opponentHand: oh,
@@ -54,9 +55,10 @@ describe('unknown card reveal', () => {
       ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
       swap: false,
       threeOpen: true,
+      allOpen: false,
       playerHand: ph,
       setupPlayerHand: [null, null, null, null, null],
-      opponentHand: [oh[0]!, oh[1]!, oh[2]!, oh[3]!, null],
+      opponentHand: [oh[0]!, oh[1]!, oh[2]!, null, null],
       firstTurn: Owner.Opponent,
       history: [],
       selectedCard: null,
@@ -69,7 +71,7 @@ describe('unknown card reveal', () => {
   it('clicking "?" on opponent turn opens a CardInput reveal form', async () => {
     setupWithUnknown();
     render(HandPanel, { props: { owner: Owner.Opponent } });
-    const unknownButton = screen.getByText('?').closest('button')!;
+    const unknownButton = screen.getAllByText('?')[0]!.closest('button')!;
     await fireEvent.click(unknownButton);
     expect(screen.getByLabelText('Top')).toBeInTheDocument();
   });
@@ -77,14 +79,14 @@ describe('unknown card reveal', () => {
   it('reveal form auto-focuses the Top field after opening', async () => {
     setupWithUnknown();
     render(HandPanel, { props: { owner: Owner.Opponent } });
-    await fireEvent.click(screen.getByText('?').closest('button')!);
+    await fireEvent.click(screen.getAllByText('?')[0]!.closest('button')!);
     expect(document.activeElement).toBe(screen.getByLabelText('Top'));
   });
 
   it('completing CardInput calls revealCard and closes the form', async () => {
     setupWithUnknown();
     render(HandPanel, { props: { owner: Owner.Opponent } });
-    await fireEvent.click(screen.getByText('?').closest('button')!);
+    await fireEvent.click(screen.getAllByText('?')[0]!.closest('button')!);
 
     await fireEvent.keyDown(screen.getByLabelText('Top'), { key: '5' });
     await fireEvent.keyDown(screen.getByLabelText('Right'), { key: '5' });
@@ -92,7 +94,7 @@ describe('unknown card reveal', () => {
     await fireEvent.keyDown(screen.getByLabelText('Left'), { key: '5' });
 
     expect(screen.queryByLabelText('Top')).not.toBeInTheDocument();
-    expect(get(game).unknownCardIds.size).toBe(0);
+    expect(get(game).unknownCardIds.size).toBe(1);
   });
 
   it('clicking "?" on player turn does not open reveal form', async () => {
@@ -172,6 +174,7 @@ describe('HandPanel type label', () => {
       ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: false, descension: false, order: false },
       swap: false,
       threeOpen: false,
+      allOpen: true,
       playerHand: ph,
       setupPlayerHand: [null, null, null, null, null],
       opponentHand: oh,
@@ -203,6 +206,7 @@ describe('HandPanel modifier', () => {
       ruleset: { plus: false, same: false, reverse: false, fallenAce: false, ascension: true, descension: false, order: false },
       swap: false,
       threeOpen: false,
+      allOpen: true,
       playerHand: ph,
       setupPlayerHand: [null, null, null, null, null],
       opponentHand: oh,

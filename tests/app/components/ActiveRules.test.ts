@@ -24,6 +24,7 @@ function setRules(overrides: Partial<{
     },
     swap: overrides.swap ?? false,
     threeOpen: overrides.threeOpen ?? false,
+    allOpen: false,
     playerHand: [null, null, null, null, null],
     setupPlayerHand: [null, null, null, null, null],
     opponentHand: [null, null, null, null, null],

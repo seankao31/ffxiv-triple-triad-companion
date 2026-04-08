@@ -47,7 +47,7 @@ describe('SetupView', () => {
   it('transitions to play phase when all cards are filled and Start Game is clicked', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
 
     render(SetupView);
     await fireEvent.click(screen.getByRole('button', { name: /start game/i }));
@@ -58,7 +58,7 @@ describe('SetupView', () => {
   it('transitions to play phase when Enter is pressed with complete hands', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
 
     render(SetupView);
     await fireEvent.submit(screen.getByRole('form'));
@@ -94,7 +94,7 @@ describe('SetupView', () => {
   it('transitions to swap phase when Swap checkbox is checked and Start Game is clicked', async () => {
     const ph = makePlayerHand();
     const oh = makeOpponentHand();
-    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh }));
+    game.update((s) => ({ ...s, playerHand: ph, opponentHand: oh, allOpen: true }));
 
     render(SetupView);
     await fireEvent.click(screen.getByLabelText(/swap/i));
