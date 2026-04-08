@@ -268,6 +268,10 @@ currentState.subscribe((state) => {
     // Chaos rule: don't solve until the user selects the forced card (player turn only).
     const g = get(game);
     if (g.ruleset.chaos && state.currentTurn === Owner.Player && state.forcedCardId === null) {
+      solveGeneration++;
+      rankedMoves.set([]);
+      solverLoading.set(false);
+      pimcProgress.set(null);
       return;
     }
     triggerSolve(state);
@@ -448,10 +452,10 @@ export function selectCard(card: Card | null): void {
   game.update((s) => {
     const newState = { ...s, selectedCard: card };
     // Chaos rule: selecting a card sets forcedCardId on the current game state (player turn only).
-    if (s.ruleset.chaos && card !== null && s.history.length > 0) {
+    if (s.ruleset.chaos && s.history.length > 0) {
       const currentState = s.history.at(-1)!;
       if (currentState.currentTurn === Owner.Player) {
-        const updatedState: GameState = { ...currentState, forcedCardId: card.id };
+        const updatedState: GameState = { ...currentState, forcedCardId: card?.id ?? null };
         const history = [...s.history.slice(0, -1), updatedState];
         return { ...newState, history };
       }
