@@ -102,7 +102,11 @@ bun run bench:wasm
 
 The TypeScript engine (`src/engine/board.ts`) and Rust engine (`engine-rs/src/board.rs`) implement identical game logic. Board fixtures in `tests/fixtures/board/` are the shared contract between them.
 
-When adding or modifying board logic tests in either engine, check whether the scenario should be a shared fixture. If it tests `placeCard` behavior, add it to `scripts/generate-board-fixtures.ts` and regenerate.
+When adding or modifying board logic tests in either engine, check whether the scenario should be a shared fixture. If it tests `placeCard` behavior, add it to `scripts/generate-board-fixtures.ts` and regenerate:
+
+```bash
+bun run scripts/generate-board-fixtures.ts
+```
 
 ## Native Solver Server (Optional)
 

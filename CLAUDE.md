@@ -1,3 +1,7 @@
+## Development
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands, project structure, and build instructions.
+
 ## Cross-Engine Alignment
 
 - The TypeScript engine (src/engine/board.ts) and Rust engine (engine-rs/src/board.rs) implement
