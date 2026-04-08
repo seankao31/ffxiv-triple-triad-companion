@@ -1,5 +1,5 @@
-<!-- ABOUTME: Displays one player's remaining hand cards during gameplay. -->
-<!-- ABOUTME: Highlights the best-move card; allows selection on the active turn only. Dims non-forced cards under Order rule. -->
+<!-- ABOUTME: Displays one player's hand as 5 fixed slots during gameplay. -->
+<!-- ABOUTME: Played cards leave a ghost slot. Highlights the best-move card; allows selection on the active turn only. Dims non-forced cards under Order rule. -->
 <script lang="ts">
   import { currentState, rankedMoves, game, selectCard, revealCard } from '../../store';
   import { Owner, type Card } from '../../../engine';
@@ -13,6 +13,12 @@
     owner === Owner.Player
       ? ($currentState?.playerHand ?? [])
       : ($currentState?.opponentHand ?? []),
+  );
+
+  let initialHand = $derived(
+    $game.history[0]
+      ? (owner === Owner.Player ? $game.history[0].playerHand : $game.history[0].opponentHand)
+      : [],
   );
 
   let isActive = $derived($currentState?.currentTurn === owner);
@@ -56,21 +62,26 @@
       <span class="w-2 h-2 rounded-full {accentBg} inline-block" title="Active turn"></span>
     {/if}
   </h3>
-  {#each hand as card (card.id)}
-    {@const isUnknown = $game.unknownCardIds.has(card.id)}
-    {@const isForced = forcedCard !== null && card === forcedCard}
-    {@const isDimmed = isOrderActive && isActive && !isForced}
-    <RevealableCard revealing={revealingCardId === card.id} onreveal={handleReveal}>
-      <button
-        onclick={() => handleClick(card)}
-        class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
-          {isActive && !isDimmed ? `cursor-pointer ${hoverBorder}` : 'cursor-default opacity-70'}
-          {card === $game.selectedCard ? `${accentBorder} ${accentBgDim} shadow-lg ${accentShadow}` : 'border-surface-600 bg-surface-800'}
-          {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}
-          {isUnknown ? 'border-dashed' : ''}"
-      >
-        <CardFace {card} unknown={isUnknown} modifier={cardModifier(card.type, $currentState, $game.ruleset)} />
-      </button>
-    </RevealableCard>
+  {#each initialHand as slot (slot.id)}
+    {@const card = hand.find(c => c.id === slot.id) ?? null}
+    {#if card}
+      {@const isUnknown = $game.unknownCardIds.has(card.id)}
+      {@const isForced = forcedCard !== null && card === forcedCard}
+      {@const isDimmed = isOrderActive && isActive && !isForced}
+      <RevealableCard revealing={revealingCardId === card.id} onreveal={handleReveal}>
+        <button
+          onclick={() => handleClick(card)}
+          class="w-20 h-20 rounded border text-xs font-bold font-mono grid grid-cols-3
+            {isActive && !isDimmed ? `cursor-pointer ${hoverBorder}` : 'cursor-default opacity-70'}
+            {card === $game.selectedCard ? `${accentBorder} ${accentBgDim} shadow-lg ${accentShadow}` : 'border-surface-600 bg-surface-800'}
+            {bestCard && card.id === bestCard.id && isActive ? 'ring-2 ring-accent-gold shadow-lg shadow-accent-gold/20' : ''}
+            {isUnknown ? 'border-dashed' : ''}"
+        >
+          <CardFace {card} unknown={isUnknown} modifier={cardModifier(card.type, $currentState, $game.ruleset)} />
+        </button>
+      </RevealableCard>
+    {:else}
+      <div data-testid="empty-hand-slot" class="w-20 h-20 rounded border border-dashed border-surface-700 bg-surface-900"></div>
+    {/if}
   {/each}
 </div>
