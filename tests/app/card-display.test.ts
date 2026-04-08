@@ -1,7 +1,7 @@
 // ABOUTME: Tests for card display helpers — type abbreviation maps and board type counting.
 // ABOUTME: Validates boardTypeCount against various board configurations.
 import { describe, it, expect } from 'vitest';
-import { boardTypeCount, typeAbbrev, typeColor, cardModifier } from '../../src/app/card-display';
+import { boardTypeCount, typeAbbrev, typeColor, cardModifier, ownerColor } from '../../src/app/card-display';
 import { CardType, Owner, createInitialState, createCard, resetCardIds, type GameState } from '../../src/engine';
 import { placeCard } from '../../src/engine';
 
@@ -118,5 +118,23 @@ describe('cardModifier', () => {
   it('returns null when no cards of the type are on the board', () => {
     const state = emptyState();
     expect(cardModifier(CardType.Primal, state, { ...noRules, ascension: true })).toBeNull();
+  });
+});
+
+describe('ownerColor', () => {
+  it('returns blue for Player when playerSide is left', () => {
+    expect(ownerColor(Owner.Player, 'left')).toBe('blue');
+  });
+
+  it('returns red for Opponent when playerSide is left', () => {
+    expect(ownerColor(Owner.Opponent, 'left')).toBe('red');
+  });
+
+  it('returns red for Player when playerSide is right', () => {
+    expect(ownerColor(Owner.Player, 'right')).toBe('red');
+  });
+
+  it('returns blue for Opponent when playerSide is right', () => {
+    expect(ownerColor(Owner.Opponent, 'right')).toBe('blue');
   });
 });

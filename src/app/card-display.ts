@@ -1,6 +1,15 @@
 // ABOUTME: Shared card display helpers for type labels and modifier calculation.
 // ABOUTME: Used by CardFace, HandPanel, and SolverPanel.
-import { CardType, type GameState, type RuleSet } from '../engine';
+import { CardType, Owner, type GameState, type RuleSet } from '../engine';
+
+export type PlayerSide = 'left' | 'right';
+export type SideColor = 'blue' | 'red';
+
+export function ownerColor(owner: Owner, playerSide: PlayerSide): SideColor {
+  const playerIsBlue = playerSide === 'left';
+  if (owner === Owner.Player) return playerIsBlue ? 'blue' : 'red';
+  return playerIsBlue ? 'red' : 'blue';
+}
 
 export const typeAbbrev: Partial<Record<CardType, string>> = {
   [CardType.Primal]: 'P',
