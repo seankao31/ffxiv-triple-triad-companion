@@ -1,4 +1,4 @@
-<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Order, Swap, Three Open). -->
+<!-- ABOUTME: Checkbox inputs for selecting the active ruleset (Plus, Same, Reverse, Fallen Ace, Ascension, Descension, Order, Swap, Three Open, All Open). -->
 <!-- ABOUTME: Updates the ruleset and format flags in the central game store on change. -->
 <script lang="ts">
   import { game, updateRuleset, updateSwap, updateThreeOpen, updateAllOpen } from '../../store';
