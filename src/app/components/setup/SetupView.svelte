@@ -5,7 +5,7 @@
   import RulesetInput from './RulesetInput.svelte';
   import ServerSettings from './ServerSettings.svelte';
   import SwapStep from './SwapStep.svelte';
-  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen } from '../../store';
+  import { game, startGame, updatePlayerCard, updateOpponentCard, updateFirstTurn, updateThreeOpen, updateAllOpen } from '../../store';
   import { Owner } from '../../../engine';
 
   let error = $state('');
@@ -66,6 +66,7 @@
         onchange={updateOpponentCard}
         onback={() => playerHandRef?.focusLast()}
         allowUnknown={$game.threeOpen}
+        disabled={!$game.allOpen && !$game.threeOpen}
         bind:this={opponentHandRef}
       />
     </div>
