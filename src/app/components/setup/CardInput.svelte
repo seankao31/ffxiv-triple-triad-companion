@@ -8,12 +8,14 @@
     onadvance = () => {},
     onback = () => {},
     allowUnknown = false,
+    disabled = false,
     card = null,
   }: {
     onchange: (card: Card | null) => void;
     onadvance?: () => void;
     onback?: () => void;
     allowUnknown?: boolean;
+    disabled?: boolean;
     card?: Card | null;
   } = $props();
 
@@ -106,14 +108,14 @@
 <div
   tabindex="-1"
   class="relative w-36 h-36 bg-gradient-to-b from-surface-700 to-surface-800 border border-surface-600 hover:border-surface-500 rounded-lg p-1 flex flex-col
-  {isUnknown ? 'opacity-60 border-dashed' : ''}"
+  {isUnknown || disabled ? 'opacity-60 border-dashed' : ''}"
   onclick={(e) => {
     if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) {
       inputEls[0]?.focus();
     }
   }}>
   <!-- Type dropdown at top-right (hidden when unknown) -->
-  {#if !isUnknown}
+  {#if !isUnknown && !disabled}
     <div class="absolute top-1 right-1">
       <select
         value={type}
@@ -128,7 +130,7 @@
   {/if}
 
   <!-- Unknown toggle at top-left (when allowUnknown) -->
-  {#if allowUnknown}
+  {#if allowUnknown && !disabled}
     <div class="absolute top-1 left-1">
       <button
         aria-label="Toggle unknown"
@@ -140,7 +142,11 @@
   {/if}
 
   <!-- Cross layout for directional values (or ? placeholder when unknown) -->
-  {#if isUnknown}
+  {#if disabled}
+    <div class="flex-1 flex items-center justify-center">
+      <span class="text-3xl font-bold text-surface-400">?</span>
+    </div>
+  {:else if isUnknown}
     <div class="flex-1 flex items-center justify-center">
       <span class="text-3xl font-bold text-surface-400">?</span>
     </div>
