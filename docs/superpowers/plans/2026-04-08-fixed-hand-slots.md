@@ -18,7 +18,7 @@
 **Files:**
 - Modify: `tests/app/components/HandPanel.test.ts`
 
-- [ ] **Step 1: Add test — renders 5 slots with a ghost slot after playing a card**
+- [x] **Step 1: Add test — renders 5 slots with a ghost slot after playing a card**
 
 Add this test inside the existing `describe('HandPanel', ...)` block (after the "renders 5 cards" test at line 119):
 
@@ -42,7 +42,7 @@ it('renders a ghost slot after a card is played', () => {
 });
 ```
 
-- [ ] **Step 2: Add `undoMove` to imports and add undo test**
+- [x] **Step 2: Add `undoMove` to imports and add undo test**
 
 First, add `undoMove` to the store import on line 6:
 
@@ -72,7 +72,7 @@ it('restores a card to its original slot after undo', () => {
 });
 ```
 
-- [ ] **Step 3: Add test — ghost slot does not appear when game history is empty (setup phase)**
+- [x] **Step 3: Add test — ghost slot does not appear when game history is empty (setup phase)**
 
 Add this test in the same describe block:
 
@@ -85,13 +85,13 @@ it('renders no slots when history is empty (setup phase)', () => {
 });
 ```
 
-- [ ] **Step 4: Run tests to verify they fail**
+- [x] **Step 4: Run tests to verify they fail**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 
 Expected: The "ghost slot" test fails because the current implementation renders 4 buttons and no `empty-hand-slot` test IDs. The "undo" test fails because it also expects `empty-hand-slot` queries to work. The "setup phase" test may pass since an empty history already renders nothing.
 
-- [ ] **Step 5: Commit failing tests**
+- [x] **Step 5: Commit failing tests**
 
 ```
 git add tests/app/components/HandPanel.test.ts
@@ -105,7 +105,7 @@ git commit -m 'test(ENG-84): add failing tests for fixed hand slots'
 **Files:**
 - Modify: `src/app/components/game/HandPanel.svelte`
 
-- [ ] **Step 1: Add `initialHand` derived state**
+- [x] **Step 1: Add `initialHand` derived state**
 
 In the `<script>` block, after the existing `hand` derived (line 12-16), add:
 
@@ -119,7 +119,7 @@ let initialHand = $derived(
 
 This derives the 5-card starting hand from the first history entry. Empty when history is empty (setup phase).
 
-- [ ] **Step 2: Replace the `{#each}` iteration**
+- [x] **Step 2: Replace the `{#each}` iteration**
 
 Replace the current iteration block (lines 59-75):
 
@@ -170,7 +170,7 @@ With:
 {/each}
 ```
 
-- [ ] **Step 3: Update the ABOUTME comments**
+- [x] **Step 3: Update the ABOUTME comments**
 
 Update line 1-2 to reflect the new behavior:
 
@@ -179,19 +179,19 @@ Update line 1-2 to reflect the new behavior:
 <!-- ABOUTME: Played cards leave a ghost slot. Highlights the best-move card; allows selection on the active turn only. -->
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bunx vitest run tests/app/components/HandPanel.test.ts`
 
 Expected: All tests pass, including the new ghost-slot and undo tests.
 
-- [ ] **Step 5: Run the full UI test suite**
+- [x] **Step 5: Run the full UI test suite**
 
 Run: `bunx vitest run`
 
 Expected: All 258+ tests pass. No regressions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/app/components/game/HandPanel.svelte tests/app/components/HandPanel.test.ts
