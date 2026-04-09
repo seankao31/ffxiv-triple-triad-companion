@@ -25,3 +25,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands, project structure, 
 | Solver AI Enhancement | Opponent modeling |
 | UI | Interface improvements |
 | Post-Game Analysis | Replay/analysis |
+
+## Git workflow
+
+- **Rebase before merge.** When integrating a feature branch into main, rebase the branch onto main first so the merge is a fast-forward. Keep history linear.
