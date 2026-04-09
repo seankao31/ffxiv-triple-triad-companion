@@ -26,6 +26,15 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands, project structure, 
 | UI | Interface improvements |
 | Post-Game Analysis | Replay/analysis |
 
+## Testing: visual and e2e
+
+New pages, routes, and visual changes must include:
+
+- **Playwright e2e tests** following the existing pattern in `tests/e2e/`. Mock external APIs to keep tests offline.
+- **Visual verification via Playwright MCP** (navigate + screenshot) before declaring work complete.
+
+Unit tests alone are not sufficient for UI work.
+
 ## Git workflow
 
 - **Rebase before merge.** When integrating a feature branch into main, rebase the branch onto main first so the merge is a fast-forward. Keep history linear.
