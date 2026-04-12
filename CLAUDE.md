@@ -38,3 +38,27 @@ Unit tests alone are not sufficient for UI work.
 ## Git workflow
 
 - **Rebase before merge.** When integrating a feature branch into main, rebase the branch onto main first so the merge is a fast-forward. Keep history linear.
+
+### Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <subject>`
+
+**Scopes** are coarse, stable, and map to architectural boundaries — not features or tickets:
+
+| Scope | Area |
+|-------|------|
+| `engine` | `src/engine/` — TS game logic, shared fixtures |
+| `engine-rs` | `engine-rs/` — Rust engine |
+| `solver` | Solver-specific logic (TS or Rust) |
+| `ui` | `src/app/` — Svelte components, store |
+| `e2e` | `tests/e2e/` — Playwright tests |
+| `wasm` | WASM build/integration |
+| _(omit)_ | Docs-only, config, or multi-area changes |
+
+**Linear ticket references** go in a `Ref:` trailer, not in the scope or subject:
+
+```
+feat(ui): add side radio picker to SetupView
+
+Ref: ENG-85
+```
