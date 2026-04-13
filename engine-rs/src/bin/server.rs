@@ -8,6 +8,7 @@ use engine_rs::types::{Card, CardType, GameState, Owner, RankedMove, RuleSet};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 use tracing::info;
 
 #[derive(Parser)]
@@ -184,7 +185,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/solve", post(solve))
         .route("/api/health", get(health))
-        .layer(cors);
+        .layer(cors)
+        .layer(TraceLayer::new_for_http());
 
     let addr = format!("127.0.0.1:{}", cli.port);
     let listener = tokio::net::TcpListener::bind(&addr).await.expect("failed to bind");
@@ -409,4 +411,5 @@ mod tests {
         assert_eq!(status, axum::http::StatusCode::OK);
         assert!(logs_contain("moves="));
     }
+
 }
