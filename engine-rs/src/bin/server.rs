@@ -6,7 +6,9 @@ use clap::Parser;
 use engine_rs::pimc::{run_pimc, PIMCCard};
 use engine_rs::types::{Card, CardType, GameState, Owner, RankedMove, RuleSet};
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use tower_http::cors::{Any, CorsLayer};
+use tracing::info;
 
 #[derive(Parser)]
 #[command(about = "Triple Triad solver server")]
@@ -129,24 +131,49 @@ async fn health() -> Json<serde_json::Value> {
 }
 
 async fn solve(Json(req): Json<SolveRequest>) -> Json<SolveResponse> {
+    let sim_count = req.sim_count;
     let (state, unknown_card_ids) = resolve_nulls(req.state, req.unknown_card_ids);
+    let start = Instant::now();
     let moves = if unknown_card_ids.is_empty() {
-        engine_rs::solver::find_best_move(&state)
+        let result = engine_rs::solver::find_best_move(&state);
+        let duration_ms = start.elapsed().as_millis();
+        info!(mode = "all_open", duration_ms, moves = result.len(), "solve complete");
+        result
     } else {
-        run_pimc(
+        let unknown_cards = unknown_card_ids.len();
+        let pool_size = req.card_pool.len();
+        let result = run_pimc(
             &state,
             &unknown_card_ids,
             &req.card_pool,
             req.max_five_stars,
             req.max_four_stars,
-            req.sim_count,
-        )
+            sim_count,
+        );
+        let duration_ms = start.elapsed().as_millis();
+        info!(
+            mode = "pimc",
+            sim_count,
+            unknown_cards,
+            pool_size,
+            duration_ms,
+            moves = result.len(),
+            "solve complete"
+        );
+        result
     };
     Json(SolveResponse { moves })
 }
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "server=info".parse().unwrap()),
+        )
+        .init();
+
     let cli = Cli::parse();
 
     let cors = CorsLayer::new()
@@ -161,7 +188,7 @@ async fn main() {
 
     let addr = format!("127.0.0.1:{}", cli.port);
     let listener = tokio::net::TcpListener::bind(&addr).await.expect("failed to bind");
-    println!("Triple Triad solver server listening on http://{addr}");
+    info!(port = cli.port, "Triple Triad solver server listening on http://{addr}");
     axum::serve(listener, app).await.expect("server error");
 }
 
@@ -299,5 +326,87 @@ mod tests {
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["status"], "ok");
+    }
+
+    /// Helper: POST JSON to /api/solve via tower oneshot, return (status, body).
+    async fn post_solve(body: serde_json::Value) -> (axum::http::StatusCode, Vec<u8>) {
+        use tower::ServiceExt;
+        use http_body_util::BodyExt;
+
+        let app = Router::new().route("/api/solve", axum::routing::post(solve));
+        let response = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/api/solve")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = response.status();
+        let body = response.into_body().collect().await.unwrap().to_bytes().to_vec();
+        (status, body)
+    }
+
+    /// Helper: build a minimal All Open solve request (1 card each, fast solve).
+    fn make_all_open_request() -> serde_json::Value {
+        serde_json::json!({
+            "state": {
+                "board": [null, null, null, null, null, null, null, null, null],
+                "playerHand": [
+                    {"id": 0, "top": 9, "right": 9, "bottom": 9, "left": 9, "type": "none"}
+                ],
+                "opponentHand": [
+                    {"id": 1, "top": 1, "right": 1, "bottom": 1, "left": 1, "type": "none"}
+                ],
+                "currentTurn": "player",
+                "rules": { "same": false, "plus": false, "fallenAce": false, "reverse": false, "ascension": false, "descension": false, "order": false, "chaos": false }
+            }
+        })
+    }
+
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn solve_all_open_logs_mode_and_duration() {
+        let (status, _body) = post_solve(make_all_open_request()).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(logs_contain("mode=\"all_open\""));
+        assert!(logs_contain("duration_ms"));
+    }
+
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn solve_pimc_logs_mode_and_params() {
+        let req = serde_json::json!({
+            "state": {
+                "board": [null, null, null, null, null, null, null, null, null],
+                "playerHand": [
+                    {"id": 0, "top": 9, "right": 9, "bottom": 9, "left": 9, "type": "none"}
+                ],
+                "opponentHand": [null],
+                "currentTurn": "player",
+                "rules": { "same": false, "plus": false, "fallenAce": false, "reverse": false, "ascension": false, "descension": false, "order": false, "chaos": false }
+            },
+            "cardPool": [
+                {"id": 1, "top": 1, "right": 1, "bottom": 1, "left": 1, "type": "none", "stars": 1, "owned": 1.0}
+            ],
+            "simCount": 5
+        });
+        let (status, _body) = post_solve(req).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(logs_contain("mode=\"pimc\""));
+        assert!(logs_contain("sim_count=5"));
+        assert!(logs_contain("unknown_cards=1"));
+        assert!(logs_contain("duration_ms"));
+    }
+
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn solve_logs_move_count() {
+        let (status, _body) = post_solve(make_all_open_request()).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        assert!(logs_contain("moves="));
     }
 }
