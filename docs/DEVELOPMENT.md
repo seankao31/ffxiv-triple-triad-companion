@@ -121,6 +121,9 @@ cd engine-rs && cargo build --release --features server --bin server
 
 # Custom port
 ./engine-rs/target/release/server --port 9090
+
+# Verbose logging (default: INFO; DEBUG shows per-request HTTP spans)
+RUST_LOG=server=debug ./engine-rs/target/release/server
 ```
 
 Requires only the Rust toolchain (no wasm-pack needed).
