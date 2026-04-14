@@ -31,7 +31,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands, project structure, 
 New pages, routes, and visual changes must include:
 
 - **Playwright e2e tests** following the existing pattern in `tests/e2e/`. Mock external APIs to keep tests offline.
-- **Visual verification via Playwright MCP** (navigate + screenshot) before declaring work complete.
+- **Visual verification via Playwright** (navigate + screenshot) before declaring work complete.
 
 Unit tests alone are not sufficient for UI work.
 
