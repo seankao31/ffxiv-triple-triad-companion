@@ -26,6 +26,8 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for commands, project structure, 
 | UI | Interface improvements |
 | Post-Game Analysis | Replay/analysis |
 
+**Estimates** use Fibonacci points (1, 2, 3, 5, 8, 13). Every new issue must include an estimate.
+
 ## Testing: visual and e2e
 
 New pages, routes, and visual changes must include:
